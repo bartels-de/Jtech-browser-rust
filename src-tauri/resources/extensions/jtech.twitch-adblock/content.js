@@ -3,6 +3,7 @@
 // detect stitched ads (pre- and mid-rolls) in Twitch HLS media playlists and replace them with
 // an ad-free backup playlist (PlaybackAccessToken with another playerType/platform). If no
 // backup is ad-free, the ad segments are removed while the playlist stays valid.
+// 1.2.0: usher /api/v2/channel/hls/ (current Twitch) is recognised; before only /api/channel/hls/.
 // Debug: localStorage.setItem('jtech-twitch-debug','1') + reload -> console "[JTech TwitchAB]".
 // Counter: window.__jtechTwitchStats (ads detected / backup swaps / segments stripped).
 (function () {
@@ -122,7 +123,7 @@
 
     function newBackup(info, b) {
       return getToken(info.channel, b).then(function (tok) {
-        var u = new URL(masters[info.channel] || ('https://usher.ttvnw.net/api/channel/hls/' + info.channel + '.m3u8'));
+        var u = new URL(masters[info.channel] || ('https://usher.ttvnw.net/api/v2/channel/hls/' + info.channel + '.m3u8'));
         u.searchParams.set('sig', tok.signature);
         u.searchParams.set('token', tok.value);
         u.searchParams.set('platform', b.platform);
@@ -199,7 +200,8 @@
         if (d) deviceId = d;
       } catch (e) {}
       if (url.indexOf('usher.ttvnw.net/api/') !== -1 && /\/hls\/[^/?]+\.m3u8/.test(url)) {
-        var ch = /\/api\/channel\/hls\/([^/.?]+)\.m3u8/.exec(url);
+        var ch = /\/api\/(?:v\d+\/)?channel\/hls\/([^/.?]+)\.m3u8/.exec(url);
+        log('usher master', ch ? ch[1] : '(not a channel: ' + url.slice(0, 80) + ')');
         return realFetch(input, init).then(function (r) {
           if (!r.ok || !ch) return r;
           var channel = ch[1].toLowerCase();
@@ -236,7 +238,7 @@
 
   var HOOK_SRC = '(' + hook.toString() + ')(self,' + (DEBUG ? 'true' : 'false') + ');';
   hook(window, DEBUG);
-  if (DEBUG) console.log('[JTech TwitchAB] active on', location.href);
+  if (DEBUG) console.log('[JTech TwitchAB] 1.2.0 active on', location.href, '(document_start, readyState=' + document.readyState + ')');
 
   // Hide "ad in progress" overlays the player may still show.
   function css() {

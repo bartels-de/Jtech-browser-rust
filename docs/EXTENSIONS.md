@@ -113,9 +113,21 @@ the `files` hashes (LF line endings, as stored in the repository).
   with a release.
 - The backup stream can have a lower quality or a short delay; when segments are stripped, the
   player can stall briefly or show a "commercial break" screen.
-- A tab that is opened directly on Twitch may load the first page before the script is registered;
-  a reload fixes this.
+- Since 1.2.0 / browser 0.1.9 tabs start on about:blank and load their URL only after all content
+  scripts are registered (3 s fallback), so a directly opened stream is covered too.
+- 1.2.0 recognises the current usher endpoint `/api/v2/channel/hls/` (1.1.0 only matched
+  `/api/channel/hls/`, so no playlist was ever processed on current Twitch).
+- If a `<id>/` subfolder exists, stale legacy flat files (v0.1.4) with the same id are ignored.
 - VODs and clips are not handled.
+
+### Debugging in a release build
+
+1. Settings › About JTech › Advanced › "Enable developer tools".
+2. Open the Twitch tab, press F12 (or right-click › Inspect) and open the Console.
+3. Run `localStorage.setItem('jtech-twitch-debug','1')` and reload the page.
+4. Filter the console for `[JTech TwitchAB]` (page and `[worker]` lines). Expected: `1.2.0 active on`,
+   `worker hooked`, `usher master <channel>`, `master playlist`, then `ad detected` / `using ad-free backup`.
+   `window.__jtechTwitchStats` shows the counters. Turn off with `localStorage.removeItem('jtech-twitch-debug')`.
 
 ## YouTube Ad Blocker (`jtech.youtube-adblock`)
 

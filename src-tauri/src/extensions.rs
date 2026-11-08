@@ -320,6 +320,8 @@ pub struct Diagnostics {
     pub searched_path: String,
     pub path_exists: bool,
     pub legacy_flat_layout: bool,
+    /// Legacy flat files exist but a `<id>/` subfolder takes precedence: they are ignored (never injected).
+    pub legacy_ignored: bool,
     pub loaded: Vec<String>,
     pub errors: Vec<LoadError>,
 }
@@ -394,6 +396,7 @@ pub fn load_dir_diag(root: &Path, source: &str) -> (Vec<Ext>, Diagnostics) {
     };
     let mut dirs: Vec<PathBuf> = rd.filter_map(|e| e.ok()).map(|e| e.path()).filter(|p| p.is_dir()).collect();
     dirs.sort();
+    let dir_names: Vec<String> = dirs.iter().filter_map(|d| d.file_name().map(|n| n.to_string_lossy().to_ascii_lowercase())).collect();
     for d in dirs {
         match load_one(&d, source) {
             Ok(e) => { tracing::info!("extension {} {} loaded", e.manifest.id, e.manifest.version); out.push(e); }
@@ -406,7 +409,11 @@ pub fn load_dir_diag(root: &Path, source: &str) -> (Vec<Ext>, Diagnostics) {
     if root.join("manifest.json").is_file() {
         diag.legacy_flat_layout = true;
         match load_one_with(root, source, false) {
-            Ok(e) if out.iter().any(|x| x.manifest.id == e.manifest.id) => {}
+            // A subfolder with the same id always wins, even if it failed to load: stale v0.1.4 files are never used then.
+            Ok(e) if out.iter().any(|x| x.manifest.id == e.manifest.id) || dir_names.contains(&e.manifest.id.to_ascii_lowercase()) => {
+                diag.legacy_ignored = true;
+                tracing::warn!("extension {} {}: stale legacy flat files ignored (subfolder takes precedence)", e.manifest.id, e.manifest.version);
+            }
             Ok(e) => { tracing::warn!("extension {} loaded from legacy flat layout", e.manifest.id); out.push(e); }
             Err(e) => {
                 tracing::error!("extension (flat) {}: {e}", root.display());
@@ -555,23 +562,39 @@ fn current_injections() -> Vec<(String, String)> {
 
 /// Registers the scripts of all active extensions on a content webview (UI thread, from attach_handlers).
 #[cfg(windows)]
-pub fn attach(core: &webview2_com_sys::Microsoft::Web::WebView2::Win32::ICoreWebView2, label: &str) {
+pub fn attach(core: &webview2_com_sys::Microsoft::Web::WebView2::Win32::ICoreWebView2, label: &str) { attach_then(core, label, None); }
+
+/// Like `attach`, but calls `done` once every AddScriptToExecuteOnDocumentCreated has completed
+/// (or failed). Used to start a tab's first navigation only after its scripts are registered:
+/// registration is asynchronous, a navigation started earlier would get a document without them.
+#[cfg(windows)]
+pub fn attach_then(core: &webview2_com_sys::Microsoft::Web::WebView2::Win32::ICoreWebView2, label: &str, done: Option<Box<dyn FnOnce() + Send>>) {
     use webview2_com_sys::Microsoft::Web::WebView2::Win32 as SYS;
     use windows::core::{Interface, PCWSTR};
-    for (ext_id, js) in current_injections() {
+    use std::sync::{Arc, Mutex as StdMutex, atomic::{AtomicUsize, Ordering as AO}};
+    let scripts = current_injections();
+    let done = Arc::new(StdMutex::new(done));
+    let fire = { let done = done.clone(); move || { if let Some(f) = done.lock().unwrap_or_else(|p| p.into_inner()).take() { f(); } } };
+    if scripts.is_empty() { fire(); return; }
+    let left = Arc::new(AtomicUsize::new(scripts.len()));
+    for (ext_id, js) in scripts {
+        let (left_c, fire_c) = (left.clone(), fire.clone());
+        let step = move || { if left_c.fetch_sub(1, AO::SeqCst) == 1 { fire_c(); } };
+        let step_err = step.clone();
         let wide: Vec<u16> = js.encode_utf16().chain(std::iter::once(0)).collect();
         let (label2, ext2) = (label.to_string(), ext_id.clone());
         let h = webview2_com::AddScriptToExecuteOnDocumentCreatedCompletedHandler::create(Box::new(move |_res, script_id| {
             if !script_id.is_empty() {
-                lock(&INSTALLED).get_or_insert_with(HashMap::new).entry(label2).or_default().push((ext2, script_id));
-            }
+                lock(&INSTALLED).get_or_insert_with(HashMap::new).entry(label2.clone()).or_default().push((ext2.clone(), script_id));
+            } else { tracing::warn!(webview = label2.as_str(), "extension {ext2}: script registration returned no id"); }
+            step();
             Ok(())
         }));
         let r = h.cast::<SYS::ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler>()
             .and_then(|h| unsafe { core.AddScriptToExecuteOnDocumentCreated(PCWSTR(wide.as_ptr()), &h) });
         match r {
             Ok(()) => tracing::info!(webview = label, "extension {ext_id}: script registered"),
-            Err(e) => tracing::warn!(webview = label, "extension {ext_id}: AddScriptToExecuteOnDocumentCreated: {e}"),
+            Err(e) => { tracing::warn!(webview = label, "extension {ext_id}: AddScriptToExecuteOnDocumentCreated: {e}"); step_err(); }
         }
     }
 }

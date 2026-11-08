@@ -155,9 +155,12 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     return { ...s, shortcuts: normalizeShortcuts(s.shortcuts), effects: normalizeEffects(s.effects), restoreSession: typeof s.restoreSession === "boolean" ? s.restoreSession : true,
       autoGroupByDomain: typeof s.autoGroupByDomain === "boolean" ? s.autoGroupByDomain : true,
       autoUpdateCheck: typeof s.autoUpdateCheck === "boolean" ? s.autoUpdateCheck : true,
+      devTools: s.devTools === true,
       updateIntervalHours: [0, 6, 12, 24, 72].includes(s.updateIntervalHours) ? s.updateIntervalHours : 24,
       sidebarWidth: clampSidebarWidth(s.sidebarWidth), language: normalizeLangSetting(s.language) };
   });
+  // Developer tools setting -> backend (applies to open tabs and new ones)
+  useEffect(() => { call("set_devtools", { enabled: settings.devTools === true }, m => console.warn(m)); }, [settings.devTools]);
   // ---- i18n: language from settings ("system" follows navigator.language, also when it changes) ----
   const [sysLang, setSysLang] = useState<Lang>(systemLang);
   useEffect(() => {

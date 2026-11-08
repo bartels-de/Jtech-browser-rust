@@ -402,6 +402,11 @@ function About() {
         </select>
       </Row>
     </Group>
+    <Group title={t("ab.adv")} desc={t("ab.advDesc")}>
+      <Row title={t("ab.devtools")} desc={t("ab.devtoolsDesc")} keywords="devtools developer f12 inspect console entwicklertools untersuchen konsole">
+        <Switch label={t("ab.devtools")} checked={s.devTools === true} onChange={x => b.updateSettings({ devTools: x })} />
+      </Row>
+    </Group>
     <Disclosure summary={t("c.technical")}>
       <dl className="tech-list">
         <dt>{t("ab.t.version")}</dt><dd>{u.currentVersion || "…"}</dd>

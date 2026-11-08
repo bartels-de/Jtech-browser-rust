@@ -133,7 +133,7 @@ export function ExtensionsPage() {
           <summary>{t("ext.diag.title")}</summary>
           <p><strong>{t("ext.diag.path")}</strong> <code>{diag.searchedPath}</code> {diag.pathExists ? "" : `(${t("ext.diag.missing")})`}</p>
           <p><strong>{t("ext.diag.loaded")}</strong> {diag.loaded.length ? diag.loaded.join(", ") : "–"}</p>
-          {diag.legacyFlatLayout && <p className="muted">{t("ext.diag.flat")}</p>}
+          {diag.legacyFlatLayout && <p className="muted">{t(diag.legacyIgnored ? "ext.diag.flatIgnored" : "ext.diag.flat")}</p>}
           {diag.errors.length > 0 && <><p><strong>{t("ext.diag.errors")}</strong></p>
             <ul>{diag.errors.map(e => <li key={e.path}><code>{e.path}</code>: {e.error}</li>)}</ul></>}
         </details>

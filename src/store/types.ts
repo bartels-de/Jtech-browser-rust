@@ -44,6 +44,8 @@ export interface Settings {
   updateIntervalHours: number;
   /** UI language ("system" follows navigator.language) */
   language: LangSetting;
+  /** Developer tools (F12 / "Inspect") for web pages and the UI; default off */
+  devTools?: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {

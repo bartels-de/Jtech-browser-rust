@@ -3,7 +3,7 @@
   "extensions": [
     {
       "id": "jtech.twitch-adblock",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "minBrowser": "0.1.3",
       "name": {
         "en": "Twitch Ad Blocker",
@@ -16,10 +16,10 @@
       "author": "JTech",
       "license": "MIT",
       "files": {
-        "NOTICE": "40c57ba02d37f6e9937fc656d3d4d8a0ae26b7efa4caa03edb1beb00e27276c7",
-        "content.js": "0109a755e4f6481c3f26907290b4a666a5f09b676bd60ea7106ac564e73dc1f5",
+        "NOTICE": "14076fd49e4b3fb06d636a34dc06fd4723a90c7641805777049e5051fa85dcda",
+        "content.js": "690b3b667e7d20f3da8fbd46d539bcf7054d3804988231877d6fbb8e12ebc20e",
         "icon.svg": "2afcc94989be8bc53d1db0b1ab672dda5d14c4c054d0748fd02adb3f2457c177",
-        "manifest.json": "a8b1ff72bc939deaaedd87afef26d69d05892ce682aa0fb6a773d9dba9901aa0",
+        "manifest.json": "be52c08a40351c04dcb0299093bf394ae0ad359bb9811a9f8b63d006ca860e3a",
         "rules.txt": "894f3ff07d551a3449853a4c5e95ec79e1c7fe29fa06eb2b3cd413455f786f9c"
       }
     },

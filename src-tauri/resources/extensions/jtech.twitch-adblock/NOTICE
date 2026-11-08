@@ -10,3 +10,6 @@ Version 1.1.0 (mid-roll handling, worker injection by fetching the worker script
 prepending the hook, multiple playerType/platform backups) follows ideas described by
 TwitchAdSolutions (pixeltris, MIT) and TTV-AB (GosuDRM). The code is written independently;
 no source code from these projects is included.
+
+Version 1.2.0 recognises the current usher endpoint (/api/v2/channel/hls/) and adds debug
+logging; injection now happens before the first navigation of a tab. Independent code.

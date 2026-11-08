@@ -26,6 +26,8 @@ mod extensions;
 
 thread_local! { static ENGINE: RefCell<Option<Engine>> = RefCell::new(None); }
 static BLOCKED: AtomicU64 = AtomicU64::new(0);
+/// Setting "Entwicklertools aktivieren" (Standard aus): AreDevToolsEnabled fuer alle Webviews.
+static DEVTOOLS: AtomicBool = AtomicBool::new(false);
 /// Etappe G: Adblock zur Laufzeit an/aus (UI-Einstellung). Wirkt sofort auf alle Tabs.
 static ADBLOCK_ENABLED: AtomicBool = AtomicBool::new(true);
 
@@ -419,8 +421,12 @@ fn spawn_webview(app: &AppHandle, id: &str, label: &str, parsed: tauri::Url, tit
     let (w, h) = logical_window_size(&window)?;
     let b = content_bounds(w, h, top_h, sb_w);
     tracing::info!(tab = id.as_str(), "erzeuge Webview '{label}' fuer {parsed} bei x={} y={} w={} h={}", b.x, b.y, b.w, b.h);
+    // Erst about:blank, Erweiterungs-Scripts registrieren (asynchron!), dann die echte URL laden.
+    // Sonst bekommt das erste Dokument (z. B. direkt geoeffneter Twitch-Stream) keine Content-Scripts.
+    let deferred = parsed.as_str() != "about:blank";
+    let initial: tauri::Url = if deferred { "about:blank".parse().map_err(|e| format!("about:blank: {e}"))? } else { parsed.clone() };
     let webview = window.add_child(
-        tauri::webview::WebviewBuilder::new(label, tauri::WebviewUrl::External(parsed.clone())),
+        tauri::webview::WebviewBuilder::new(label, tauri::WebviewUrl::External(initial)),
         LogicalPosition::new(b.x, b.y),
         LogicalSize::new(b.w, b.h),
     ).map_err(|e| format!("add_child: {e}"))?;
@@ -451,14 +457,30 @@ fn spawn_webview(app: &AppHandle, id: &str, label: &str, parsed: tauri::Url, tit
         let app2 = app.clone();
         let id2 = id.clone();
         let tab2 = tab.clone();
+        let pending = Arc::new(AtomicBool::new(deferred));
+        let first = if deferred { Some((parsed.clone(), pending.clone())) } else { None };
         if let Err(e) = webview.with_webview(move |pwv| {
-            if let Err(e) = unsafe { attach_handlers(&pwv, &app2, &id2, &tab2) } {
+            if let Err(e) = unsafe { attach_handlers(&pwv, &app2, &id2, &tab2, first.clone()) } {
                 report_error(&app2, &id2, "WebView2-Handler", e);
+                if let Some((u, p)) = first { if p.swap(false, Ordering::SeqCst) { let _ = tab2.webview.navigate(u); } }
             }
         }) {
             report_error(app, &id, "with_webview", e);
+            if pending.swap(false, Ordering::SeqCst) { let _ = webview.navigate(parsed.clone()); }
+        } else if deferred {
+            // Sicherheitsnetz: falls ein Completion-Handler nie kommt, nach 3 s trotzdem laden.
+            let (wv, u, p, id3) = (webview.clone(), parsed.clone(), pending.clone(), id.clone());
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_secs(3));
+                if p.swap(false, Ordering::SeqCst) {
+                    tracing::warn!(tab = id3.as_str(), "Script-Registrierung ohne Rueckmeldung - lade trotzdem {u}");
+                    let _ = wv.navigate(u);
+                }
+            });
         }
     }
+    #[cfg(not(windows))]
+    if deferred { let _ = webview.navigate(parsed.clone()); }
 
     apply_layout(app); // zeigt neuen Tab, versteckt die anderen
     emit_tabs_changed(app);
@@ -514,6 +536,36 @@ fn destroy_webview(app: &AppHandle, id: &str, tab: Tab) {
     }
     extensions::forget(tab.webview.label());
     if let Err(e) = tab.webview.close() { report_error(app, id, "close", e); }
+}
+
+#[cfg(windows)]
+fn apply_devtools(core: &webview2_com_sys::Microsoft::Web::WebView2::Win32::ICoreWebView2, on: bool) {
+    let on = on || cfg!(debug_assertions); // Dev-Builds behalten ihre Entwicklertools
+    match unsafe { core.Settings() } {
+        Ok(s) => { if let Err(e) = unsafe { s.SetAreDevToolsEnabled(on.into()) } { tracing::warn!("SetAreDevToolsEnabled: {e}"); } }
+        Err(e) => tracing::warn!("Settings: {e}"),
+    }
+}
+
+/// Einstellung "Entwicklertools aktivieren": F12 / Kontextmenue "Untersuchen" in Tabs (und UI).
+/// Wirkt sofort auf offene Webviews und auf alle neuen Tabs.
+#[tauri::command]
+fn set_devtools(app: AppHandle, enabled: bool) -> Result<(), String> {
+    DEVTOOLS.store(enabled, Ordering::Relaxed);
+    let mut views = content_webviews(&app);
+    { let st = app.state::<Mutex<TabManager>>(); if let Some(ui) = lock(&st).ui.clone() { views.push(ui); } } // Lock frei vor Webview-Aufrufen
+    #[cfg(windows)]
+    for wv in views {
+        let r = wv.with_webview(move |pwv| {
+            use windows::core::Interface;
+            if let Ok(c) = unsafe { pwv.controller().CoreWebView2() } {
+                if let Ok(core) = c.cast::<webview2_com_sys::Microsoft::Web::WebView2::Win32::ICoreWebView2>() { apply_devtools(&core, enabled); }
+            }
+        });
+        if let Err(e) = r { tracing::warn!("set_devtools: {e}"); }
+    }
+    tracing::info!("Entwicklertools {}", if enabled { "aktiviert" } else { "deaktiviert" });
+    Ok(())
 }
 
 #[tauri::command]
@@ -1053,7 +1105,8 @@ fn inject_cosmetic(core: &webview2_com_sys::Microsoft::Web::WebView2::Win32::ICo
 // ---------- WebView2 COM ----------
 
 #[cfg(windows)]
-unsafe fn attach_handlers(pwv: &tauri::webview::PlatformWebview, app: &AppHandle, tab_id: &str, tab: &Tab) -> Result<(), String> {
+/// `first_nav`: Tab wurde mit about:blank erzeugt; diese URL wird erst nach der Script-Registrierung geladen.
+unsafe fn attach_handlers(pwv: &tauri::webview::PlatformWebview, app: &AppHandle, tab_id: &str, tab: &Tab, first_nav: Option<(tauri::Url, Arc<AtomicBool>)>) -> Result<(), String> {
     use webview2_com_sys::Microsoft::Web::WebView2::Win32 as SYS;
     use windows::core::{Interface, PCWSTR, PWSTR};
     use webview2_com::take_pwstr;
@@ -1070,15 +1123,19 @@ unsafe fn attach_handlers(pwv: &tauri::webview::PlatformWebview, app: &AppHandle
     let core: SYS::ICoreWebView2 = hl_core.cast().map_err(|e| format!("cast ICoreWebView2: {e}"))?;
     let tokens = tab.tokens.clone();
     let push = |name: &'static str, tok: i64| lock(&tokens).push((name, tok));
+    let placeholder = first_nav.as_ref().map(|(_, p)| p.clone()).unwrap_or_else(|| Arc::new(AtomicBool::new(false)));
+    apply_devtools(&core, DEVTOOLS.load(Ordering::Relaxed));
 
     // NavigationStarting: Top-Level-URL merken (Quelle fuer Adblock + Adressleiste)
     {
         let (app, id, url, latest, stopped) = (app.clone(), tab_id.to_string(), tab.url.clone(), tab.nav_id.clone(), tab.user_stopped.clone());
+        let ph = placeholder.clone();
         let h = webview2_com::NavigationStartingEventHandler::create(Box::new(move |_s, args| {
             let Some(args) = args else { return Ok(()) };
             let mut p = PWSTR::null();
             unsafe { args.Uri(&mut p)? };
             let uri = take_pwstr(p);
+            if uri == "about:blank" && ph.load(Ordering::SeqCst) { return Ok(()); } // Platzhalter vor der ersten Navigation
             let mut nav_id = 0u64;
             let _ = unsafe { args.NavigationId(&mut nav_id) };
             *lock(&url) = uri.clone();
@@ -1130,11 +1187,13 @@ unsafe fn attach_handlers(pwv: &tauri::webview::PlatformWebview, app: &AppHandle
     // SourceChanged: echte aktuelle URL (auch bei pushState / Fragment)
     {
         let (app, id, url) = (app.clone(), tab_id.to_string(), tab.url.clone());
+        let ph = placeholder.clone();
         let h = webview2_com::SourceChangedEventHandler::create(Box::new(move |sender, _args| {
             let Some(sender) = sender else { return Ok(()) };
             let mut p = PWSTR::null();
             unsafe { sender.Source(&mut p)? };
             let src = take_pwstr(p);
+            if src == "about:blank" && ph.load(Ordering::SeqCst) { return Ok(()); }
             *lock(&url) = src.clone();
             tracing::info!(tab = id.as_str(), "SourceChanged {src}");
             emit_tab(&app, TabEvent { tab_id: id.clone(), kind: "source-changed".into(), url: Some(src), ..Default::default() });
@@ -1413,7 +1472,16 @@ unsafe fn attach_handlers(pwv: &tauri::webview::PlatformWebview, app: &AppHandle
     }
     privacy::on_core_ready(&core);
     // Erweiterungen: Content-Scripts (AddScriptToExecuteOnDocumentCreated) fuer diesen Tab.
-    extensions::attach(&core, tab.webview.label());
+    let done: Option<Box<dyn FnOnce() + Send>> = first_nav.map(|(u, p)| {
+        let (wv, id) = (tab.webview.clone(), tab_id.to_string());
+        Box::new(move || {
+            if p.swap(false, Ordering::SeqCst) {
+                tracing::info!(tab = id.as_str(), "Scripts registriert - erste Navigation {u}");
+                if let Err(e) = wv.navigate(u) { tracing::error!(tab = id.as_str(), "erste Navigation: {e}"); }
+            }
+        }) as Box<dyn FnOnce() + Send>
+    });
+    extensions::attach_then(&core, tab.webview.label(), done);
 
     // Adblock-Filter. Abschaltbar fuer Diagnose: JTECH_NO_ADBLOCK=1
     if std::env::var("JTECH_NO_ADBLOCK").map(|v| v == "1").unwrap_or(false) {
@@ -1652,7 +1720,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(Mutex::new(TabManager::new()))
-        .invoke_handler(tauri::generate_handler![get_blocked_count, list_tabs, new_tab, close_tab, switch_tab, navigate_active, reload_active, set_layout, toggle_fullscreen, go_back, go_forward, stop_active, set_content_visible, reorder_tabs, set_adblock_enabled, set_tab_muted, sleep_tab, set_tab_zoom, find_in_page, print_active, list_downloads, download_action, open_download,
+        .invoke_handler(tauri::generate_handler![get_blocked_count, set_devtools, list_tabs, new_tab, close_tab, switch_tab, navigate_active, reload_active, set_layout, toggle_fullscreen, go_back, go_forward, stop_active, set_content_visible, reorder_tabs, set_adblock_enabled, set_tab_muted, sleep_tab, set_tab_zoom, find_in_page, print_active, list_downloads, download_action, open_download,
             storage::storage_load, storage::storage_set, storage::storage_remove, storage::storage_import,
             filters::filter_status, filters::filter_set_list, filters::filter_set_options, filters::filter_update_now, filters::allowlist_set, filters::allowlist_check,
             privacy::privacy_stats, privacy::privacy_reset_stats, privacy::privacy_get_options, privacy::privacy_set_options,
