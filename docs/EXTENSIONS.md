@@ -110,6 +110,34 @@ the `files` hashes (LF line endings, as stored in the repository).
   a reload fixes this.
 - VODs and clips are not handled.
 
+## YouTube Ad Blocker (`jtech.youtube-adblock`)
+
+- Content script at `document_start` in the page context on `youtube.com` and its subdomains
+  (`www`, `m`, `music`).
+- Data level: wraps `fetch`, `XMLHttpRequest` and `JSON.parse` and traps `ytInitialPlayerResponse`,
+  `ytInitialData` and `ytInitialReelWatchSequenceResponse`. Responses of `/youtubei/v1/player`, `next`,
+  `browse`, `search` and the Shorts sequence endpoints lose `adPlacements`, `playerAds`, `adSlots`,
+  `adBreakHeartbeatParams`, `adEngagementPanels` and ad renderers (promoted videos, in-feed ads,
+  masthead/banner promos, merch shelves, Shorts ad entries). `videoDetails` and `streamingData` are untouched.
+- Player fallback: while the player has `ad-showing`/`ad-interrupting`, the video is muted, played at
+  16x and moved to its end, and skip buttons are clicked; mute, volume and speed are restored afterwards.
+  Polls once per second (paused in background tabs) plus a class observer on the player.
+- Cosmetic CSS hides remaining ad slots, overlays and companion ads.
+- The "ad blockers are not allowed" enforcement dialog is removed and playback resumed; other dialogs
+  are left alone.
+- `rules.txt` blocks DoubleClick, Google ad services/syndication, IMA SDK and YouTube's `/pagead/`,
+  `/ptracking`, `/api/stats/ads` and `get_midroll_info`. Playback requests (`googlevideo.com`,
+  `/youtubei/v1/player`, `/api/stats/qoe`, `/api/stats/watchtime`) are never blocked.
+
+### Known limits
+
+- YouTube changes its pages and APIs often; parts can stop working until the extension is updated
+  with a release.
+- Server-side ad insertion (ads stitched into the video stream) cannot always be stripped; the player
+  fallback then skips or fast-forwards, which can show a short flash or stall.
+- YouTube may show its anti-adblock notice in new forms that are not recognised yet.
+- A tab opened directly on YouTube may load the first page before the script is registered; a reload fixes this.
+
 ## UI pages
 
 - `jtech://market` (`src/pages/MarketPage.tsx`): hero header, card grid from `market_fetch` merged with

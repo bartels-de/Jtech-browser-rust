@@ -1,0 +1,7 @@
+JTech YouTube Ad Blocker
+Copyright (c) JTech. Licensed under the MIT License (see the LICENSE file of JTech Browser).
+
+This extension is an independent implementation. It uses publicly known approaches such as
+removing ad fields (adPlacements, playerAds, adSlots) from YouTube API responses and
+fast-forwarding ads that still play, as described in open source projects and filter
+lists. No code from other projects and no GPL-licensed code is included.

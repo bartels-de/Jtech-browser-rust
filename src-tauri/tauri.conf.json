@@ -27,7 +27,8 @@
     ],
     "createUpdaterArtifacts": true,
     "resources": {
-      "resources/extensions/jtech.twitch-adblock/": "extensions/jtech.twitch-adblock/"
+      "resources/extensions/jtech.twitch-adblock/": "extensions/jtech.twitch-adblock/",
+      "resources/extensions/jtech.youtube-adblock/": "extensions/jtech.youtube-adblock/"
     }
   },
   "plugins": {

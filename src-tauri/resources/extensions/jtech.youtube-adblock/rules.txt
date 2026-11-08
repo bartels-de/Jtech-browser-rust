@@ -1,0 +1,11 @@
+! JTech YouTube Ad Blocker - network rules (only active on youtube.com pages)
+! Conservative: playback (googlevideo.com videoplayback, /youtubei/v1/player, /api/stats/qoe) is never blocked.
+||doubleclick.net^
+||googlesyndication.com^
+||googleadservices.com^
+||googleads.g.doubleclick.net^
+||youtube.com/pagead/
+||youtube.com/ptracking
+||youtube.com/api/stats/ads
+||youtube.com/get_midroll_info
+||imasdk.googleapis.com^
