@@ -1,0 +1,88 @@
+/* JTech Design-Tokens. Dunkel = Standard, Hell ueber [data-theme="light"]. */
+:root {
+  color-scheme: dark;
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-display: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Cascadia Code", "Consolas", ui-monospace, monospace;
+
+  /* Graphit-Flaechen */
+  --bg: #0f1215;
+  --surface-0: #14181c;
+  --surface-1: #1a1f24;
+  --surface-2: #222830;
+  --surface-3: #2b323b;
+  --glass: rgba(30, 36, 43, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.07);
+  --border: rgba(255, 255, 255, 0.075);
+  --border-strong: rgba(255, 255, 255, 0.13);
+
+  --text: #e7ecef;
+  --text-2: #a7b1ba;
+  --text-3: #6f7a84;
+
+  /* Akzent: Tuerkis/Cyan – gezielt, nicht neonartig */
+  --accent: #2cc5c9;
+  --accent-2: #5fe0d6;
+  --accent-strong: #19a8ad;
+  --accent-ink: #06181c;
+  --accent-soft: rgba(44, 197, 201, 0.14);
+  --accent-ring: rgba(44, 197, 201, 0.38);
+
+  --danger: #ef6f6c;
+  --danger-soft: rgba(239, 111, 108, 0.14);
+  --warn: #e6b450;
+  --ok: #4fd18b;
+
+  --hover: rgba(255, 255, 255, 0.055);
+  --press: rgba(255, 255, 255, 0.09);
+
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-pop: 0 18px 48px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3);
+
+  --sidebar-compact: 64px;
+  --sidebar-expanded: 250px;
+  --toolbar-h: 48px;
+  --bookmarks-h: 34px;
+
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur: 140ms;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #eef1f3;
+  --surface-0: #f5f7f8;
+  --surface-1: #ffffff;
+  --surface-2: #f0f3f5;
+  --surface-3: #e4e9ec;
+  --glass: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(15, 30, 40, 0.08);
+  --border: rgba(15, 30, 40, 0.085);
+  --border-strong: rgba(15, 30, 40, 0.16);
+
+  --text: #141a1f;
+  --text-2: #4a5661;
+  --text-3: #85909a;
+
+  --accent: #0e9ea3;
+  --accent-2: #2cc5c9;
+  --accent-strong: #0b8287;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(14, 158, 163, 0.11);
+  --accent-ring: rgba(14, 158, 163, 0.32);
+
+  --danger: #d2423f;
+  --danger-soft: rgba(210, 66, 63, 0.1);
+
+  --hover: rgba(15, 30, 40, 0.05);
+  --press: rgba(15, 30, 40, 0.09);
+
+  --shadow-1: 0 1px 2px rgba(15, 30, 40, 0.08);
+  --shadow-pop: 0 18px 48px rgba(15, 30, 40, 0.16), 0 2px 8px rgba(15, 30, 40, 0.08);
+}
