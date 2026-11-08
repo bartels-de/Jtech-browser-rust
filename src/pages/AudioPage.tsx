@@ -17,7 +17,7 @@ export function AudioPage() {
         {audible.map(t => (
           <div key={t.id} className="list-row" onClick={() => b.switchTab(t.id)}>
             <Favicon url={t.url} internal={false} />
-            <span className="row-title">{t.title}</span>
+            <span className="row-title" title={t.title}>{t.title}</span>
             <span className={`audio-state${t.playingAudio ? " on" : ""}`}>{t.muted ? "stumm" : t.playingAudio ? "spielt" : "still"}</span>
             <button className="btn" onClick={e => { e.stopPropagation(); b.setTabMuted(t.id, !t.muted); }}>{t.muted ? "Ton einschalten" : "Stummschalten"}</button>
           </div>

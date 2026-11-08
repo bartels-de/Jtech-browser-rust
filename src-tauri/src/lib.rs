@@ -21,6 +21,8 @@ mod filters;
 mod privacy;
 // Runde 5: eigene Tastenkuerzel (AcceleratorKeyPressed-Allowlist) + optionale Cursor-Effekte in Webseiten.
 mod uifx;
+// JTech-Erweiterungen (gebuendelt, Market-Index, Content-Scripts, eigene Netzwerkregeln).
+mod extensions;
 
 thread_local! { static ENGINE: RefCell<Option<Engine>> = RefCell::new(None); }
 static BLOCKED: AtomicU64 = AtomicU64::new(0);
@@ -274,6 +276,13 @@ fn snapshot_tabs(app: &AppHandle) -> Vec<TabInfo> {
     }).collect()
 }
 
+/// Erweiterungen: alle lebenden Content-Webviews (ohne Lock waehrend der Webview-Aufrufe nutzen).
+fn content_webviews(app: &AppHandle) -> Vec<tauri::Webview> {
+    let state = app.state::<Mutex<TabManager>>();
+    let m = lock(&state);
+    m.tabs.values().map(|t| t.webview.clone()).collect()
+}
+
 fn active_tab(app: &AppHandle) -> Option<(String, Tab)> {
     let state = app.state::<Mutex<TabManager>>();
     let m = lock(&state);
@@ -401,6 +410,7 @@ fn destroy_webview(app: &AppHandle, id: &str, tab: Tab) {
         let (app2, id3) = (app.clone(), id.to_string());
         if let Err(e) = app.run_on_main_thread(move || privacy::cancel_pending_for(&app2, &id3)) { tracing::warn!("cancel permissions: {e}"); }
     }
+    extensions::forget(tab.webview.label());
     if let Err(e) = tab.webview.close() { report_error(app, id, "close", e); }
 }
 
@@ -1278,6 +1288,8 @@ unsafe fn attach_handlers(pwv: &tauri::webview::PlatformWebview, app: &AppHandle
         Err(e) => tracing::warn!(tab = tab_id, "PermissionRequested: {e}"),
     }
     privacy::on_core_ready(&core);
+    // Erweiterungen: Content-Scripts (AddScriptToExecuteOnDocumentCreated) fuer diesen Tab.
+    extensions::attach(&core, tab.webview.label());
 
     // Adblock-Filter. Abschaltbar fuer Diagnose: JTECH_NO_ADBLOCK=1
     if std::env::var("JTECH_NO_ADBLOCK").map(|v| v == "1").unwrap_or(false) {
@@ -1317,16 +1329,18 @@ unsafe fn attach_handlers(pwv: &tauri::webview::PlatformWebview, app: &AppHandle
         };
         // Hauptdokument nie blockieren.
         if rtype == "document" { return Ok(()); }
-        if !ADBLOCK_ENABLED.load(Ordering::Relaxed) { return Ok(()); }
-        // Runde 4: Seite auf der Allowlist -> nichts blockieren
-        if !source.is_empty() && filters::site_allowlisted(&source) { return Ok(()); }
+        // Runde 4: Seite auf der Allowlist -> Haupt-Engine blockiert nichts
+        let main_on = ADBLOCK_ENABLED.load(Ordering::Relaxed) && !(!source.is_empty() && filters::site_allowlisted(&source));
         let source = if source.is_empty() { uri.clone() } else { source };
-        let block = ENGINE.with(|e| {
+        let block = main_on && ENGINE.with(|e| {
             e.borrow().as_ref().and_then(|engine| {
                 adblock::request::Request::new(&uri, &source, rtype, &method).ok().map(|req| engine.check_network_request(&req).should_block())
             }).unwrap_or(false)
         });
-        if block {
+        // Erweiterungen: eigene Regeln (nur auf passenden Seiten, pro Seite abschaltbar).
+        let ext_block = if block { None } else { extensions::check_request(&source, &uri, rtype, &method) };
+        if let Some(ext_id) = &ext_block { extensions::record_block(ext_id); }
+        if block || ext_block.is_some() {
             BLOCKED.fetch_add(1, Ordering::Relaxed);
             tab_blocked.fetch_add(1, Ordering::Relaxed);
             privacy::record_block(&source, &uri);
@@ -1392,7 +1406,7 @@ unsafe fn detach_handlers(pwv: &tauri::webview::PlatformWebview, tab_id: &str, t
 /// process::exit, so RunEvent::Exit never fires – flush stats / clear-on-exit marker here.
 #[tauri::command]
 async fn prepare_update_exit() -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(privacy::on_exit).await.map_err(|e| e.to_string())
+    tauri::async_runtime::spawn_blocking(|| { privacy::on_exit(); extensions::flush(); }).await.map_err(|e| e.to_string())
 }
 
 #[derive(Clone, Serialize)]
@@ -1519,13 +1533,15 @@ pub fn run() {
             privacy::privacy_stats, privacy::privacy_reset_stats, privacy::privacy_get_options, privacy::privacy_set_options,
             privacy::list_cookies, privacy::delete_cookies, privacy::clear_browsing_data,
             privacy::resolve_permission, privacy::list_permissions, privacy::set_permission,
-            uifx::set_shortcuts, uifx::set_page_fx, prepare_update_exit, get_performance_stats, pip_active])
+            uifx::set_shortcuts, uifx::set_page_fx,
+            extensions::ext_list, extensions::ext_toggle, extensions::ext_site_toggle, extensions::market_fetch, prepare_update_exit, get_performance_stats, pip_active])
         .setup(|app| {
             // Runde 4: SQLite-Persistenz, Statistik, Filterlisten (Cache + Hintergrund-Update).
             let data_dir = app.path().app_data_dir().unwrap_or_else(|_| std::env::temp_dir().join("jtech-browser"));
             if let Err(e) = storage::init(&data_dir) { tracing::error!("{e} – UI faellt auf localStorage zurueck"); }
             privacy::start_stats();
             filters::start(app.handle());
+            extensions::start(app.handle());
 
             // Auto-update: signed releases (latest.json on GitHub), relaunch via plugin-process.
             // Permissions are granted to the UI webview only (capabilities/updater.json).
@@ -1583,7 +1599,7 @@ pub fn run() {
         .expect("error while building tauri application")
         .run(|_app, event| {
             // Runde 4: Statistik schreiben, Loeschen-beim-Beenden vormerken
-            if let tauri::RunEvent::Exit = event { privacy::on_exit(); }
+            if let tauri::RunEvent::Exit = event { privacy::on_exit(); extensions::flush(); }
         });
 }
 

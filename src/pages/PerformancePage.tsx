@@ -72,7 +72,7 @@ export function PerformancePage() {
       </header>
 
       <div className="kpi-row">
-        <div className="kpi"><span className="kpi-num">{stats ? fmtBytes(stats.totalMemoryBytes) : "…"}</span><span className="kpi-label">Arbeitsspeicher gesamt</span></div>
+        <div className="kpi"><span className="kpi-num">{stats ? fmtBytes(stats.totalMemoryBytes) : <span className="skeleton skel-num" aria-label="Wird geladen" />}</span><span className="kpi-label">Arbeitsspeicher gesamt</span></div>
         <div className="kpi"><span className="kpi-num">{totalCpu.toFixed(1)} %</span><span className="kpi-label">CPU (Summe)</span></div>
         <div className="kpi"><span className="kpi-num">{stats?.processes.length ?? 0}</span><span className="kpi-label">Prozesse</span></div>
         <div className="kpi"><span className="kpi-num">{stats?.tabCount ?? 0}</span><span className="kpi-label">Tabs, davon {sleeping} schlafend</span></div>
@@ -89,6 +89,7 @@ export function PerformancePage() {
 
       <section className="card">
         <h2>Speicherverlauf</h2>
+        {history.length === 0 && <div className="skeleton skel-chart" aria-hidden="true" />}
         <div className="spark" role="img" aria-label={`Speicherverlauf der letzten ${history.length} Messungen`}>
           {history.map((v, i) => <span key={i} title={fmtBytes(v)} style={{ height: `${Math.max(4, (v / maxHist) * 100)}%` }} />)}
         </div>
@@ -114,7 +115,7 @@ export function PerformancePage() {
             })}
           </tbody>
         </table>
-        {!stats && <p className="muted">Daten werden geladen …</p>}
+        {!stats && <div className="skel-rows" role="status" aria-label="Daten werden geladen">{[0, 1, 2, 3].map(i => <span key={i} className="skeleton skel-row" />)}</div>}
       </section>
 
       <section className="card">

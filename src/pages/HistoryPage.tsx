@@ -27,7 +27,7 @@ export function HistoryPage() {
   }, [b.history, q]);
   return (
     <div className="page doc-page">
-      <header className="page-head row">
+      <header className="page-head page-head-sticky row">
         <div><h1>Verlauf</h1><p className="muted">{b.history.length.toLocaleString("de-DE")} Einträge · Klick öffnet die Seite</p></div>
         <div className="row gap">
           <label className="search-field"><IconSearch size={15} /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Verlauf durchsuchen" aria-label="Verlauf durchsuchen" autoFocus /></label>
@@ -35,17 +35,17 @@ export function HistoryPage() {
         </div>
       </header>
       {groups.length === 0 && <div className="empty-state card">{q
-        ? <><h2>Keine Treffer</h2><p>Kein Eintrag passt zu „{q}“. Versuche einen Teil der Adresse.</p></>
+        ? <><h2>Keine Treffer</h2><p>Kein Eintrag passt zu „{q}“. Versuche einen Teil der Adresse.</p><button className="btn" onClick={() => setQ("")}>Suche zurücksetzen</button></>
         : <><h2>Noch kein Verlauf</h2><p>Besuchte Seiten erscheinen hier, nach Tagen sortiert.</p></>}</div>}
       {groups.map(g => (
         <section key={g.day} className="card list-card">
-          <h2>{g.day}</h2>
+          <h2 className="list-day">{g.day}</h2>
           {g.items.map(h => (
             <div key={h.id} className="list-row" onClick={() => b.navigate(h.url)}>
               <span className="time">{new Date(h.visitedAt).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}</span>
               <Favicon url={h.url} />
-              <span className="row-title">{h.title}</span>
-              <span className="row-host">{hostOf(h.url)}</span>
+              <span className="row-title" title={h.title}>{h.title}</span>
+              <span className="row-host" title={h.url}>{hostOf(h.url)}</span>
               <button className="icon-btn sm" title="Eintrag entfernen" aria-label="Eintrag entfernen" onClick={e => { e.stopPropagation(); b.removeHistory(h.id); }}><IconTrash size={14} /></button>
             </div>
           ))}

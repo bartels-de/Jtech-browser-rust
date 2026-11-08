@@ -1,0 +1,3 @@
+# Extension files are hashed byte-for-byte; keep LF everywhere
+src-tauri/resources/extensions/** -text
+extensions/** -text

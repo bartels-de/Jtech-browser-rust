@@ -61,7 +61,7 @@ export function CommandPalette() {
           {items.map((it, i) => (
             <button key={it.key} id={`pal-${i}`} role="option" aria-selected={i === sel} className={`palette-item${i === sel ? " on" : ""}`} onMouseEnter={() => setSel(i)} onClick={() => pick(i)}>
               <span className={`palette-kind k-${it.kind}`}>{LABEL[it.kind]}</span>
-              <span className="palette-title">{it.title}</span>
+              <span className="palette-title" title={it.title}>{it.title}</span>
               {it.hint && (it.kind === "command" ? <kbd className="palette-hint">{it.hint}</kbd> : <span className="palette-hint">{it.hint}</span>)}
             </button>
           ))}

@@ -1,0 +1,5 @@
+! JTech Twitch Ad Blocker - network rules (only active on twitch.tv pages)
+||amazon-adsystem.com^
+||edge.ads.twitch.tv^
+||ads.ttvnw.net^
+||imasdk.googleapis.com^

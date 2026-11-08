@@ -13,7 +13,7 @@ import { COMMANDS } from "../lib/commands";
 import { checkForUpdate, downloadUpdate, fmtBytes, installAndRestart, useUpdater } from "../lib/updater";
 import { BACKGROUNDS } from "../lib/fx/effects";
 import { Disclosure, Group, Row, SearchCtx, Switch } from "../components/SettingsUI";
-import { IconDownload, IconGlobe, IconHistory, IconMenu, IconSearch, IconSettings, IconShield, IconSidebar, IconPalette, IconLock, JTechLogo } from "../components/Icons";
+import { IconDownload, IconGlobe, IconInfo, IconKeyboard, IconSearch, IconSettings, IconShield, IconSidebar, IconPalette, IconLock, JTechLogo } from "../components/Icons";
 
 /**
  * Runde 5: aufgeraeumte Einstellungen – linke Unternavigation, Suchfeld, einheitliche Karten/Zeilen.
@@ -41,8 +41,8 @@ const SECTIONS: Section[] = [
   { id: "adblock", title: "Werbeblocker & Filterlisten", icon: <IconShield size={16} />, keywords: "Werbeblocker Tracker Filterlisten EasyList EasyPrivacy uBlock kosmetisch Elemente ausblenden Ausnahmen aktualisieren" },
   { id: "permissions", title: "Berechtigungen", icon: <IconGlobe size={16} />, keywords: "Website-Berechtigungen Kamera Mikrofon Standort Benachrichtigungen" },
   { id: "downloads", title: "Downloads", icon: <IconDownload size={16} />, keywords: "Downloads Speicherort Ordner Liste leeren" },
-  { id: "shortcuts", title: "Tastenkürzel", icon: <IconMenu size={16} />, keywords: "Tastenkürzel Shortcuts Tasten Kürzel Tastatur " + COMMANDS.map(c => c.title).join(" ") },
-  { id: "about", title: "Über JTech", icon: <IconHistory size={16} />, keywords: "Version Info Update Updates aktualisieren automatisch Neustart technische Details" },
+  { id: "shortcuts", title: "Tastenkürzel", icon: <IconKeyboard size={16} />, keywords: "Tastenkürzel Shortcuts Tasten Kürzel Tastatur " + COMMANDS.map(c => c.title).join(" ") },
+  { id: "about", title: "Über JTech", icon: <IconInfo size={16} />, keywords: "Version Info Update Updates aktualisieren automatisch Neustart technische Details" },
 ];
 
 export function SettingsPage() {

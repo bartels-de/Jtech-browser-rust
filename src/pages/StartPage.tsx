@@ -65,7 +65,7 @@ export function StartPage() {
               <button key={bm.id} className="tile" onClick={e => (e.ctrlKey ? b.newTab(bm.url) : b.navigate(bm.url))}
                 onAuxClick={e => { if (e.button === 1) b.newTab(bm.url); }} title={bm.url}>
                 <span className="tile-icon"><Favicon url={bm.url} size={22} /></span>
-                <span className="tile-title">{bm.title || hostOf(bm.url)}</span>
+                <span className="tile-title" title={bm.title || hostOf(bm.url)}>{bm.title || hostOf(bm.url)}</span>
               </button>
             ))}
             {tiles.length < 7 && (
@@ -84,7 +84,7 @@ export function StartPage() {
               {recent.map(h => (
                 <button key={h.id} className="recent-item" onClick={() => b.navigate(h.url)} title={h.url}>
                   <Favicon url={h.url} size={16} />
-                  <span className="recent-title">{h.title || h.url}</span>
+                  <span className="recent-title" title={h.title || h.url}>{h.title || h.url}</span>
                   <span className="recent-host">{hostOf(h.url).replace(/^www\./, "")}</span>
                 </button>
               ))}

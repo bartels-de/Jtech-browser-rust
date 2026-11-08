@@ -6,6 +6,7 @@
 //   permissions – gemerkte Website-Berechtigungen (origin, kind) -> allow | deny
 //   site_stats  – blockierte Anfragen je besuchter Seite (Host der Top-Level-URL)
 //   domain_stats– blockierte Anfragen je blockierter Domain
+//   extensions  – JTech-Erweiterungen: aktiv, Version, Quelle, pro Seite aus (JSON), blockierte Anfragen
 //
 // Regeln: Die Verbindung liegt in einem globalen Mutex. Nie auf dem UI-Thread in heissen Pfaden
 // (WebResourceRequested) benutzen – dort nur In-Memory-Zaehler, die ein Hintergrund-Thread schreibt.
@@ -46,8 +47,23 @@ pub fn init(dir: &Path) -> Result<(), String> {
          CREATE TABLE IF NOT EXISTS site_stats (host TEXT PRIMARY KEY, blocked INTEGER NOT NULL DEFAULT 0);
          CREATE TABLE IF NOT EXISTS domain_stats (domain TEXT PRIMARY KEY, blocked INTEGER NOT NULL DEFAULT 0);",
     ).map_err(|e| format!("SQLite-Schema: {e}"))?;
+    migrate(&conn)?;
     DB.set(Mutex::new(conn)).map_err(|_| "SQLite schon initialisiert".to_string())?;
     tracing::info!("SQLite geoeffnet: {}", path.display());
+    Ok(())
+}
+
+/// Schema-Migrationen (meta "schema.version"). Jede Stufe ist idempotent.
+fn migrate(conn: &Connection) -> Result<(), String> {
+    let v: i64 = conn.query_row("SELECT value FROM meta WHERE key = 'schema.version'", [], |r| r.get::<_, String>(0)).optional()
+        .map_err(|e| format!("SQLite-Migration: {e}"))?.and_then(|s| s.parse().ok()).unwrap_or(0);
+    if v < 1 {
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS extensions (id TEXT PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 0, version TEXT NOT NULL DEFAULT '', source TEXT NOT NULL DEFAULT 'bundled', site_off TEXT NOT NULL DEFAULT '[]', blocked INTEGER NOT NULL DEFAULT 0);
+             INSERT INTO meta (key, value) VALUES ('schema.version', '1') ON CONFLICT(key) DO UPDATE SET value = excluded.value;",
+        ).map_err(|e| format!("SQLite-Migration v1: {e}"))?;
+        tracing::info!("SQLite-Schema auf Version 1 migriert (extensions)");
+    }
     Ok(())
 }
 
@@ -156,6 +172,45 @@ pub fn stats_reset() -> Result<(), String> {
     meta_set("stats.total", "0")
 }
 
+// ---------- Erweiterungen ----------
+
+#[derive(Clone, Debug)]
+pub struct ExtRow { pub id: String, pub enabled: bool, pub version: String, pub source: String, pub site_off: String, pub blocked: u64 }
+
+pub fn ext_rows() -> Result<Vec<ExtRow>, String> {
+    with(|c| {
+        let mut st = c.prepare("SELECT id, enabled, version, source, site_off, blocked FROM extensions")?;
+        let rows = st.query_map([], |r| Ok(ExtRow {
+            id: r.get(0)?, enabled: r.get::<_, i64>(1)? != 0, version: r.get(2)?, source: r.get(3)?, site_off: r.get(4)?, blocked: r.get::<_, i64>(5)?.max(0) as u64,
+        }))?;
+        rows.collect()
+    })
+}
+
+/// Neu anlegen oder Version/Quelle aktualisieren (enabled nur beim Anlegen).
+pub fn ext_upsert(id: &str, enabled: bool, version: &str, source: &str) -> Result<(), String> {
+    with(|c| c.execute("INSERT INTO extensions (id, enabled, version, source) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(id) DO UPDATE SET version = excluded.version, source = excluded.source", params![id, enabled as i64, version, source]).map(|_| ()))
+}
+
+pub fn ext_set_enabled(id: &str, enabled: bool) -> Result<(), String> {
+    with(|c| c.execute("INSERT INTO extensions (id, enabled) VALUES (?1, ?2) ON CONFLICT(id) DO UPDATE SET enabled = excluded.enabled", params![id, enabled as i64]).map(|_| ()))
+}
+
+pub fn ext_set_site_off(id: &str, json: &str) -> Result<(), String> {
+    with(|c| c.execute("INSERT INTO extensions (id, site_off) VALUES (?1, ?2) ON CONFLICT(id) DO UPDATE SET site_off = excluded.site_off", params![id, json]).map(|_| ()))
+}
+
+pub fn ext_add_blocked(deltas: &HashMap<String, u64>) -> Result<(), String> {
+    with(|c| {
+        let tx = c.unchecked_transaction()?;
+        {
+            let mut st = tx.prepare("UPDATE extensions SET blocked = blocked + ?2 WHERE id = ?1")?;
+            for (id, n) in deltas { st.execute(params![id, *n as i64])?; }
+        }
+        tx.commit()
+    })
+}
+
 // ---------- Commands (UI-Persistenz, validiert) ----------
 
 #[derive(Serialize)]
@@ -216,5 +271,16 @@ mod tests {
         assert!(!valid_kv_key("../x") && !valid_kv_key("evil") && !valid_kv_key(""));
         assert!(valid_kv_value("[1,2]").is_ok());
         assert!(valid_kv_value("{nope").is_err());
+    }
+
+    #[test]
+    fn extensions_migration() {
+        let c = Connection::open_in_memory().unwrap();
+        c.execute_batch("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);").unwrap();
+        migrate(&c).unwrap();
+        migrate(&c).unwrap();
+        c.execute("INSERT INTO extensions (id, enabled, version) VALUES ('a', 1, '1.0.0')", []).unwrap();
+        let n: i64 = c.query_row("SELECT blocked FROM extensions WHERE id = 'a'", [], |r| r.get(0)).unwrap();
+        assert_eq!(n, 0);
     }
 }

@@ -1,0 +1,7 @@
+JTech Twitch Ad Blocker
+Copyright (c) JTech. Licensed under the MIT License (see the LICENSE file of JTech Browser).
+
+This extension is an independent implementation. It uses the publicly known approach of
+replacing ad-containing HLS playlists with a playlist requested for another player type,
+as popularised by open source projects such as TwitchAdSolutions (MIT). No code from
+those projects or from GPL-licensed projects is included.

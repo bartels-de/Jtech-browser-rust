@@ -78,3 +78,20 @@ export function siteOf(url: string | undefined | null): string | null {
     return u.hostname.toLowerCase().replace(/^www\./, "");
   } catch { return null; }
 }
+
+/** Extensions: payload of ext_list / ext_toggle / ext_site_toggle (see docs/EXTENSIONS.md). */
+export interface ExtInfo {
+  id: string; version: string; name: string; description: string; author: string; license: string;
+  iconSvg?: string | null; permissions: string[]; matches: string[]; source: string;
+  enabled: boolean; compatible: boolean; error?: string | null; minBrowser?: string | null;
+  siteOff: string[]; blocked: number; updateVersion?: string | null;
+}
+
+/** Extensions: payload of market_fetch. */
+export interface MarketEntry {
+  id: string; version: string; installedVersion?: string | null; minBrowser?: string | null;
+  name: string; description: string; author: string; license: string;
+  status: "installed" | "available" | "update-in-next-release" | "incompatible" | "not-bundled";
+  enabled: boolean;
+}
+export interface MarketResult { fetchedAt: number; indexUrl: string; hotfixInstallEnabled: boolean; entries: MarketEntry[]; }
