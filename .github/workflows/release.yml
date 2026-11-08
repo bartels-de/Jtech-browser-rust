@@ -1,11 +1,13 @@
 # Builds a signed Windows NSIS installer and publishes a GitHub Release with latest.json
-# (the auto-updater endpoint). Triggered by pushing a tag like v0.2.0.
+# (the auto-updater endpoint). Triggered by pushing a tag like v0.2.0, or manually
+# from the Actions tab ("Run workflow"), which tags the version from tauri.conf.json.
 name: Release
 
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -46,8 +48,8 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "JTech Browser ${{ github.ref_name }}"
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'v__VERSION__' }}
+          releaseName: "JTech Browser v__VERSION__"
           releaseBody: "See the assets below to download and install JTech Browser. Installed copies update automatically."
           releaseDraft: false
           prerelease: false
