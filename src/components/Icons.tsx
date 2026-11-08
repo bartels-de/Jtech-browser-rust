@@ -1,4 +1,5 @@
 import type { SVGProps } from "react";
+import jtechLogoUrl from "../assets/jtech-logo.png";
 
 type P = SVGProps<SVGSVGElement> & { size?: number };
 const base = (size = 16): SVGProps<SVGSVGElement> => ({
@@ -31,19 +32,10 @@ export const IconTrash = mk(<><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" /></>
 export const IconEdit = mk(<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" />);
 export const IconPuzzle = mk(<path d="M10 4a2 2 0 1 1 4 0v2h4v4h-2a2 2 0 1 0 0 4h2v4h-4v-2a2 2 0 1 0-4 0v2H6v-4h2a2 2 0 1 0 0-4H6V6h4z" />);
 
-/** JTech-Logo: stilisiertes J in einem abgerundeten Quadrat mit Verlauf. */
+/** JTech logo (raster asset, 256 px source, scaled down for every use). */
 export function JTechLogo({ size = 28 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-label="JTech">
-      <defs>
-        <linearGradient id="jt-g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="var(--accent-2)" />
-          <stop offset="1" stopColor="var(--accent)" />
-        </linearGradient>
-      </defs>
-      <rect x="1" y="1" width="30" height="30" rx="9" fill="url(#jt-g)" />
-      <path d="M19.5 8.5v9.2a5 5 0 0 1-9.6 2" fill="none" stroke="#06181c" strokeWidth="3.2" strokeLinecap="round" />
-      <circle cx="19.5" cy="8.5" r="0.1" stroke="#06181c" strokeWidth="3.2" strokeLinecap="round" />
-    </svg>
+    <img className="jtech-logo" src={jtechLogoUrl} width={size} height={size} alt="JTech"
+      style={{ borderRadius: Math.max(3, Math.round(size * 0.22)) }} draggable={false} />
   );
 }

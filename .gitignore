@@ -32,6 +32,9 @@ src-tauri/test.txt
 # Local backups made during development rounds
 docs/backup_*/
 
+# Internal development notes (kept locally, not published)
+docs/dev-notes/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -45,6 +45,7 @@ kbd { font: 11px var(--font-mono); color: var(--text-3); }
 .sidebar-head { display: flex; align-items: center; justify-content: space-between; height: 36px; padding: 0 2px 0 6px; }
 .sidebar.compact .sidebar-head { flex-direction: column; height: auto; gap: 8px; padding: 0; }
 .brand { display: flex; align-items: center; gap: 10px; }
+.jtech-logo { display: block; flex: none; object-fit: cover; user-select: none; }
 .brand-name { font: 600 14px var(--font-display); letter-spacing: 0.2px; }
 .brand-name span { color: var(--text-3); font-weight: 400; margin-left: 4px; }
 .new-tab-btn { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; border-radius: var(--r-md); border: 1px dashed var(--border-strong); background: transparent; color: var(--text-2); cursor: pointer; transition: all var(--dur) var(--ease); }
