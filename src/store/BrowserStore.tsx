@@ -7,7 +7,7 @@ import { formatCombo, validCombo } from "../lib/keys";
 import { normalizeEffects, type EffectsSettings } from "../lib/fx/effects";
 import { applyTheme, normalizeTheme, type ThemeSpec } from "../lib/theme";
 import { load, save } from "./storage";
-import { DEFAULT_SETTINGS, GROUP_COLORS, type Bookmark, type DownloadItem, type HistoryEntry, type NavError, type PopoverId, type Settings, type TabGroup, type UiTab } from "./types";
+import { DEFAULT_SETTINGS, GROUP_COLORS, clampSidebarWidth, type Bookmark, type DownloadItem, type HistoryEntry, type NavError, type PopoverId, type Settings, type TabGroup, type UiTab } from "./types";
 
 /** Runde 3: Zoomstufen wie in Chromium. */
 export const ZOOM_STEPS = [0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5];
@@ -53,6 +53,9 @@ export interface Store {
   dismissError(): void;
   setPopover(p: PopoverId): void;
   updateSettings(p: Partial<Settings>): void;
+  /** Sidebar drag in progress (hides the content webview) */
+  sidebarResizing: boolean;
+  setSidebarResizing(v: boolean): void;
   newTab(input?: string): Promise<string | undefined>;
   closeTab(id: string): void;
   closeOtherTabs(id: string): void;
@@ -146,7 +149,8 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     const s = load("settings", DEFAULT_SETTINGS);
     return { ...s, shortcuts: normalizeShortcuts(s.shortcuts), effects: normalizeEffects(s.effects), restoreSession: typeof s.restoreSession === "boolean" ? s.restoreSession : true,
       autoUpdateCheck: typeof s.autoUpdateCheck === "boolean" ? s.autoUpdateCheck : true,
-      updateIntervalHours: [0, 6, 12, 24, 72].includes(s.updateIntervalHours) ? s.updateIntervalHours : 24 };
+      updateIntervalHours: [0, 6, 12, 24, 72].includes(s.updateIntervalHours) ? s.updateIntervalHours : 24,
+      sidebarWidth: clampSidebarWidth(s.sidebarWidth) };
   });
   const [settingsSection, setSettingsSection] = useState("general");
   /** Runde 5: interne Seiten, deren Tab gerade angelegt wird (verhindert Doppel-Tabs bei Doppelklick) */
@@ -380,7 +384,9 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   }, [tabGroup, rustTabs.length]);
 
   // ---- Content-Sichtbarkeit: native Webview liegt UEBER React ----
-  const contentVisible = !!activeTab && !activeTab.internal && !activeTab.sleeping && popover === null;
+  // While the sidebar is resized the native webview is hidden so the drag keeps receiving pointer events.
+  const [sidebarResizing, setSidebarResizing] = useState(false);
+  const contentVisible = !!activeTab && !activeTab.internal && !activeTab.sleeping && popover === null && !sidebarResizing;
   useEffect(() => { call("set_content_visible", { visible: contentVisible }, onError); }, [contentVisible, activeTab?.id, rustTabs.length, onError]);
 
   // ---- Adblock-Schalter an Rust ----
@@ -619,6 +625,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     bangs: normalizeBangs(p.bangs ?? s.bangs),
     shortcuts: p.shortcuts ? normalizeShortcuts(p.shortcuts) : s.shortcuts,
     effects: p.effects ? normalizeEffects(p.effects) : s.effects,
+    sidebarWidth: clampSidebarWidth(p.sidebarWidth ?? s.sidebarWidth),
   })), []);
   const updateEffects = useCallback((p: Partial<EffectsSettings>) => setSettings(s => ({ ...s, effects: normalizeEffects({ ...s.effects, ...p }) })), []);
 
@@ -716,7 +723,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   const store: Store = {
     tabs: [...tabs.filter(t => t.pinned), ...tabs.filter(t => !t.pinned)],
     activeTab, activePage, totalBlocked, navError, status, settings, bookmarks, history, popover, focusTick,
-    setStatus, dismissError: () => setNavError(null), setPopover, updateSettings,
+    setStatus, dismissError: () => setNavError(null), setPopover, updateSettings, sidebarResizing, setSidebarResizing,
     newTab, closeTab, closeOtherTabs, switchTab, cycleTab, togglePin, reorder, navigate, openPage,
     back, forward, reload, stop, home, focusAddressBar,
     isBookmarked, addBookmark, updateBookmark, removeBookmark, removeHistory, clearHistory,

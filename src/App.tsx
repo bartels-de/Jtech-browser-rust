@@ -33,10 +33,12 @@ function Shell() {
       call("set_layout", { topHeight, sidebarWidth }, b.setStatus);
     };
     report();
+    // Sidebar drag: rAF-throttled and final reports
+    window.addEventListener("jtech:layout", report);
     const ro = new ResizeObserver(report);
     if (sideRef.current) ro.observe(sideRef.current);
     if (headRef.current) ro.observe(headRef.current);
-    return () => ro.disconnect();
+    return () => { ro.disconnect(); window.removeEventListener("jtech:layout", report); };
   }, [b.setStatus]);
 
   const err = b.navError && b.navError.tabId === b.activeTab?.id && !b.activePage ? b.navError : null;

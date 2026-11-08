@@ -1,6 +1,6 @@
-import { forwardRef, useCallback, useState } from "react";
+import { forwardRef, useCallback, useRef, useState } from "react";
 import { useBrowser } from "../store/BrowserStore";
-import { GROUP_COLORS, type TabGroup, type UiTab } from "../store/types";
+import { GROUP_COLORS, SIDEBAR_COMPACT_WIDTH, SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH, type TabGroup, type UiTab } from "../store/types";
 import { Favicon } from "./Favicon";
 import { IconClose, IconDownload, IconPin, IconPlus, IconSidebar, IconStar, IconHistory, IconSettings, IconShield, JTechLogo } from "./Icons";
 import type { InternalPage } from "../lib/urls";
@@ -16,7 +16,7 @@ const FOOT: [InternalPage, string, string, (p: { size?: number }) => React.React
 
 export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
   const b = useBrowser();
-  const expanded = b.settings.sidebarExpanded;
+  const expandedSetting = b.settings.sidebarExpanded;
   const [menu, setMenu] = useState<{ tab: UiTab; x: number; y: number } | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
@@ -25,6 +25,53 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
   const closeGmenu = useCallback(() => { setGmenu(null); b.setPopover(null); }, [b]);
 
   const closeMenu = useCallback(() => { setMenu(null); b.setPopover(null); }, [b]);
+
+  // ---- Resize via drag handle on the right edge ----
+  /** Live width during a drag (null = use settings) */
+  const [dragWidth, setDragWidth] = useState<{ expanded: boolean; width: number } | null>(null);
+  const drag = useRef<{ left: number; raf: number; expanded: boolean; width: number } | null>(null);
+  /** Below this width the sidebar snaps to compact mode */
+  const SNAP = (SIDEBAR_COMPACT_WIDTH + SIDEBAR_MIN_WIDTH) / 2;
+  const reportLayout = () => window.dispatchEvent(new Event("jtech:layout"));
+
+  const onResizeDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const aside = e.currentTarget.parentElement as HTMLElement;
+    drag.current = { left: aside.getBoundingClientRect().left, raf: 0, expanded, width: b.settings.sidebarWidth };
+    b.setSidebarResizing(true);
+  };
+  const onResizeMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d) return;
+    const raw = e.clientX - d.left;
+    d.expanded = raw >= SNAP;
+    d.width = Math.round(Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, raw)));
+    if (d.raf) return;
+    d.raf = requestAnimationFrame(() => {
+      const cur = drag.current;
+      if (!cur) return;
+      cur.raf = 0;
+      setDragWidth({ expanded: cur.expanded, width: cur.width });
+      requestAnimationFrame(reportLayout);
+    });
+  };
+  const onResizeEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d) return;
+    drag.current = null;
+    if (d.raf) cancelAnimationFrame(d.raf);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+    b.updateSettings(d.expanded ? { sidebarExpanded: true, sidebarWidth: d.width } : { sidebarExpanded: false });
+    setDragWidth(null);
+    b.setSidebarResizing(false);
+    // Final bounds once the new width has been rendered
+    requestAnimationFrame(() => requestAnimationFrame(reportLayout));
+  };
+
+  const expanded = dragWidth ? dragWidth.expanded : expandedSetting;
+  const width = dragWidth ? dragWidth.width : b.settings.sidebarWidth;
 
   const drop = (targetId: string) => {
     if (!dragId || dragId === targetId) return;
@@ -107,7 +154,13 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
   };
 
   return (
-    <aside ref={ref} className={`sidebar${expanded ? " expanded" : " compact"}`}>
+    <aside ref={ref} className={`sidebar${expanded ? " expanded" : " compact"}${dragWidth ? " resizing" : ""}`}
+      style={expanded ? { width } : undefined}>
+      <div className="sidebar-resize" role="separator" aria-orientation="vertical" aria-label="Seitenleistenbreite"
+        title="Ziehen: Breite ändern · Doppelklick: ein-/ausklappen"
+        onPointerDown={onResizeDown} onPointerMove={onResizeMove} onPointerUp={onResizeEnd} onPointerCancel={onResizeEnd}
+        onLostPointerCapture={onResizeEnd}
+        onDoubleClick={() => b.updateSettings({ sidebarExpanded: !expandedSetting })} />
       <div className="sidebar-head">
         <div className="brand"><JTechLogo size={26} />{expanded && <span className="brand-name">JTech<span>Browser</span></span>}</div>
         <button className="icon-btn" title={expanded ? "Seitenleiste einklappen" : "Seitenleiste ausklappen"} onClick={() => b.updateSettings({ sidebarExpanded: !expanded })}>

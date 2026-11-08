@@ -1,6 +1,14 @@
 import type { Bang, InternalPage, SearchEngineId } from "../lib/urls";
 import { DEFAULT_EFFECTS, type EffectsSettings } from "../lib/fx/effects";
 
+/** Sidebar width limits (px); compact matches --sidebar-compact */
+export const SIDEBAR_COMPACT_WIDTH = 64;
+export const SIDEBAR_MIN_WIDTH = 160;
+export const SIDEBAR_MAX_WIDTH = 420;
+export const SIDEBAR_DEFAULT_WIDTH = 250;
+export const clampSidebarWidth = (w: unknown) =>
+  typeof w === "number" && Number.isFinite(w) ? Math.round(Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, w))) : SIDEBAR_DEFAULT_WIDTH;
+
 export type ThemeSetting = "dark" | "light" | "system";
 
 export interface Settings {
@@ -10,6 +18,8 @@ export interface Settings {
   theme: ThemeSetting;
   adblock: boolean;
   sidebarExpanded: boolean;
+  /** Width of the expanded sidebar in px (drag handle) */
+  sidebarWidth: number;
   showBookmarksBar: boolean;
   /** Port: eigene JTech Bangs */
   bangs: Bang[];
@@ -33,6 +43,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: "dark",
   adblock: true,
   sidebarExpanded: true,
+  sidebarWidth: SIDEBAR_DEFAULT_WIDTH,
   showBookmarksBar: true,
   bangs: [],
   tabSleepMinutes: 30,

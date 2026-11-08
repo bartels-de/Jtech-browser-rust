@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { listen } from "@tauri-apps/api/event";
 import { useBrowser } from "../store/BrowserStore";
 import { BUILTIN_BANGS, SEARCH_ENGINES, normalizeBangs, type SearchEngineId } from "../lib/urls";
-import type { ThemeSetting } from "../store/types";
+import { SIDEBAR_DEFAULT_WIDTH, type ThemeSetting } from "../store/types";
 import { PermissionSettings } from "../components/PermissionSettings";
 import { ShortcutEditor } from "../components/ShortcutEditor";
 import { DownloadList } from "../components/DownloadList";
@@ -194,6 +194,10 @@ function TabsSec() {
         <select value={s.tabSleepMinutes} onChange={e => b.updateSettings({ tabSleepMinutes: Number(e.target.value) })}>
           {[0, 5, 10, 15, 30, 60, 120, 240].map(m => <option key={m} value={m}>{m === 0 ? "Nie" : `nach ${m} Minuten`}</option>)}
         </select>
+      </Row>
+      <Row title="Sidebar-Breite zurücksetzen" desc={`Aktuell ${s.sidebarWidth} px. Die Breite lässt sich am rechten Rand der Seitenleiste ziehen.`} keywords="Seitenleiste Breite">
+        <button className="btn" disabled={s.sidebarWidth === SIDEBAR_DEFAULT_WIDTH && s.sidebarExpanded}
+          onClick={() => b.updateSettings({ sidebarWidth: SIDEBAR_DEFAULT_WIDTH, sidebarExpanded: true })}>Sidebar-Breite zurücksetzen</button>
       </Row>
       <Row title="Jetzt schlafen legen" desc="Alle inaktiven Tabs sofort schlafen legen">
         <button className="btn" onClick={b.sleepInactiveTabs}>Ausführen</button>

@@ -40,7 +40,14 @@ kbd { font: 11px var(--font-mono); color: var(--text-3); }
 
 /* ---------- Sidebar ---------- */
 .sidebar { flex: none; display: flex; flex-direction: column; background: var(--surface-0); border-right: 1px solid var(--border); padding: 10px 8px; gap: 8px; }
-.sidebar.expanded { width: var(--sidebar-expanded); }
+.sidebar { position: relative; }
+.sidebar.expanded { width: var(--sidebar-expanded); min-width: 0; }
+.sidebar-resize { position: absolute; top: 0; bottom: 0; right: -4px; width: 8px; z-index: 1001; cursor: col-resize; touch-action: none; }
+.sidebar-resize::after { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px; background: transparent; transition: background var(--dur) var(--ease); }
+.sidebar-resize:hover::after, .sidebar.resizing .sidebar-resize::after { background: var(--accent-ring); }
+.sidebar.resizing { transition: none; }
+.sidebar.resizing::before { content: ""; position: fixed; inset: 0; z-index: 1000; cursor: col-resize; }
+.sidebar.expanded .tab-title, .sidebar.expanded .brand-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sidebar.compact { width: var(--sidebar-compact); align-items: center; }
 .sidebar-head { display: flex; align-items: center; justify-content: space-between; height: 36px; padding: 0 2px 0 6px; }
 .sidebar.compact .sidebar-head { flex-direction: column; height: auto; gap: 8px; padding: 0; }
