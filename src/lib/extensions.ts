@@ -7,6 +7,8 @@ import { getLang, t, type TKey } from "../i18n";
  * (Rust falls back to "en" when a manifest has no entry for the language).
  */
 export const extList = (onError?: (m: string) => void) => call<ExtInfo[]>("ext_list", { lang: getLang() }, onError);
+export interface ExtDiagnostics { searchedPath: string; pathExists: boolean; legacyFlatLayout: boolean; loaded: string[]; errors: { path: string; error: string }[] }
+export const extDiagnostics = (onError?: (m: string) => void) => call<ExtDiagnostics>("ext_diagnostics", {}, onError);
 export const extToggle = (id: string, enabled: boolean, onError?: (m: string) => void) =>
   call<ExtInfo[]>("ext_toggle", { id, enabled, lang: getLang() }, onError);
 export const extSiteToggle = (id: string, host: string, enabled: boolean, onError?: (m: string) => void) =>

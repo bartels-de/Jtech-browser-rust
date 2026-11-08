@@ -3,7 +3,7 @@ import { useBrowser } from "../store/BrowserStore";
 import { ExtIcon } from "../components/ExtIcon";
 import { IconInfo, IconStore, IconWarn } from "../components/Icons";
 import { Switch } from "../components/SettingsUI";
-import { extList, extMatchesHost, extOffOn, extSiteToggle, extToggle } from "../lib/extensions";
+import { extDiagnostics, type ExtDiagnostics, extList, extMatchesHost, extOffOn, extSiteToggle, extToggle } from "../lib/extensions";
 import { siteOf, type ExtInfo } from "../lib/ipc";
 import { useT } from "../i18n";
 
@@ -18,6 +18,8 @@ export function ExtensionsPage() {
   const [busy, setBusy] = useState<string | null>(null);
 
   const refresh = useCallback(() => { extList(b.setStatus).then(l => l && setList(l)); }, [b.setStatus]);
+  const [diag, setDiag] = useState<ExtDiagnostics | null>(null);
+  useEffect(() => { extDiagnostics().then(d => { if (d) setDiag(d); }); }, []);
   useEffect(() => { refresh(); const i = setInterval(refresh, 5000); return () => clearInterval(i); }, [refresh, lang]);
 
   // This page is itself the active tab, so "current site" = an open web tab (active one first).
@@ -126,6 +128,16 @@ export function ExtensionsPage() {
         );
       })}
 
+      {diag && (
+        <details className="ext-diag small">
+          <summary>{t("ext.diag.title")}</summary>
+          <p><strong>{t("ext.diag.path")}</strong> <code>{diag.searchedPath}</code> {diag.pathExists ? "" : `(${t("ext.diag.missing")})`}</p>
+          <p><strong>{t("ext.diag.loaded")}</strong> {diag.loaded.length ? diag.loaded.join(", ") : "–"}</p>
+          {diag.legacyFlatLayout && <p className="muted">{t("ext.diag.flat")}</p>}
+          {diag.errors.length > 0 && <><p><strong>{t("ext.diag.errors")}</strong></p>
+            <ul>{diag.errors.map(e => <li key={e.path}><code>{e.path}</code>: {e.error}</li>)}</ul></>}
+        </details>
+      )}
       <p className="market-note small"><IconInfo size={14} /> <span>{t("ext.reloadHint")} {t("ext.uninstallHint")}</span></p>
     </div>
   );

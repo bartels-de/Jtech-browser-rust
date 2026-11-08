@@ -23,6 +23,8 @@ jobs:
           workspaces: "./src-tauri -> target"
       - run: npm ci
       - run: npx tsc --noEmit
+      - name: Check bundled extensions (manifests, ids, resource mapping)
+        run: node scripts/check-extensions.mjs
       - name: Build frontend (needed by tauri::generate_context!)
         run: npm run build
       - run: cargo check --all-targets

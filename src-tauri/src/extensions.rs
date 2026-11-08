@@ -310,7 +310,23 @@ struct State {
     site_off: HashMap<String, Vec<String>>,
     blocked: HashMap<String, u64>,
     market: Option<MarketResult>,
+    diag: Diagnostics,
 }
+
+/// What the loader saw at startup (shown under "Technische Details" on jtech://extensions).
+#[derive(Serialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct Diagnostics {
+    pub searched_path: String,
+    pub path_exists: bool,
+    pub legacy_flat_layout: bool,
+    pub loaded: Vec<String>,
+    pub errors: Vec<LoadError>,
+}
+
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct LoadError { pub path: String, pub error: String }
 
 static REG: OnceLock<RwLock<State>> = OnceLock::new();
 static PENDING: Mutex<Option<HashMap<String, u64>>> = Mutex::new(None);
@@ -340,10 +356,12 @@ fn read_text(dir: &Path, rel: &str) -> Result<String, String> {
 }
 
 /// Loads one extension folder. Err = folder is skipped (invalid manifest).
-pub fn load_one(dir: &Path, source: &str) -> Result<Ext, String> {
+pub fn load_one(dir: &Path, source: &str) -> Result<Ext, String> { load_one_with(dir, source, true) }
+
+fn load_one_with(dir: &Path, source: &str, check_folder: bool) -> Result<Ext, String> {
     let manifest = Manifest::parse(&read_text(dir, "manifest.json")?)?;
     let folder = dir.file_name().and_then(|n| n.to_str()).unwrap_or("");
-    if folder != manifest.id { return Err(format!("folder '{folder}' does not match id '{}'", manifest.id)); }
+    if check_folder && folder != manifest.id { return Err(format!("folder '{folder}' does not match id '{}'", manifest.id)); }
     let patterns = manifest.matches.iter().map(|m| MatchPattern::parse(m)).collect::<Result<Vec<_>, _>>()?;
     let mut scripts = Vec::new();
     for cs in &manifest.content_scripts {
@@ -361,18 +379,43 @@ pub fn load_one(dir: &Path, source: &str) -> Result<Ext, String> {
     Ok(Ext { manifest, patterns, scripts, rules, icon_svg, source: source.into(), error })
 }
 
-pub fn load_dir(root: &Path, source: &str) -> Vec<Ext> {
-    let mut out = Vec::new();
-    let Ok(rd) = std::fs::read_dir(root) else { tracing::warn!("extensions folder missing: {}", root.display()); return out };
+pub fn load_dir(root: &Path, source: &str) -> Vec<Ext> { load_dir_diag(root, source).0 }
+
+/// Loads every `<root>/<id>/` folder. Also accepts the legacy flat layout
+/// (`<root>/manifest.json`, produced by the v0.1.4 installer and left behind on upgrades)
+/// as one extension, unless a proper subfolder with the same id exists.
+pub fn load_dir_diag(root: &Path, source: &str) -> (Vec<Ext>, Diagnostics) {
+    let mut out: Vec<Ext> = Vec::new();
+    let mut diag = Diagnostics { searched_path: root.display().to_string(), path_exists: root.is_dir(), ..Default::default() };
+    let Ok(rd) = std::fs::read_dir(root) else {
+        tracing::warn!("extensions folder missing: {}", root.display());
+        diag.errors.push(LoadError { path: root.display().to_string(), error: "folder missing".into() });
+        return (out, diag);
+    };
     let mut dirs: Vec<PathBuf> = rd.filter_map(|e| e.ok()).map(|e| e.path()).filter(|p| p.is_dir()).collect();
     dirs.sort();
     for d in dirs {
         match load_one(&d, source) {
             Ok(e) => { tracing::info!("extension {} {} loaded", e.manifest.id, e.manifest.version); out.push(e); }
-            Err(e) => tracing::error!("extension {}: {e}", d.display()),
+            Err(e) => {
+                tracing::error!("extension {}: {e}", d.display());
+                diag.errors.push(LoadError { path: d.display().to_string(), error: e });
+            }
         }
     }
-    out
+    if root.join("manifest.json").is_file() {
+        diag.legacy_flat_layout = true;
+        match load_one_with(root, source, false) {
+            Ok(e) if out.iter().any(|x| x.manifest.id == e.manifest.id) => {}
+            Ok(e) => { tracing::warn!("extension {} loaded from legacy flat layout", e.manifest.id); out.push(e); }
+            Err(e) => {
+                tracing::error!("extension (flat) {}: {e}", root.display());
+                diag.errors.push(LoadError { path: root.join("manifest.json").display().to_string(), error: e });
+            }
+        }
+    }
+    diag.loaded = out.iter().map(|e| format!("{} {}", e.manifest.id, e.manifest.version)).collect();
+    (out, diag)
 }
 
 fn resource_root(app: &AppHandle) -> PathBuf {
@@ -390,7 +433,7 @@ fn resource_root(app: &AppHandle) -> PathBuf {
 /// From `setup`, after storage::init.
 pub fn start(app: &AppHandle) {
     let root = resource_root(app);
-    let exts = load_dir(&root, "bundled");
+    let (exts, diag) = load_dir_diag(&root, "bundled");
     let rows: HashMap<String, storage::ExtRow> = storage::ext_rows().unwrap_or_default().into_iter().map(|r| (r.id.clone(), r)).collect();
     let mut st = State::default();
     for e in &exts {
@@ -406,6 +449,7 @@ pub fn start(app: &AppHandle) {
         st.blocked.insert(id, row.map(|r| r.blocked).unwrap_or(0));
     }
     st.exts = exts;
+    st.diag = diag;
     *write() = st;
     install_engines(app);
     std::thread::spawn(|| loop {
@@ -701,6 +745,10 @@ fn lang_or_default(lang: Option<String>) -> String {
 #[tauri::command]
 pub fn ext_list(lang: Option<String>) -> Vec<ExtInfo> { list(&lang_or_default(lang)) }
 
+/// Loader diagnostics: searched path, loaded extensions and per-folder errors.
+#[tauri::command]
+pub fn ext_diagnostics() -> Diagnostics { read().diag.clone() }
+
 /// Install/uninstall of a bundled extension = enable/disable.
 #[tauri::command]
 pub fn ext_toggle(app: AppHandle, id: String, enabled: bool, lang: Option<String>) -> Result<Vec<ExtInfo>, String> {
@@ -792,6 +840,31 @@ mod tests {
         assert!(e.error.is_none());
         assert!(!e.scripts[0].js.is_empty() && !e.rules.is_empty());
         assert!(any_match(&e.patterns, "https://www.twitch.tv/somechannel"));
+    }
+
+    #[test]
+    fn loads_real_bundled_folder() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/extensions");
+        let (exts, diag) = load_dir_diag(&root, "bundled");
+        assert!(diag.errors.is_empty(), "{:?}", diag.errors);
+        assert!(!diag.legacy_flat_layout);
+        let idx = parse_index(include_str!("../../extensions/index.json")).unwrap();
+        for ie in &idx.extensions {
+            let e = exts.iter().find(|e| e.manifest.id == ie.id).unwrap_or_else(|| panic!("{} listed in index but not bundled", ie.id));
+            assert_eq!(e.manifest.version, ie.version);
+        }
+    }
+
+    #[test]
+    fn loads_legacy_flat_layout() {
+        let src = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/extensions/jtech.twitch-adblock");
+        let tmp = std::env::temp_dir().join(format!("jtech-ext-flat-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        for f in std::fs::read_dir(&src).unwrap().flatten() { std::fs::copy(f.path(), tmp.join(f.file_name())).unwrap(); }
+        let (exts, diag) = load_dir_diag(&tmp, "bundled");
+        assert!(diag.legacy_flat_layout);
+        assert_eq!(exts.len(), 1);
+        assert_eq!(exts[0].manifest.id, "jtech.twitch-adblock");
     }
 
     #[test]

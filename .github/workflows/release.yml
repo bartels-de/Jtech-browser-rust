@@ -41,6 +41,9 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Check bundled extensions
+        run: node scripts/check-extensions.mjs
+
       - name: Build, sign and publish release
         uses: tauri-apps/tauri-action@v0.6.2
         env:
@@ -55,3 +58,8 @@ jobs:
           prerelease: false
           includeUpdaterJson: true
           args: --bundles nsis
+
+      - name: List bundled extension resources (visibility)
+        if: always()
+        shell: pwsh
+        run: Get-ChildItem -Recurse src-tauri/target/release -Filter manifest.json -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }

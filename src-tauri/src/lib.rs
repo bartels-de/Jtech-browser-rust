@@ -1534,7 +1534,7 @@ pub fn run() {
             privacy::list_cookies, privacy::delete_cookies, privacy::clear_browsing_data,
             privacy::resolve_permission, privacy::list_permissions, privacy::set_permission,
             uifx::set_shortcuts, uifx::set_page_fx,
-            extensions::ext_list, extensions::ext_toggle, extensions::ext_site_toggle, extensions::market_fetch, prepare_update_exit, get_performance_stats, pip_active])
+            extensions::ext_list, extensions::ext_diagnostics, extensions::ext_toggle, extensions::ext_site_toggle, extensions::market_fetch, prepare_update_exit, get_performance_stats, pip_active])
         .setup(|app| {
             // Runde 4: SQLite-Persistenz, Statistik, Filterlisten (Cache + Hintergrund-Update).
             let data_dir = app.path().app_data_dir().unwrap_or_else(|_| std::env::temp_dir().join("jtech-browser"));
