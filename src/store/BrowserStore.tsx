@@ -56,6 +56,8 @@ export interface Store {
   updateSettings(p: Partial<Settings>): void;
   /** Sidebar drag in progress (hides the content webview) */
   sidebarResizing: boolean;
+  /** Vollbild (Seiten-Element oder F11): UI-Chrome ausblenden, Content deckt das Fenster */
+  fullscreen: boolean;
   setSidebarResizing(v: boolean): void;
   newTab(input?: string): Promise<string | undefined>;
   closeTab(id: string): void;
@@ -147,6 +149,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   const [totalBlocked, setTotalBlocked] = useState(0);
   const [navError, setNavError] = useState<NavError | null>(null);
   const [status, setStatus] = useState("");
+  const [fullscreen, setFullscreen] = useState(false);
   const [settings, setSettings] = useState<Settings>(() => {
     const s = load("settings", DEFAULT_SETTINGS);
     return { ...s, shortcuts: normalizeShortcuts(s.shortcuts), effects: normalizeEffects(s.effects), restoreSession: typeof s.restoreSession === "boolean" ? s.restoreSession : true,
@@ -273,6 +276,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     const unTabs = listen<RustTab[]>("tabs-changed", ({ payload }) => applyTabs(payload));
     const unDl = listen<DownloadInfo>("download-event", ({ payload }) => upsertDownload(payload));
     call<DownloadInfo[]>("list_downloads").then(list => list?.forEach(upsertDownload));
+    const unFs = listen<{ fullscreen: boolean }>("content-fullscreen", ({ payload }) => setFullscreen(!!payload.fullscreen));
     const unEv = listen<TabEvent>("tab-event", ({ payload: ev }) => {
       if (ev.kind === "error") { setStatus(localizeBackend(ev.detail) || tr("c.error")); return; }
       const id = ev.tabId;
@@ -375,7 +379,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
           break;
       }
     });
-    return () => { unTabs.then(f => f()); unEv.then(f => f()); unDl.then(f => f()); };
+    return () => { unTabs.then(f => f()); unEv.then(f => f()); unDl.then(f => f()); unFs.then(f => f()); };
   }, [applyTabs, upsertDownload]);
 
   // Aufraeumen von Zustand geschlossener Tabs
@@ -788,7 +792,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   const store: Store = {
     tabs: [...tabs.filter(t => t.pinned), ...tabs.filter(t => !t.pinned)],
     activeTab, activePage, totalBlocked, navError, status, settings, bookmarks, history, popover, focusTick,
-    setStatus, dismissError: () => setNavError(null), setPopover, updateSettings, sidebarResizing, setSidebarResizing,
+    setStatus, dismissError: () => setNavError(null), setPopover, updateSettings, sidebarResizing, setSidebarResizing, fullscreen,
     newTab, closeTab, closeOtherTabs, switchTab, cycleTab, togglePin, reorder, navigate, openPage,
     back, forward, reload, stop, home, focusAddressBar,
     isBookmarked, addBookmark, updateBookmark, removeBookmark, removeHistory, clearHistory,

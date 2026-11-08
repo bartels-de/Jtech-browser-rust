@@ -148,6 +148,7 @@ export const de = {
   "cmd.ui.adblock": "Werbeblocker ein/aus",
   "cmd.ui.theme": "Hell/Dunkel umschalten",
   "cmd.ui.effects": "Animierten Hintergrund ein/aus",
+  "cmd.ui.fullscreen": "Vollbild ein/aus",
   "sug.switchTab": "Zu Tab wechseln",
   "st.group": "Gruppe",
   "st.groupN": "Gruppe {n}",

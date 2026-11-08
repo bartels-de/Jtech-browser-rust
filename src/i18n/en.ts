@@ -150,6 +150,7 @@ export const en: Dict = {
   "cmd.ui.adblock": "Toggle ad blocker",
   "cmd.ui.theme": "Toggle light/dark",
   "cmd.ui.effects": "Toggle animated background",
+  "cmd.ui.fullscreen": "Toggle full screen",
   "sug.switchTab": "Switch to tab",
   "st.group": "Group",
   "st.groupN": "Group {n}",

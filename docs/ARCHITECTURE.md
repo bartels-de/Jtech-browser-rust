@@ -28,6 +28,14 @@ DPI changes and whenever tabs change.
 Because a native webview always sits above the React UI, the active page is hidden briefly
 while a menu, popover or dialog overlaps the content area (`set_content_visible`).
 
+### Full screen
+
+- Each tab subscribes to `ContainsFullScreenElementChanged` (HTML5 `requestFullscreen`, e.g. the YouTube/Twitch fullscreen button). Only the active tab may switch the window; Esc inside the page exits element fullscreen and fires the same event.
+- F11 (command `ui.fullscreen`, Rust `toggle_fullscreen`) toggles browser fullscreen. `TabManager.fullscreen` tracks both reasons; the OS window stays fullscreen while either is active.
+- While fullscreen, `apply_layout` gives the content webview the whole client area (logical px), the window goes `set_fullscreen(true)`, and `content-fullscreen` is emitted. The UI hides sidebar/header via CSS (state stays mounted) and pauses `set_layout` reports, sending a fresh one on exit.
+- On exit the window leaves fullscreen (tao restores size/position) and is re-maximized if it was maximized. Switching or closing the tab exits fullscreen (`check_fullscreen_tab`, calls `document.exitFullscreen()` in the old page).
+- No "Press Esc to exit" toast: the UI webview lies below the content webview and cannot draw over it.
+
 ## Tabs
 
 `TabManager` (Rust) holds the tabs in a fixed order with a stable tab ID, the current URL, title,

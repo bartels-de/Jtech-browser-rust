@@ -74,6 +74,7 @@ const RAW: RawCommand[] = [
   { id: "open.extensions", category: "open", keys: [], run: b => b.openPage("extensions") },
   { id: "open.shortcuts", category: "open", keys: [], run: b => b.openPage("settings", { section: "shortcuts" }) },
   // Ansicht
+  { id: "ui.fullscreen", category: "view", keys: ["f11"], run: () => { call("toggle_fullscreen"); } },
   { id: "ui.palette", category: "view", keys: ["ctrl+k"], run: b => b.openPalette("all") },
   { id: "ui.commands", category: "view", keys: ["ctrl+shift+p"], run: b => b.openPalette("commands") },
   { id: "ui.sidebar", category: "view", keys: [], run: b => b.updateSettings({ sidebarExpanded: !b.settings.sidebarExpanded }) },

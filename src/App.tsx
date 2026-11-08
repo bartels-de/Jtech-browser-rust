@@ -26,11 +26,14 @@ function Shell() {
   const sideRef = useRef<HTMLElement>(null);
   const headRef = useRef<HTMLDivElement>(null);
   useShortcuts();
+  // Vollbild: keine set_layout-Meldungen (versteckte Chrome wuerde 0-Masse melden); danach frisch melden.
+  const fsRef = useRef(b.fullscreen);
+  fsRef.current = b.fullscreen;
 
   useEffect(() => {
     const report = () => {
       const s = sideRef.current, h = headRef.current;
-      if (!s || !h) return;
+      if (!s || !h || fsRef.current) return;
       const sidebarWidth = Math.ceil(s.getBoundingClientRect().width);
       const topHeight = Math.ceil(h.getBoundingClientRect().bottom);
       call("set_layout", { topHeight, sidebarWidth }, b.setStatus);
@@ -43,11 +46,12 @@ function Shell() {
     if (headRef.current) ro.observe(headRef.current);
     return () => { ro.disconnect(); window.removeEventListener("jtech:layout", report); };
   }, [b.setStatus]);
+  useEffect(() => { if (!b.fullscreen) window.dispatchEvent(new Event("jtech:layout")); }, [b.fullscreen]);
 
   const err = b.navError && b.navError.tabId === b.activeTab?.id && !b.activePage ? b.navError : null;
 
   return (
-    <div className="shell">
+    <div className={b.fullscreen ? "shell is-fullscreen" : "shell"}>
       <FxLayer />
       <Sidebar ref={sideRef} />
       <div className="main-col">

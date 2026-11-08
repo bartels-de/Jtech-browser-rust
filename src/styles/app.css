@@ -950,3 +950,6 @@ input[type="range"] { width: 180px; accent-color: var(--accent); cursor: pointer
 .ext-site .switch-row small { font-size: var(--fs-sm); }
 .ext-paused { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 .ext-site-pick { display: inline-flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+
+/* Vollbild (HTML5-Element oder F11): Chrome ausblenden, Zustand bleibt gemountet */
+.shell.is-fullscreen > .sidebar, .shell.is-fullscreen .header { display: none !important; }

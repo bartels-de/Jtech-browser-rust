@@ -124,11 +124,27 @@ struct TabManager {
     sidebar_width: f64,
     /// Etappe G: false = aktive Content-Webview verstecken (interne Seiten, Menues).
     content_visible: bool,
+    /// Vollbild: HTML5-Element-Vollbild der Seite und/oder Browser-Vollbild (F11).
+    fullscreen: Option<FullscreenState>,
 }
+
+#[derive(Clone, Debug)]
+struct FullscreenState {
+    /// Tab, dessen Seite ein Element im Vollbild hat (requestFullscreen).
+    page_tab: Option<String>,
+    /// Browser-Vollbild per F11 / Befehl.
+    browser: bool,
+    /// Fensterzustand vor dem Vollbild (Groesse/Position stellt tao beim Verlassen selbst wieder her).
+    was_maximized: bool,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FullscreenEvent { tab_id: Option<String>, fullscreen: bool, page: bool, browser: bool }
 
 impl TabManager {
     fn new() -> Self {
-        Self { window: None, sleeping: HashMap::new(), ui: None, tabs: HashMap::new(), order: Vec::new(), active: None, counter: 0, top_height: DEFAULT_TOP_HEIGHT, sidebar_width: DEFAULT_SIDEBAR_WIDTH, content_visible: true }
+        Self { window: None, sleeping: HashMap::new(), ui: None, tabs: HashMap::new(), order: Vec::new(), active: None, counter: 0, top_height: DEFAULT_TOP_HEIGHT, sidebar_width: DEFAULT_SIDEBAR_WIDTH, content_visible: true, fullscreen: None }
     }
 }
 
@@ -226,11 +242,11 @@ fn logical_window_size(window: &tauri::Window) -> Result<(f64, f64), String> {
 
 /// Setzt Bounds und Sichtbarkeit aller Webviews. Lock nur fuer den Snapshot.
 fn apply_layout(app: &AppHandle) {
-    let (window, ui, tabs, active, top_h, sb_w, visible) = {
+    let (window, ui, tabs, active, top_h, sb_w, visible, fs) = {
         let state = app.state::<Mutex<TabManager>>();
         let m = lock(&state);
         let tabs: Vec<(String, tauri::Webview)> = m.order.iter().filter_map(|id| m.tabs.get(id).map(|t| (id.clone(), t.webview.clone()))).collect();
-        (m.window.clone(), m.ui.clone(), tabs, m.active.clone(), m.top_height, m.sidebar_width, m.content_visible)
+        (m.window.clone(), m.ui.clone(), tabs, m.active.clone(), m.top_height, m.sidebar_width, m.content_visible, m.fullscreen.is_some())
     };
     let Some(window) = window else { return };
     let (w, h) = match logical_window_size(&window) { Ok(v) => v, Err(e) => { report_error(app, "", "layout", e); return; } };
@@ -238,7 +254,8 @@ fn apply_layout(app: &AppHandle) {
         if let Err(e) = ui.set_position(LogicalPosition::new(0.0, 0.0)) { report_error(app, "ui", "ui.set_position", e); }
         if let Err(e) = ui.set_size(LogicalSize::new(w, h)) { report_error(app, "ui", "ui.set_size", e); }
     }
-    let b = content_bounds(w, h, top_h, sb_w);
+    // Vollbild: Content-Webview ueber den ganzen Client-Bereich (logische Pixel wie sonst auch).
+    let b = if fs { Bounds { x: 0.0, y: 0.0, w: w.max(1.0), h: h.max(1.0) } } else { content_bounds(w, h, top_h, sb_w) };
     for (id, cw) in &tabs {
         if let Err(e) = cw.set_position(LogicalPosition::new(b.x, b.y)) { report_error(app, id, "set_position", e); }
         if let Err(e) = cw.set_size(LogicalSize::new(b.w, b.h)) { report_error(app, id, "set_size", e); }
@@ -250,6 +267,91 @@ fn apply_layout(app: &AppHandle) {
             emit_tab(app, TabEvent { tab_id: id.clone(), kind: "bounds".into(), detail: Some(format!("x={} y={} w={} h={}", b.x, b.y, b.w, b.h)), ..Default::default() });
         }
     }
+}
+
+// ---------- Vollbild ----------
+
+fn emit_fullscreen(app: &AppHandle) {
+    let ev = {
+        let state = app.state::<Mutex<TabManager>>();
+        let m = lock(&state);
+        match &m.fullscreen {
+            Some(f) => FullscreenEvent { tab_id: f.page_tab.clone(), fullscreen: true, page: f.page_tab.is_some(), browser: f.browser },
+            None => FullscreenEvent { tab_id: None, fullscreen: false, page: false, browser: false },
+        }
+    };
+    if let Err(e) = app.emit("content-fullscreen", ev) { tracing::error!("emit content-fullscreen: {e}"); }
+}
+
+/// Vollbild-Zustand aendern. page: Some(Some(id)) = Seite betritt, Some(None) = Seite verlaesst;
+/// browser: Some(b) = F11-Zustand setzen. Fenster geht in Vollbild, solange einer von beiden aktiv ist.
+fn update_fullscreen(app: &AppHandle, page: Option<Option<String>>, browser: Option<bool>) {
+    let Some(window) = ({ let state = app.state::<Mutex<TabManager>>(); let m = lock(&state); m.window.clone() }) else { return };
+    let was_max_now = window.is_maximized().unwrap_or(false);
+    let (enter, leave) = {
+        let state = app.state::<Mutex<TabManager>>();
+        let mut m = lock(&state);
+        let before = m.fullscreen.clone();
+        let mut f = before.clone().unwrap_or(FullscreenState { page_tab: None, browser: false, was_maximized: was_max_now });
+        if let Some(p) = page { f.page_tab = p; }
+        if let Some(b) = browser { f.browser = b; }
+        let active = f.page_tab.is_some() || f.browser;
+        m.fullscreen = if active { Some(f) } else { None };
+        (before.is_none() && active, before.as_ref().filter(|_| !active).map(|b| b.was_maximized))
+    };
+    if enter {
+        tracing::info!("Vollbild an (vorher maximiert: {was_max_now})");
+        if let Err(e) = window.set_fullscreen(true) { report_error(app, "", "set_fullscreen(true)", e); }
+    }
+    if let Some(was_max) = leave {
+        tracing::info!("Vollbild aus (wieder maximieren: {was_max})");
+        if let Err(e) = window.set_fullscreen(false) { report_error(app, "", "set_fullscreen(false)", e); }
+        if was_max { if let Err(e) = window.maximize() { report_error(app, "", "maximize", e); } }
+    }
+    apply_layout(app);
+    emit_fullscreen(app);
+}
+
+/// Seite meldet ContainsFullScreenElement. Nur der aktive Tab darf das Fenster in Vollbild schalten.
+fn page_fullscreen_changed(app: &AppHandle, tab_id: &str, on: bool) {
+    let (is_active, is_fs_tab) = {
+        let state = app.state::<Mutex<TabManager>>();
+        let m = lock(&state);
+        (m.active.as_deref() == Some(tab_id), m.fullscreen.as_ref().and_then(|f| f.page_tab.as_deref()) == Some(tab_id))
+    };
+    if on && is_active { update_fullscreen(app, Some(Some(tab_id.to_string())), None); }
+    else if !on && is_fs_tab { update_fullscreen(app, Some(None), None); }
+}
+
+/// Nach Tab-Wechsel/-Schliessen: Element-Vollbild eines nicht mehr aktiven Tabs beenden.
+fn check_fullscreen_tab(app: &AppHandle) {
+    let stale = {
+        let state = app.state::<Mutex<TabManager>>();
+        let m = lock(&state);
+        m.fullscreen.as_ref().and_then(|f| f.page_tab.clone()).filter(|t| m.active.as_deref() != Some(t.as_str()))
+            .map(|t| (t.clone(), m.tabs.get(&t).map(|x| x.webview.clone())))
+    };
+    let Some((_id, wv)) = stale else { return };
+    if let Some(wv) = wv { let _ = wv.eval("try{document.fullscreenElement&&document.exitFullscreen()}catch(e){}"); }
+    update_fullscreen(app, Some(None), None);
+}
+
+/// F11: Browser-Vollbild umschalten (beendet auch ein Element-Vollbild der Seite).
+#[tauri::command]
+fn toggle_fullscreen(app: AppHandle) -> Result<bool, String> {
+    let (on, page_wv) = {
+        let state = app.state::<Mutex<TabManager>>();
+        let m = lock(&state);
+        let page_wv = m.fullscreen.as_ref().and_then(|f| f.page_tab.as_ref()).and_then(|t| m.tabs.get(t)).map(|t| t.webview.clone());
+        (m.fullscreen.is_some(), page_wv)
+    };
+    if on {
+        if let Some(wv) = page_wv { let _ = wv.eval("try{document.fullscreenElement&&document.exitFullscreen()}catch(e){}"); }
+        update_fullscreen(&app, Some(None), Some(false));
+    } else {
+        update_fullscreen(&app, None, Some(true));
+    }
+    Ok(!on)
 }
 
 enum SnapEntry { Live(Tab), Sleeping(SleepInfo) }
@@ -445,6 +547,7 @@ fn close_tab(app: AppHandle, id: String) -> Result<(), String> {
         (removed, wake)
     };
     if let Some(tab) = removed { destroy_webview(&app, &id, tab); }
+    check_fullscreen_tab(&app);
     apply_layout(&app);
     emit_tabs_changed(&app);
     if let Some(w) = wake { schedule_wake(&app, w); }
@@ -483,6 +586,7 @@ fn switch_tab(app: AppHandle, id: String) -> Result<(), String> {
         m.active = Some(id.clone());
         sleeping
     };
+    check_fullscreen_tab(&app);
     apply_layout(&app);
     emit_tabs_changed(&app);
     if wake { schedule_wake(&app, id); }
@@ -1060,6 +1164,26 @@ unsafe fn attach_handlers(pwv: &tauri::webview::PlatformWebview, app: &AppHandle
         push("DocumentTitleChanged", tok);
     }
 
+    // HTML5-Vollbild (requestFullscreen, YouTube/Twitch-Vollbildknopf, Esc in der Seite beendet es).
+    {
+        let (app, id) = (app.clone(), tab_id.to_string());
+        let h = webview2_com::ContainsFullScreenElementChangedEventHandler::create(Box::new(move |sender, _args| {
+            let Some(s) = sender else { return Ok(()) };
+            let mut v = Default::default();
+            unsafe { s.ContainsFullScreenElement(&mut v)? };
+            let on: bool = v.as_bool();
+            tracing::info!(tab = id.as_str(), "ContainsFullScreenElement = {on}");
+            // Ausserhalb des COM-Callbacks umschalten (Fenster-API + Layout).
+            let (app2, id2) = (app.clone(), id.clone());
+            if let Err(e) = app.run_on_main_thread(move || page_fullscreen_changed(&app2, &id2, on)) { tracing::warn!("run_on_main_thread: {e}"); }
+            Ok(())
+        }));
+        let h: SYS::ICoreWebView2ContainsFullScreenElementChangedEventHandler = h.cast().map_err(|e| format!("cast ContainsFullScreenElementChanged: {e}"))?;
+        let mut tok = 0i64;
+        unsafe { core.add_ContainsFullScreenElementChanged(&h, &mut tok) }.map_err(|e| format!("add_ContainsFullScreenElementChanged: {e}"))?;
+        push("ContainsFullScreenElementChanged", tok);
+    }
+
     // ProcessFailed
     {
         let (app, id) = (app.clone(), tab_id.to_string());
@@ -1376,6 +1500,7 @@ unsafe fn detach_handlers(pwv: &tauri::webview::PlatformWebview, tab_id: &str, t
                 "SourceChanged" => core.remove_SourceChanged(tok),
                 "DocumentTitleChanged" => core.remove_DocumentTitleChanged(tok),
                 "ProcessFailed" => core.remove_ProcessFailed(tok),
+                "ContainsFullScreenElementChanged" => core.remove_ContainsFullScreenElementChanged(tok),
                 "WebResourceRequested" => core.remove_WebResourceRequested(tok),
                 "HistoryChanged" => core.remove_HistoryChanged(tok),
                 "NewWindowRequested" => core.remove_NewWindowRequested(tok),
@@ -1527,7 +1652,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(Mutex::new(TabManager::new()))
-        .invoke_handler(tauri::generate_handler![get_blocked_count, list_tabs, new_tab, close_tab, switch_tab, navigate_active, reload_active, set_layout, go_back, go_forward, stop_active, set_content_visible, reorder_tabs, set_adblock_enabled, set_tab_muted, sleep_tab, set_tab_zoom, find_in_page, print_active, list_downloads, download_action, open_download,
+        .invoke_handler(tauri::generate_handler![get_blocked_count, list_tabs, new_tab, close_tab, switch_tab, navigate_active, reload_active, set_layout, toggle_fullscreen, go_back, go_forward, stop_active, set_content_visible, reorder_tabs, set_adblock_enabled, set_tab_muted, sleep_tab, set_tab_zoom, find_in_page, print_active, list_downloads, download_action, open_download,
             storage::storage_load, storage::storage_set, storage::storage_remove, storage::storage_import,
             filters::filter_status, filters::filter_set_list, filters::filter_set_options, filters::filter_update_now, filters::allowlist_set, filters::allowlist_check,
             privacy::privacy_stats, privacy::privacy_reset_stats, privacy::privacy_get_options, privacy::privacy_set_options,
