@@ -1,8 +1,8 @@
-import { forwardRef, useCallback, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { useBrowser } from "../store/BrowserStore";
 import { GROUP_COLORS, SIDEBAR_COMPACT_WIDTH, SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH, type TabGroup, type UiTab } from "../store/types";
 import { Favicon } from "./Favicon";
-import { IconClose, IconDownload, IconPin, IconPlus, IconSidebar, IconStar, IconHistory, IconSettings, IconShield, JTechLogo } from "./Icons";
+import { IconClose, IconDownload, IconPin, IconPlus, IconSidebar, IconStar, IconHistory, IconSettings, IconShield, IconMenu, JTechLogo } from "./Icons";
 import type { InternalPage } from "../lib/urls";
 import { MenuItem, Popover } from "./Popover";
 
@@ -22,6 +22,17 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
   const [overId, setOverId] = useState<string | null>(null);
   /** Runde 3: Kontextmenue einer Tab-Gruppe */
   const [gmenu, setGmenu] = useState<{ group: TabGroup; x: number; y: number } | null>(null);
+  const [footMenu, setFootMenu] = useState(false);
+  useEffect(() => {
+    if (!footMenu) return;
+    const down = (e: MouseEvent) => {
+      const t = e.target as Element | null;
+      if (t && typeof t.closest === "function" && t.closest(".sidebar-foot")) return;
+      setFootMenu(false);
+    };
+    const t = setTimeout(() => document.addEventListener("mousedown", down), 0);
+    return () => { clearTimeout(t); document.removeEventListener("mousedown", down); };
+  }, [footMenu]);
   const closeGmenu = useCallback(() => { setGmenu(null); b.setPopover(null); }, [b]);
 
   const closeMenu = useCallback(() => { setMenu(null); b.setPopover(null); }, [b]);
@@ -179,12 +190,23 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
         </button>
       </div>
 
-      {/* Runde 5: oeffnet die Seite als eigenen Tab bzw. fokussiert den vorhandenen (kein Umschalt-Panel mehr) */}
-      <nav className="sidebar-foot">
-        {FOOT.map(([page, label, cmd, Icon]) => (
-          <button key={page} className={`icon-btn${b.activeTab?.internal === page ? " on" : ""}`} aria-pressed={b.activeTab?.internal === page}
-            title={label + (b.keyHint(cmd) ? ` (${b.keyHint(cmd)})` : "")} onClick={() => b.openPage(page)}><Icon /></button>
-        ))}
+      {/* Runde 5: kompaktes Menue statt 5 einzelner Icons */}
+      <nav className="sidebar-foot" style={{ position: "relative" }}>
+        <button className={`icon-btn${FOOT.some(([p]) => b.activeTab?.internal === p) ? " on" : ""}`} title="Seitenmenü"
+          onClick={e => { e.stopPropagation(); setFootMenu(v => !v); }}>
+          <IconMenu />
+        </button>
+        {footMenu && (
+          <div className="popover glass context-menu foot-menu" style={{ position: "absolute", bottom: "calc(100% + 6px)", left: 0, zIndex: 50, minWidth: 200 }}>
+            {FOOT.map(([page, label, cmd, Icon]) => (
+              <button key={page} className={`menu-item${b.activeTab?.internal === page ? " on" : ""}`}
+                onClick={() => { b.openPage(page); setFootMenu(false); }}>
+                <Icon size={15} /><span>{label}</span>
+                {b.keyHint(cmd) && <kbd className="menu-hint">{b.keyHint(cmd)}</kbd>}
+              </button>
+            ))}
+          </div>
+        )}
       </nav>
 
       <Popover open={!!menu} onClose={closeMenu} className="context-menu" style={menu ? { left: Math.min(menu.x, window.innerWidth - 240), top: Math.min(menu.y, window.innerHeight - 240) } : undefined}>

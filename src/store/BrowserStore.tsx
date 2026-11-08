@@ -125,6 +125,7 @@ export interface Store {
   groups: TabGroup[];
   createGroup(tabId: string): void;
   setTabGroup(tabId: string, groupId: string | null): void;
+  groupTabsByDomain(): void;
   updateGroup(id: string, p: Partial<TabGroup>): void;
   removeGroup(id: string, closeTabs?: boolean): void;
 }
@@ -148,6 +149,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<Settings>(() => {
     const s = load("settings", DEFAULT_SETTINGS);
     return { ...s, shortcuts: normalizeShortcuts(s.shortcuts), effects: normalizeEffects(s.effects), restoreSession: typeof s.restoreSession === "boolean" ? s.restoreSession : true,
+      autoGroupByDomain: typeof s.autoGroupByDomain === "boolean" ? s.autoGroupByDomain : true,
       autoUpdateCheck: typeof s.autoUpdateCheck === "boolean" ? s.autoUpdateCheck : true,
       updateIntervalHours: [0, 6, 12, 24, 72].includes(s.updateIntervalHours) ? s.updateIntervalHours : 24,
       sidebarWidth: clampSidebarWidth(s.sidebarWidth) };
@@ -382,6 +384,33 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     const used = new Set(Object.values(tabGroup));
     setGroups(gs => (gs.every(g => used.has(g.id)) ? gs : gs.filter(g => used.has(g.id))));
   }, [tabGroup, rustTabs.length]);
+
+  // Auto-Gruppierung nach Domain
+  useEffect(() => {
+    if (!settings.autoGroupByDomain || !restoreDone.current) return;
+    const ungrouped = uiTabsRef.current.filter(t => isWebUrl(t.url) && !t.internal && !t.sleeping && !t.groupId);
+    if (ungrouped.length === 0) return;
+    setGroups(gs => {
+      const byName = new Map(gs.map(g => [g.name, g.id]));
+      const newGroups = [...gs];
+      const hostGroup: Record<string, string> = {};
+      for (const t of ungrouped) {
+        const h = hostOf(t.url);
+        if (!h) continue;
+        if (!byName.has(h)) {
+          const g: TabGroup = { id: uid(), name: h, color: GROUP_COLORS[newGroups.length % GROUP_COLORS.length], collapsed: false };
+          newGroups.push(g); byName.set(h, g.id);
+        }
+        hostGroup[t.id] = byName.get(h)!;
+      }
+      setTabGroupMap(m => {
+        const n = { ...m };
+        for (const t of ungrouped) { const h = hostOf(t.url); if (h && hostGroup[t.id]) n[t.id] = hostGroup[t.id]; }
+        return n;
+      });
+      return newGroups;
+    });
+  }, [rustTabs, settings.autoGroupByDomain]);
 
   // ---- Content-Sichtbarkeit: native Webview liegt UEBER React ----
   // While the sidebar is resized the native webview is hidden so the drag keeps receiving pointer events.
@@ -620,6 +649,31 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     setGroups(gs => gs.filter(g => g.id !== id));
   }, [tabGroup, onError]);
 
+  const groupTabsByDomain = useCallback(() => {
+    const tabs = uiTabsRef.current.filter(t => isWebUrl(t.url) && !t.internal && !t.sleeping);
+    const hosts = [...new Set(tabs.map(t => hostOf(t.url)).filter(Boolean))];
+    setGroups(gs => {
+      const byName = new Map(gs.map(g => [g.name, g.id]));
+      const newGroups = [...gs];
+      const hostGroup: Record<string, string> = {};
+      for (const h of hosts) {
+        if (byName.has(h)) hostGroup[h] = byName.get(h)!;
+        else {
+          const g: TabGroup = { id: uid(), name: h, color: GROUP_COLORS[newGroups.length % GROUP_COLORS.length], collapsed: false };
+          newGroups.push(g);
+          byName.set(h, g.id);
+          hostGroup[h] = g.id;
+        }
+      }
+      setTabGroupMap(m => {
+        const n = { ...m };
+        for (const t of tabs) { const h = hostOf(t.url); if (h && hostGroup[h]) n[t.id] = hostGroup[h]; }
+        return n;
+      });
+      return newGroups;
+    });
+  }, []);
+
   const updateSettings = useCallback((p: Partial<Settings>) => setSettings(s => ({
     ...s, ...p,
     bangs: normalizeBangs(p.bangs ?? s.bangs),
@@ -731,7 +785,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     downloads, downloadAction, openDownload, removeDownload, clearDownloads,
     zoomBySite, zoomStep, resetSiteZoom, find, openFind, closeFind, findRun, print,
     sleepTab, sleepInactiveTabs, runShortcut: (k: string) => shortcutRef.current(k),
-    paletteMode, openPalette, groups, createGroup, setTabGroup, updateGroup, removeGroup,
+    paletteMode, openPalette, groups, createGroup, setTabGroup, updateGroup, removeGroup, groupTabsByDomain,
     settingsSection, setSettingsSection, updateEffects, runCommand, bindings, keysFor, keyHint, setShortcut,
   };
   storeRef.current = store;

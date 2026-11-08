@@ -1,5 +1,6 @@
 import type { Store } from "../store/BrowserStore";
 import { validCombo } from "./keys";
+import { call } from "./ipc";
 
 /**
  * Runde 5: zentrale Befehlsliste. Wird von Tastenkuerzeln (UI + Rust AcceleratorKeyPressed),
@@ -33,6 +34,7 @@ export const COMMANDS: CommandDef[] = [
   { id: "tab.pin", title: "Tab anheften / lösen", category: "Tabs", keys: [], when: hasTab, run: b => b.activeTab && b.togglePin(b.activeTab.id) },
   { id: "tab.mute", title: "Tab stumm / Ton an", category: "Tabs", keys: [], when: web, run: b => b.activeTab && b.setTabMuted(b.activeTab.id, !b.activeTab.muted) },
   { id: "tab.group", title: "Tab in neue Gruppe", category: "Tabs", keys: [], when: b => !!b.activeTab && !b.activeTab.groupId, run: b => b.activeTab && b.createGroup(b.activeTab.id) },
+  { id: "tab.groupByDomain", title: "Tabs nach Domain gruppieren", category: "Tabs", keys: [], run: b => b.groupTabsByDomain() },
   { id: "tab.closeOthers", title: "Andere Tabs schließen", category: "Tabs", keys: [], when: hasTab, run: b => b.activeTab && b.closeOtherTabs(b.activeTab.id) },
   { id: "tab.sleepInactive", title: "Inaktive Tabs schlafen legen", category: "Tabs", keys: [], run: b => b.sleepInactiveTabs() },
   ...Array.from({ length: 8 }, (_, i): CommandDef => ({ id: `tab.goto${i + 1}`, title: `Zu Tab ${i + 1}`, category: "Tabs", keys: [`ctrl+${i + 1}`], hidden: true, run: b => gotoTab(b, i) })),
@@ -50,6 +52,7 @@ export const COMMANDS: CommandDef[] = [
   { id: "page.findNext", title: "Weitersuchen", category: "Seite", keys: ["f3"], when: web, run: b => (b.find.query ? b.findRun(b.find.query, false) : b.openFind()) },
   { id: "page.findPrev", title: "Rückwärts suchen", category: "Seite", keys: ["shift+f3"], when: web, run: b => (b.find.query ? b.findRun(b.find.query, true) : b.openFind()) },
   { id: "page.print", title: "Drucken", category: "Seite", keys: ["ctrl+p"], when: web, run: b => b.print() },
+{ id: "page.pip", title: "Video in Bild-in-Bild", category: "Seite", keys: [], when: web, run: () => { call("pip_active"); } },
   { id: "page.zoomIn", title: "Vergrößern", category: "Seite", keys: ["ctrl+plus"], when: web, run: b => b.zoomStep(1) },
   { id: "page.zoomOut", title: "Verkleinern", category: "Seite", keys: ["ctrl+minus"], when: web, run: b => b.zoomStep(-1) },
   { id: "page.zoomReset", title: "Zoom zurücksetzen", category: "Seite", keys: ["ctrl+0"], when: web, run: b => b.zoomStep(0) },
@@ -61,6 +64,7 @@ export const COMMANDS: CommandDef[] = [
   { id: "open.privacy", title: "Datenschutz öffnen", category: "Öffnen", keys: [], run: b => b.openPage("privacy") },
   { id: "open.themes", title: "Design-Studio öffnen", category: "Öffnen", keys: [], run: b => b.openPage("themes") },
   { id: "open.audio", title: "Audio-Hub öffnen", category: "Öffnen", keys: [], run: b => b.openPage("audio") },
+{ id: "open.performance", title: "Performance öffnen", category: "Öffnen", keys: [], run: b => b.openPage("performance") },
   { id: "open.shortcuts", title: "Tastenkürzel bearbeiten", category: "Öffnen", keys: [], run: b => b.openPage("settings", { section: "shortcuts" }) },
   // Ansicht
   { id: "ui.palette", title: "Befehlspalette", category: "Ansicht", keys: ["ctrl+k"], run: b => b.openPalette("all") },

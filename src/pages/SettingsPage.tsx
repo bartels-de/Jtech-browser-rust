@@ -202,6 +202,12 @@ function TabsSec() {
       <Row title="Jetzt schlafen legen" desc="Alle inaktiven Tabs sofort schlafen legen">
         <button className="btn" onClick={b.sleepInactiveTabs}>Ausführen</button>
       </Row>
+      <Row title="Tabs automatisch nach Domain gruppieren" desc="Neue Tabs werden automatisch der Gruppe ihrer Domain zugeordnet; bestehende ungruppierte Tabs werden beim Aktivieren zugeordnet." keywords="Gruppen Domain Auto">
+        <Switch label="Auto-Gruppierung nach Domain" checked={s.autoGroupByDomain} onChange={v => b.updateSettings({ autoGroupByDomain: v })} />
+      </Row>
+      <Row title="Alle Tabs jetzt nach Domain gruppieren" desc="Erstellt für jede Domain eine Gruppe und ordnet alle offenen Web-Tabs zu.">
+        <button className="btn" onClick={b.groupTabsByDomain}>Gruppieren</button>
+      </Row>
       <Row title="Zoom pro Website" desc="Strg + / Strg − / Strg 0 oder Strg + Mausrad; wird je Host gespeichert." col>
         {zoom.length === 0 && <span className="muted small">Keine Websites mit eigenem Zoom.</span>}
         {zoom.map(([host, z]) => (

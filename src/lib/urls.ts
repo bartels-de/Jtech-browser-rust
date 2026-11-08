@@ -1,5 +1,5 @@
-export type InternalPage = "newtab" | "settings" | "history" | "bookmarks" | "privacy" | "downloads" | "themes" | "audio";
-export const INTERNAL_PAGES: InternalPage[] = ["newtab", "settings", "history", "bookmarks", "privacy", "downloads", "themes", "audio"];
+export type InternalPage = "newtab" | "settings" | "history" | "bookmarks" | "privacy" | "downloads" | "themes" | "audio" | "performance";
+export const INTERNAL_PAGES: InternalPage[] = ["newtab", "settings", "history", "bookmarks", "privacy", "downloads", "themes", "audio", "performance"];
 
 export const INTERNAL_TITLES: Record<InternalPage, string> = {
   newtab: "Neuer Tab",
@@ -10,6 +10,7 @@ export const INTERNAL_TITLES: Record<InternalPage, string> = {
   downloads: "Downloads",
   themes: "Design-Studio",
   audio: "Audio-Hub",
+  performance: "Performance",
 };
 
 export type SearchEngineId = "duckduckgo" | "google" | "bing" | "startpage" | "brave";

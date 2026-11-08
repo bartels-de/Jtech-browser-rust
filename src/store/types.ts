@@ -25,6 +25,8 @@ export interface Settings {
   bangs: Bang[];
   /** Runde 3: inaktive Tabs nach X Minuten schlafen legen (0 = aus) */
   tabSleepMinutes: number;
+  /** Tabs automatisch nach Domain gruppieren */
+  autoGroupByDomain: boolean;
   /** Runde 5: eigene Tastenkuerzel (Befehls-ID -> Kombinationen; fehlt = Standard, [] = keins) */
   shortcuts: Record<string, string[]>;
   /** Runde 5: Design-Studio-Effekte (Hintergrund, Cursor, Spur) */
@@ -47,6 +49,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showBookmarksBar: true,
   bangs: [],
   tabSleepMinutes: 30,
+  autoGroupByDomain: true,
   shortcuts: {},
   effects: DEFAULT_EFFECTS,
   restoreSession: true,

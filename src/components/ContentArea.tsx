@@ -7,6 +7,7 @@ import { PrivacyPage } from "../pages/PrivacyPage";
 import { DownloadsPage } from "../pages/DownloadsPage";
 import { ThemesPage } from "../pages/ThemesPage";
 import { AudioPage } from "../pages/AudioPage";
+import { PerformancePage } from "../pages/PerformancePage";
 
 /**
  * Bereich unter der Toolbar. Bei Webseiten liegt hier die native WebView2 DARUEBER.
@@ -25,6 +26,7 @@ export function ContentArea() {
     case "downloads": body = <DownloadsPage />; break;
     case "themes": body = <ThemesPage />; break;
     case "audio": body = <AudioPage />; break;
+  case "performance": body = <PerformancePage />; break;
     default:
       // Webseite: sichtbar nur, wenn ein Menue die Webview kurz ausblendet
       body = <div className="content-placeholder"><span>{b.activeTab?.sleeping ? `${b.activeTab.title} – wird aufgeweckt …` : b.activeTab?.title}</span></div>;
