@@ -1,0 +1,31 @@
+# Compile and test check for the development branch (no release, no signing).
+name: Check
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check-windows:
+    name: cargo check + test, tsc (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - name: Build frontend (needed by tauri::generate_context!)
+        run: npm run build
+      - run: cargo check --all-targets
+        working-directory: src-tauri
+      - run: cargo test
+        working-directory: src-tauri
