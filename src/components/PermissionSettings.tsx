@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useBrowser } from "../store/BrowserStore";
+import { Group, Row } from "./SettingsUI";
 import { call, PERMISSION_LABELS, type PermissionEntry } from "../lib/ipc";
 
 /** Runde 4: gespeicherte Website-Berechtigungen verwalten (SQLite-Tabelle permissions). */
@@ -13,27 +14,25 @@ export function PermissionSettings() {
     refresh();
   };
   const origins = [...new Set(list.map(p => p.origin))];
+  const pretty = (o: string) => { try { return new URL(o).host; } catch { return o; } };
   return (
-    <section className="card">
-      <h2>Website-Berechtigungen</h2>
-      <p className="muted small">Kamera, Mikrofon, Standort usw. Ohne gespeicherte Entscheidung fragt JTech über eine Leiste oberhalb der Seite.</p>
-      {origins.length === 0 && <span className="muted small">Keine gespeicherten Entscheidungen.</span>}
+    <Group title="Gespeicherte Entscheidungen" desc="Ohne gespeicherte Entscheidung fragt JTech über eine Leiste oberhalb der Seite.">
+      {origins.length === 0 && <p className="muted small s-empty">Noch keine Website hat nach Kamera, Mikrofon, Standort o. Ä. gefragt.</p>}
       {origins.map(o => (
-        <div key={o} className="setting col">
-          <div className="row"><strong className="mono">{o}</strong><span className="spacer" /><button className="btn ghost" onClick={() => set(o, null, null)}>Alle entfernen</button></div>
+        <div key={o} className="perm-site">
+          <div className="perm-site-head"><strong title={o}>{pretty(o)}</strong>
+            <button className="btn ghost sm" onClick={() => set(o, null, null)}>Alle zurücksetzen</button></div>
           {list.filter(p => p.origin === o).map(p => (
-            <div key={p.kind} className="row">
-              <span>{PERMISSION_LABELS[p.kind] ?? p.kind}</span>
-              <span className="spacer" />
-              <select value={p.state} onChange={e => set(o, p.kind, e.target.value as "allow" | "deny")}>
-                <option value="allow">Erlauben</option>
-                <option value="deny">Blockieren</option>
-              </select>
-              <button className="btn ghost" onClick={() => set(o, p.kind, null)}>Zurücksetzen</button>
-            </div>
+            <Row key={p.kind} title={PERMISSION_LABELS[p.kind] ?? p.kind} keywords={pretty(o)}>
+              <div className="segmented" role="radiogroup" aria-label={`${PERMISSION_LABELS[p.kind] ?? p.kind} für ${pretty(o)}`}>
+                <button role="radio" aria-checked={p.state === "allow"} className={p.state === "allow" ? "on" : ""} onClick={() => set(o, p.kind, "allow")}>Erlauben</button>
+                <button role="radio" aria-checked={p.state === "deny"} className={p.state === "deny" ? "on" : ""} onClick={() => set(o, p.kind, "deny")}>Blockieren</button>
+              </div>
+              <button className="btn ghost sm" title="Beim nächsten Mal wieder fragen" onClick={() => set(o, p.kind, null)}>Fragen</button>
+            </Row>
           ))}
         </div>
       ))}
-    </section>
+    </Group>
   );
 }

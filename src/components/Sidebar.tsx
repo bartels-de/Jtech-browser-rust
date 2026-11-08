@@ -223,7 +223,7 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
         )}
       </nav>
 
-      <Popover open={!!menu} onClose={closeMenu} className="context-menu" style={menu ? { left: Math.min(menu.x, window.innerWidth - 240), top: Math.min(menu.y, window.innerHeight - 240) } : undefined}>
+      <Popover open={!!menu} onClose={closeMenu} className="context-menu" at={menu ? { x: menu.x, y: menu.y } : undefined} label="Tab-Optionen">
         {menu && <>
           <MenuItem icon={<IconPin size={15} />} label={menu.tab.pinned ? "Lösen" : "Anheften"} onClick={() => { b.togglePin(menu.tab.id); closeMenu(); }} />
           {(!menu.tab.internal || menu.tab.internal === "newtab") &&
@@ -245,7 +245,7 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
         </>}
       </Popover>
 
-      <Popover open={!!gmenu} onClose={closeGmenu} className="context-menu" style={gmenu ? { left: Math.min(gmenu.x, window.innerWidth - 240), top: Math.min(gmenu.y, window.innerHeight - 260) } : undefined}>
+      <Popover open={!!gmenu} onClose={closeGmenu} className="context-menu" at={gmenu ? { x: gmenu.x, y: gmenu.y } : undefined} label="Gruppen-Optionen">
         {gmenu && <>
           <div className="group-edit">
             <input defaultValue={gmenu.group.name} maxLength={30} autoFocus aria-label="Gruppenname"
