@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useBrowser } from "../store/BrowserStore";
-import { IconClose, IconSearch } from "./Icons";
+import { IconChevronDown, IconChevronUp, IconClose, IconSearch } from "./Icons";
 
 /** Runde 3: Suchleiste (Strg+F). Liegt im Header – also ausserhalb des Content-Rechtecks. */
 export function FindBar() {
@@ -15,16 +15,16 @@ export function FindBar() {
   return (
     <div className="find-bar" role="search">
       <IconSearch size={14} />
-      <input ref={ref} value={q} maxLength={300} placeholder="Auf Seite suchen" spellCheck={false}
+      <input ref={ref} value={q} maxLength={300} placeholder="Auf Seite suchen" aria-label="Auf Seite suchen" spellCheck={false}
         onChange={e => { setQ(e.target.value); run(e.target.value); }}
         onKeyDown={e => {
           if (e.key === "Enter") { e.preventDefault(); clearTimeout(timer.current); b.findRun(q, e.shiftKey); }
           else if (e.key === "Escape") { e.preventDefault(); b.closeFind(); }
         }} />
       <span className={`find-count${q && !b.find.count ? " none" : ""}`}>{q ? (b.find.count ? `${b.find.count >= 9999 ? "9999+" : b.find.count} Treffer` : "Keine Treffer") : ""}</span>
-      <button className="icon-btn sm" title="Vorheriger (Umschalt+Enter / Umschalt+F3)" disabled={!q} onClick={() => b.findRun(q, true)}>▲</button>
-      <button className="icon-btn sm" title="Nächster (Enter / F3)" disabled={!q} onClick={() => b.findRun(q, false)}>▼</button>
-      <button className="icon-btn sm" title="Schließen (Esc)" onClick={b.closeFind}><IconClose size={13} /></button>
+      <button className="icon-btn sm" title="Vorheriger (Umschalt+Enter / Umschalt+F3)" aria-label="Vorheriger Treffer" disabled={!q} onClick={() => b.findRun(q, true)}><IconChevronUp size={15} /></button>
+      <button className="icon-btn sm" title="Nächster (Enter / F3)" aria-label="Nächster Treffer" disabled={!q} onClick={() => b.findRun(q, false)}><IconChevronDown size={15} /></button>
+      <button className="icon-btn sm" title="Schließen (Esc)" aria-label="Suche schließen" onClick={b.closeFind}><IconClose size={13} /></button>
     </div>
   );
 }

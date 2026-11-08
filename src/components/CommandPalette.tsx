@@ -3,6 +3,7 @@ import { useBrowser } from "../store/BrowserStore";
 import { INTERNAL_PAGES, INTERNAL_TITLES, hostOf, internalUrl } from "../lib/urls";
 import { matches, rankHistory, type Suggestion } from "../lib/suggest";
 import { COMMANDS } from "../lib/commands";
+import { IconSearch } from "./Icons";
 
 /** Runde 3: Befehlspalette (Strg+K: alles, Strg+Umschalt+P oder ">" am Anfang: nur Befehle). */
 export function CommandPalette() {
@@ -33,6 +34,8 @@ export function CommandPalette() {
   }, [commands, query, cmdOnly, b]);
 
   useEffect(() => { setSel(0); }, [q]);
+  const listRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { listRef.current?.querySelector<HTMLElement>(".palette-item.on")?.scrollIntoView({ block: "nearest" }); }, [sel]);
   if (!open) return null;
   const close = () => b.setPopover(null);
   const pick = (i: number) => { const it = items[i]; if (!it) return; close(); it.run(); };
@@ -41,7 +44,10 @@ export function CommandPalette() {
   return (
     <div className="palette-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) close(); }}>
       <div className="palette glass" role="dialog" aria-label="Befehlspalette">
-        <input ref={inputRef} value={q} spellCheck={false} placeholder="Tabs, Lesezeichen, Verlauf, Befehle … („>“ = nur Befehle)"
+        <div className="palette-input">
+        <IconSearch size={17} />
+        <input ref={inputRef} value={q} spellCheck={false} placeholder="Tabs, Lesezeichen, Verlauf oder Befehle suchen"
+          role="combobox" aria-expanded aria-controls="palette-list" aria-activedescendant={items[sel] ? `pal-${sel}` : undefined} aria-label="Befehlspalette durchsuchen"
           onChange={e => setQ(e.target.value)}
           onKeyDown={e => {
             if (e.key === "ArrowDown") { e.preventDefault(); setSel(s => Math.min(items.length - 1, s + 1)); }
@@ -49,15 +55,22 @@ export function CommandPalette() {
             else if (e.key === "Enter") { e.preventDefault(); pick(sel); }
             else if (e.key === "Escape") { e.preventDefault(); close(); }
           }} />
-        <div className="palette-list">
-          {items.length === 0 && <div className="empty">Nichts gefunden.</div>}
+        </div>
+        <div className="palette-list" id="palette-list" role="listbox" ref={listRef}>
+          {items.length === 0 && <div className="empty">Nichts gefunden. Mit „&gt;“ am Anfang werden nur Befehle durchsucht.</div>}
           {items.map((it, i) => (
-            <button key={it.key} className={`palette-item${i === sel ? " on" : ""}`} onMouseEnter={() => setSel(i)} onClick={() => pick(i)}>
+            <button key={it.key} id={`pal-${i}`} role="option" aria-selected={i === sel} className={`palette-item${i === sel ? " on" : ""}`} onMouseEnter={() => setSel(i)} onClick={() => pick(i)}>
               <span className={`palette-kind k-${it.kind}`}>{LABEL[it.kind]}</span>
               <span className="palette-title">{it.title}</span>
-              {it.hint && <span className="palette-hint">{it.hint}</span>}
+              {it.hint && (it.kind === "command" ? <kbd className="palette-hint">{it.hint}</kbd> : <span className="palette-hint">{it.hint}</span>)}
             </button>
           ))}
+        </div>
+        <div className="palette-foot" aria-hidden>
+          <span><kbd>↑</kbd><kbd>↓</kbd> auswählen</span>
+          <span><kbd>Enter</kbd> öffnen</span>
+          <span><kbd>&gt;</kbd> nur Befehle</span>
+          <span><kbd>Esc</kbd> schließen</span>
         </div>
       </div>
     </div>

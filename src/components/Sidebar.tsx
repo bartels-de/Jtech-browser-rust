@@ -2,7 +2,7 @@ import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { useBrowser } from "../store/BrowserStore";
 import { GROUP_COLORS, SIDEBAR_COMPACT_WIDTH, SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH, type TabGroup, type UiTab } from "../store/types";
 import { Favicon } from "./Favicon";
-import { IconClose, IconDownload, IconPin, IconPlus, IconSidebar, IconStar, IconHistory, IconSettings, IconShield, IconMenu, JTechLogo } from "./Icons";
+import { IconClose, IconDownload, IconPin, IconPlus, IconSidebar, IconStar, IconHistory, IconSettings, IconShield, IconMenu, IconVolume, IconMute, IconChevronDown, IconChevronRight, IconPalette, IconMusic, IconGauge, IconMoon, IconCopy, JTechLogo } from "./Icons";
 import type { InternalPage } from "../lib/urls";
 import { MenuItem, Popover } from "./Popover";
 
@@ -11,6 +11,9 @@ const FOOT: [InternalPage, string, string, (p: { size?: number }) => React.React
   ["history", "Verlauf", "open.history", IconHistory],
   ["downloads", "Downloads", "open.downloads", IconDownload],
   ["privacy", "Datenschutz", "open.privacy", IconShield],
+  ["themes", "Design-Studio", "open.themes", IconPalette],
+  ["audio", "Audio-Hub", "open.audio", IconMusic],
+  ["performance", "Performance", "open.performance", IconGauge],
   ["settings", "Einstellungen", "open.settings", IconSettings],
 ];
 
@@ -23,16 +26,21 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
   /** Runde 3: Kontextmenue einer Tab-Gruppe */
   const [gmenu, setGmenu] = useState<{ group: TabGroup; x: number; y: number } | null>(null);
   const [footMenu, setFootMenu] = useState(false);
+  // Das Menue ragt in kompakter Ansicht ueber das Content-Rechteck -> Webview solange verstecken.
+  const { setPopover } = b;
   useEffect(() => {
     if (!footMenu) return;
+    setPopover("tabmenu");
+    const key = (e: KeyboardEvent) => { if (e.key === "Escape") setFootMenu(false); };
+    document.addEventListener("keydown", key);
     const down = (e: MouseEvent) => {
       const t = e.target as Element | null;
       if (t && typeof t.closest === "function" && t.closest(".sidebar-foot")) return;
       setFootMenu(false);
     };
     const t = setTimeout(() => document.addEventListener("mousedown", down), 0);
-    return () => { clearTimeout(t); document.removeEventListener("mousedown", down); };
-  }, [footMenu]);
+    return () => { clearTimeout(t); document.removeEventListener("mousedown", down); document.removeEventListener("keydown", key); setPopover(null); };
+  }, [footMenu, setPopover]);
   const closeGmenu = useCallback(() => { setGmenu(null); b.setPopover(null); }, [b]);
 
   const closeMenu = useCallback(() => { setMenu(null); b.setPopover(null); }, [b]);
@@ -103,7 +111,8 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
     <div
       key={t.id}
       className={`tab-item${t.active ? " active" : ""}${t.pinned ? " pinned" : ""}${t.sleeping ? " sleeping" : ""}${t.groupId && !t.pinned ? " grouped" : ""}${overId === t.id && dragId !== t.id ? " drop-target" : ""}${dragId === t.id ? " dragging" : ""}`}
-      title={(t.internal ? t.title : `${t.title}\n${t.url}`) + (t.sleeping ? "\n(schläft – wird beim Anklicken neu geladen)" : "")}
+      title={(t.internal ? t.title : `${t.title}\n${t.url}`) + (t.sleeping ? "\nSchläft – wird beim Anklicken neu geladen" : "")}
+      aria-label={t.title || "Neuer Tab"}
       draggable
       onDragStart={e => { setDragId(t.id); e.dataTransfer.effectAllowed = "move"; }}
       onDragOver={e => { e.preventDefault(); setOverId(t.id); }}
@@ -121,14 +130,14 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
         {t.blocked > 0 && !expanded && <span className="tab-badge" />}
       </span>
       {expanded && <span className="tab-title">{t.title || "Neuer Tab"}</span>}
-      {expanded && t.sleeping && <span className="tab-zz" aria-label="schläft">z</span>}
+      {expanded && t.sleeping && <span className="tab-zz" title="Schläft" aria-label="schläft"><IconMoon size={12} /></span>}
       {expanded && (t.playingAudio || t.muted) && (
-        <button className={`tab-audio${t.muted ? " muted" : ""}`} title={t.muted ? "Ton einschalten" : "Tab stummschalten"}
-          onClick={e => { e.stopPropagation(); b.setTabMuted(t.id, !t.muted); }}>{t.muted ? "🔇" : "🔊"}</button>
+        <button className={`tab-audio${t.muted ? " muted" : ""}`} title={t.muted ? "Ton einschalten" : "Tab stummschalten"} aria-label={t.muted ? "Ton einschalten" : "Tab stummschalten"}
+          onClick={e => { e.stopPropagation(); b.setTabMuted(t.id, !t.muted); }}>{t.muted ? <IconMute size={14} /> : <IconVolume size={14} />}</button>
       )}
       {expanded && t.pinned && <IconPin size={13} className="tab-pin" />}
       {expanded && !t.pinned && (
-        <button className="tab-close" title="Tab schließen (Strg+W)" onClick={e => { e.stopPropagation(); b.closeTab(t.id); }}>
+        <button className="tab-close" title={`Tab schließen${b.keyHint("tab.close") ? ` (${b.keyHint("tab.close")})` : ""}`} aria-label="Tab schließen" onClick={e => { e.stopPropagation(); b.closeTab(t.id); }}>
           <IconClose size={13} />
         </button>
       )}
@@ -149,13 +158,13 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
       const visible = g.collapsed ? members.filter(x => x.active) : members;
       out.push(
         <div key={"g:" + g.id} className={`tab-group-block${g.collapsed ? " collapsed" : ""}`} style={{ "--group-color": g.color } as React.CSSProperties}>
-          <button className="group-head" title={`${g.name} (${members.length}) – Klick: ein-/ausklappen, Rechtsklick: Optionen`}
+          <button className="group-head" aria-expanded={!g.collapsed} title={`${g.name} (${members.length} Tabs)\nKlick: ein-/ausklappen · Rechtsklick: umbenennen, Farbe`}
             onClick={() => b.updateGroup(g.id, { collapsed: !g.collapsed })}
             onContextMenu={e => { e.preventDefault(); setGmenu({ group: g, x: e.clientX, y: e.clientY }); b.setPopover("groupmenu"); }}>
             <span className="group-dot" />
             {expanded && <span className="group-name">{g.name}</span>}
             {expanded && <span className="group-count">{members.length}</span>}
-            {expanded && <span className="group-chev">{g.collapsed ? "▸" : "▾"}</span>}
+            {expanded && <span className="group-chev">{g.collapsed ? <IconChevronRight size={13} /> : <IconChevronDown size={13} />}</span>}
           </button>
           {visible.map(renderTab)}
         </div>
@@ -174,7 +183,7 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
         onDoubleClick={() => b.updateSettings({ sidebarExpanded: !expandedSetting })} />
       <div className="sidebar-head">
         <div className="brand"><JTechLogo size={26} />{expanded && <span className="brand-name">JTech<span>Browser</span></span>}</div>
-        <button className="icon-btn" title={expanded ? "Seitenleiste einklappen" : "Seitenleiste ausklappen"} onClick={() => b.updateSettings({ sidebarExpanded: !expanded })}>
+        <button className="icon-btn" aria-label={expanded ? "Seitenleiste einklappen" : "Seitenleiste ausklappen"} title={expanded ? "Seitenleiste einklappen" : "Seitenleiste ausklappen"} onClick={() => b.updateSettings({ sidebarExpanded: !expanded })}>
           <IconSidebar />
         </button>
       </div>
@@ -184,24 +193,29 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
         {pinnedTabs.length > 0 && <div className="tab-sep" />}
         {renderNormal()}
         {/* Runde 5: "Neuer Tab" direkt unter dem letzten Tab (scrollt mit der Liste) */}
-        <button className="new-tab-btn" onClick={() => b.newTab()} title={`Neuer Tab${newTabKey ? ` (${newTabKey})` : ""}`}
+        <button className="new-tab-btn" aria-label="Neuer Tab" onClick={() => b.newTab()} title={`Neuer Tab${newTabKey ? ` (${newTabKey})` : ""}`}
           onDragOver={e => e.preventDefault()}>
           <IconPlus size={16} />{expanded && <span>Neuer Tab</span>}{expanded && newTabKey && <kbd>{newTabKey}</kbd>}
         </button>
       </div>
 
       {/* Runde 5: kompaktes Menue statt 5 einzelner Icons */}
-      <nav className="sidebar-foot" style={{ position: "relative" }}>
-        <button className={`icon-btn${FOOT.some(([p]) => b.activeTab?.internal === p) ? " on" : ""}`} title="Seitenmenü"
+      <nav className="sidebar-foot" aria-label="Browser-Seiten">
+        <button className={`foot-btn${FOOT.some(([p]) => b.activeTab?.internal === p) ? " on" : ""}${footMenu ? " open" : ""}`} title="Lesezeichen, Verlauf, Downloads, Einstellungen …"
+          aria-haspopup="menu" aria-expanded={footMenu}
           onClick={e => { e.stopPropagation(); setFootMenu(v => !v); }}>
-          <IconMenu />
+          <IconMenu />{expanded && <span>Bibliothek &amp; Einstellungen</span>}
         </button>
+        {expanded && (
+          <button className="icon-btn" title={`Einstellungen${b.keyHint("open.settings") ? ` (${b.keyHint("open.settings")})` : ""}`} aria-label="Einstellungen"
+            onClick={() => b.openPage("settings")}><IconSettings /></button>
+        )}
         {footMenu && (
-          <div className="popover glass context-menu foot-menu" style={{ position: "absolute", bottom: "calc(100% + 6px)", left: 0, zIndex: 50, minWidth: 200 }}>
+          <div className="popover glass foot-menu" role="menu">
             {FOOT.map(([page, label, cmd, Icon]) => (
-              <button key={page} className={`menu-item${b.activeTab?.internal === page ? " on" : ""}`}
+              <button key={page} role="menuitem" className={`menu-item${b.activeTab?.internal === page ? " on" : ""}`}
                 onClick={() => { b.openPage(page); setFootMenu(false); }}>
-                <Icon size={15} /><span>{label}</span>
+                <span className="menu-icon"><Icon size={15} /></span><span className="menu-label">{label}</span>
                 {b.keyHint(cmd) && <kbd className="menu-hint">{b.keyHint(cmd)}</kbd>}
               </button>
             ))}
@@ -213,10 +227,10 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
         {menu && <>
           <MenuItem icon={<IconPin size={15} />} label={menu.tab.pinned ? "Lösen" : "Anheften"} onClick={() => { b.togglePin(menu.tab.id); closeMenu(); }} />
           {(!menu.tab.internal || menu.tab.internal === "newtab") &&
-            <MenuItem icon={<IconPlus size={15} />} label="Tab duplizieren" onClick={() => { b.newTab(menu.tab.internal ? undefined : menu.tab.url); closeMenu(); }} />}
+            <MenuItem icon={<IconCopy size={15} />} label="Tab duplizieren" onClick={() => { b.newTab(menu.tab.internal ? undefined : menu.tab.url); closeMenu(); }} />}
           {!menu.tab.internal && <MenuItem icon={<IconStar size={15} />} label="Als Lesezeichen speichern" onClick={() => { b.addBookmark(menu.tab.url, menu.tab.title); closeMenu(); }} />}
           {!menu.tab.active && !menu.tab.pinned && !menu.tab.sleeping && !menu.tab.playingAudio && !menu.tab.internal &&
-            <MenuItem icon={<IconSidebar size={15} />} label="Tab schlafen legen" onClick={() => { b.sleepTab(menu.tab.id); closeMenu(); }} />}
+            <MenuItem icon={<IconMoon size={15} />} label="Tab schlafen legen" onClick={() => { b.sleepTab(menu.tab.id); closeMenu(); }} />}
           {!menu.tab.pinned && <>
             <div className="menu-sep" />
             <MenuItem icon={<IconPlus size={15} />} label="Neue Gruppe mit diesem Tab" onClick={() => { b.createGroup(menu.tab.id); closeMenu(); }} />

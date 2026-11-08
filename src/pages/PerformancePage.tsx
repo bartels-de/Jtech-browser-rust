@@ -56,87 +56,75 @@ export function PerformancePage() {
   const top = stats?.processes[0];
   const totalCpu = Object.values(cpuPct).reduce((a, c) => a + c, 0);
 
+  const maxHist = Math.max(...history, 1);
   return (
-    <div className="page">
-      <div className="page-head">
-        <h1>Performance</h1>
-        <p className="muted">Speicher- und CPU-Auslastung der Browser-Prozesse (WebView2). Werte werden alle 2 Sekunden aktualisiert.</p>
-      </div>
-
-      <div className="card">
-        <div className="row" style={{ gap: 16, flexWrap: "wrap" }}>
-          <div><strong>Gesamt-Speicher:</strong> {stats ? fmtBytes(stats.totalMemoryBytes) : "…"}</div>
-          <div><strong>Prozesse:</strong> {stats?.processes.length ?? 0}</div>
-          <div><strong>Tabs:</strong> {stats?.tabCount ?? 0} (davon {sleeping} schlafend)</div>
-          <div><strong>CPU (Summe):</strong> {totalCpu.toFixed(1)} %</div>
-          <span className="spacer" />
-          <label className="row"><input type="checkbox" checked={auto} onChange={e => setAuto(e.target.checked)} /> Auto-Aktualisierung</label>
+    <div className="page doc-page perf-page">
+      <header className="page-head row">
+        <div>
+          <h1>Performance</h1>
+          <p className="muted">Speicher und CPU der Browser-Prozesse (WebView2){auto ? " · aktualisiert alle 2 Sekunden" : ""}</p>
+        </div>
+        <div className="row gap">
+          <label className="switch-row small"><span>Live</span>
+            <input type="checkbox" className="switch" aria-label="Automatisch aktualisieren" checked={auto} onChange={e => setAuto(e.target.checked)} /></label>
           <button className="btn" onClick={refresh}>Jetzt aktualisieren</button>
         </div>
-        {heavy.length > 0 && (
-          <div className="banner warn" role="alert" style={{ marginTop: 8 }}>
-            <strong>Speicherintensive Prozesse erkannt</strong>
-            <span className="muted"> {heavy.length} Prozess(e) über 200 MB – eventuell Tabs schlafen legen.</span>
-          </div>
-        )}
+      </header>
+
+      <div className="kpi-row">
+        <div className="kpi"><span className="kpi-num">{stats ? fmtBytes(stats.totalMemoryBytes) : "…"}</span><span className="kpi-label">Arbeitsspeicher gesamt</span></div>
+        <div className="kpi"><span className="kpi-num">{totalCpu.toFixed(1)} %</span><span className="kpi-label">CPU (Summe)</span></div>
+        <div className="kpi"><span className="kpi-num">{stats?.processes.length ?? 0}</span><span className="kpi-label">Prozesse</span></div>
+        <div className="kpi"><span className="kpi-num">{stats?.tabCount ?? 0}</span><span className="kpi-label">Tabs, davon {sleeping} schlafend</span></div>
       </div>
 
-      <div className="card">
-        <h3>Speicher-Trend (letzte {history.length} Messungen)</h3>
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 60 }}>
-          {history.map((v, i) => {
-            const max = Math.max(...history, 1);
-            const h = (v / max) * 56;
-            return <div key={i} title={fmtBytes(v)} style={{ flex: 1, height: h, background: "var(--accent, #2cc5c9)", borderRadius: 2, minWidth: 4 }} />;
-          })}
+      {heavy.length > 0 && (
+        <div className="banner warn" role="status">
+          <strong>{heavy.length} {heavy.length === 1 ? "Prozess braucht" : "Prozesse brauchen"} über 200 MB</strong>
+          <span className="muted">Inaktive Tabs schlafen legen gibt Speicher frei.</span>
+          <span className="spacer" />
+          <button className="btn sm" onClick={b.sleepInactiveTabs}>Inaktive Tabs schlafen legen</button>
         </div>
-      </div>
+      )}
 
-      <div className="card">
-        <h3>Prozesse (nach Speicher)</h3>
+      <section className="card">
+        <h2>Speicherverlauf</h2>
+        <div className="spark" role="img" aria-label={`Speicherverlauf der letzten ${history.length} Messungen`}>
+          {history.map((v, i) => <span key={i} title={fmtBytes(v)} style={{ height: `${Math.max(4, (v / maxHist) * 100)}%` }} />)}
+        </div>
+        <small className="muted">Letzte {history.length} Messungen{top ? ` · größter Prozess: ${top.name} (${fmtBytes(top.memoryBytes)})` : ""}</small>
+      </section>
+
+      <section className="card">
+        <h2>Prozesse nach Speicher</h2>
         <table className="data-table">
-          <thead><tr><th>PID</th><th>Name</th><th>Speicher</th><th>Anteil</th><th>CPU</th></tr></thead>
+          <thead><tr><th>Name</th><th className="num-col">PID</th><th className="num-col">Speicher</th><th>Anteil</th><th className="num-col">CPU</th></tr></thead>
           <tbody>
             {(stats?.processes ?? []).map(p => {
               const share = stats && stats.totalMemoryBytes > 0 ? (p.memoryBytes / stats.totalMemoryBytes) * 100 : 0;
               return (
                 <tr key={p.pid}>
-                  <td className="mono">{p.pid}</td>
                   <td>{p.name}</td>
-                  <td>{fmtBytes(p.memoryBytes)}</td>
-                  <td>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <div style={{ width: 80, height: 8, background: "rgba(255,255,255,0.1)", borderRadius: 4, overflow: "hidden" }}>
-                        <div style={{ width: `${share}%`, height: "100%", background: "var(--accent, #2cc5c9)" }} />
-                      </div>
-                      <span className="muted small">{share.toFixed(1)} %</span>
-                    </div>
-                  </td>
-                  <td>{(cpuPct[p.pid] ?? 0).toFixed(1)} %</td>
+                  <td className="num-col mono">{p.pid}</td>
+                  <td className="num-col">{fmtBytes(p.memoryBytes)}</td>
+                  <td><span className="share"><span className="bar"><span style={{ width: `${share}%` }} /></span><span className="muted small">{share.toFixed(1)} %</span></span></td>
+                  <td className="num-col">{(cpuPct[p.pid] ?? 0).toFixed(1)} %</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
-        {!stats && <p className="muted">Lade Daten…</p>}
-      </div>
+        {!stats && <p className="muted">Daten werden geladen …</p>}
+      </section>
 
-      {top && (
-        <div className="card">
-          <h3>Größter Prozess</h3>
-          <p><strong>{top.name}</strong> (PID {top.pid}) – {fmtBytes(top.memoryBytes)} ({((top.memoryBytes / (stats?.totalMemoryBytes || 1)) * 100).toFixed(1)} %)</p>
-        </div>
-      )}
-
-      <div className="card">
-        <h3>Tipps</h3>
-        <ul className="muted small">
-          <li>Inaktive Tabs schlafen legen (Einstellungen → Tabs) gibt Speicher frei.</li>
-          <li>Weniger gleichzeitig offene Tabs reduzieren den Speicherverbrauch.</li>
-          <li>Der Werbeblocker reduziert Skripte und damit Speicher/CPU.</li>
-          <li>Tabs mit hoher CPU-Auslastung sind oft durch Skripte oder Videos verursacht.</li>
+      <section className="card">
+        <h2>So sparst du Ressourcen</h2>
+        <ul className="tips">
+          <li>Inaktive Tabs automatisch schlafen legen: Einstellungen → Tabs.</li>
+          <li>Der Werbeblocker verhindert viele Skripte und spart so Speicher und CPU.</li>
+          <li>Hohe CPU-Last kommt meist von Videos oder aufwendigen Skripten einer Seite.</li>
         </ul>
-      </div>
+      </section>
     </div>
   );
 }

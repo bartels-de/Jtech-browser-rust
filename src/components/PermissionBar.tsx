@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useBrowser } from "../store/BrowserStore";
+import { IconLock } from "./Icons";
 import { call, PERMISSION_LABELS, type PermissionRequest } from "../lib/ipc";
 
 /**
@@ -32,9 +33,9 @@ export function PermissionBar() {
   try { host = new URL(req.origin).host; } catch { /* Origin roh anzeigen */ }
   return (
     <div className="perm-bar" role="alertdialog" aria-label="Berechtigungsanfrage">
-      <span className="perm-icon" aria-hidden>!</span>
+      <span className="perm-icon" aria-hidden><IconLock size={14} /></span>
       <div className="perm-text">
-        <strong>{host}</strong> möchte: <strong>{PERMISSION_LABELS[req.kind] ?? req.kind}</strong>
+        <strong>{host}</strong> fragt nach Zugriff: <strong>{PERMISSION_LABELS[req.kind] ?? req.kind}</strong>
         {tab && tab.id !== b.activeTab?.id && <small className="muted"> (Tab „{tab.title}“)</small>}
         {queue.length > 1 && <small className="muted"> · {queue.length - 1} weitere</small>}
       </div>

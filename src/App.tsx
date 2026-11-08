@@ -11,6 +11,7 @@ import { CommandPalette } from "./components/CommandPalette";
 import { PermissionBar } from "./components/PermissionBar";
 import { FxLayer } from "./components/FxLayer";
 import { UpdateBar } from "./components/UpdateBar";
+import { IconWarn } from "./components/Icons";
 import "./styles/tokens.css";
 import "./styles/app.css";
 
@@ -56,6 +57,7 @@ function Shell() {
           <UpdateBar />
           {err && (
             <div className="banner error" role="alert">
+              <IconWarn size={16} className="banner-icon" />
               <strong>Seite konnte nicht geladen werden</strong>
               <span className="mono">{err.url}</span>
               <span className="muted">{err.message}</span>
@@ -65,7 +67,7 @@ function Shell() {
             </div>
           )}
           {b.status && !err && (
-            <div className="banner info" onClick={() => b.setStatus("")} title="Klicken zum Ausblenden">{b.status}</div>
+            <button type="button" className="banner info" onClick={() => b.setStatus("")} title="Klicken zum Ausblenden" role="status">{b.status}</button>
           )}
         </div>
         <ContentArea />

@@ -32,6 +32,24 @@ export const IconTrash = mk(<><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" /></>
 export const IconEdit = mk(<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" />);
 export const IconPuzzle = mk(<path d="M10 4a2 2 0 1 1 4 0v2h4v4h-2a2 2 0 1 0 0 4h2v4h-4v-2a2 2 0 1 0-4 0v2H6v-4h2a2 2 0 1 0 0-4H6V6h4z" />);
 
+export const IconVolume = mk(<><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" /><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" /></>);
+export const IconMute = mk(<><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" /><path d="M16 9.5l5 5M21 9.5l-5 5" /></>);
+export const IconChevronDown = mk(<path d="M6 9l6 6 6-6" />);
+export const IconChevronRight = mk(<path d="M9 6l6 6-6 6" />);
+export const IconChevronUp = mk(<path d="M6 15l6-6 6 6" />);
+export const IconPalette = mk(<><path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.8 1.8-1.7 0-1.3-1-1.6-1-2.6 0-.9.7-1.5 1.6-1.5H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z" /><circle cx="7.5" cy="11" r="1" fill="currentColor" /><circle cx="10" cy="7" r="1" fill="currentColor" /><circle cx="15" cy="7.5" r="1" fill="currentColor" /></>);
+export const IconGauge = mk(<><path d="M4.5 18a9 9 0 1 1 15 0" /><path d="M12 13l4-5" /><circle cx="12" cy="13.5" r="1.3" fill="currentColor" /></>);
+export const IconMusic = mk(<><path d="M9 18V5l11-2v13" /><circle cx="6.5" cy="18" r="2.5" /><circle cx="17.5" cy="16" r="2.5" /></>);
+export const IconPrint = mk(<><path d="M7 9V3.5h10V9" /><rect x="3.5" y="9" width="17" height="8" rx="2" /><path d="M7 14h10v6.5H7z" /></>);
+export const IconMoon = mk(<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />);
+export const IconCommand = mk(<path d="M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z" />);
+export const IconKeyboard = mk(<><rect x="2.5" y="6" width="19" height="12" rx="2.5" /><path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M8 14h8" /></>);
+export const IconFolder = mk(<path d="M3.5 7a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z" />);
+export const IconCheck = mk(<path d="M5 12.5l4.5 4.5L19 7.5" />);
+export const IconInfo = mk(<><circle cx="12" cy="12" r="9" /><path d="M12 11v5.5M12 7.5v.01" /></>);
+export const IconCopy = mk(<><rect x="8.5" y="8.5" width="12" height="12" rx="2.5" /><path d="M15.5 8.5V6a2.5 2.5 0 0 0-2.5-2.5H6A2.5 2.5 0 0 0 3.5 6v7A2.5 2.5 0 0 0 6 15.5h2.5" /></>);
+export const IconLayers = mk(<><path d="M12 3.5l9 5-9 5-9-5z" /><path d="M3 13l9 5 9-5" /></>);
+
 /** JTech logo (raster asset, 256 px source, scaled down for every use). */
 export function JTechLogo({ size = 28 }: { size?: number }) {
   return (

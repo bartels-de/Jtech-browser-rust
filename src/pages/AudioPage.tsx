@@ -13,23 +13,23 @@ export function AudioPage() {
     <div className="page doc-page">
       <header className="page-head"><h1>Audio-Hub</h1><p className="muted">Tabs, die gerade Ton abspielen oder stummgeschaltet sind.</p></header>
       <section className="card list-card">
-        {audible.length === 0 && <div className="empty">Kein Tab spielt gerade Audio.</div>}
+        {audible.length === 0 && <div className="empty-state"><h2>Gerade ist alles still</h2><p>Sobald ein Tab Ton abspielt, kannst du ihn hier stummschalten oder hinspringen.</p></div>}
         {audible.map(t => (
           <div key={t.id} className="list-row" onClick={() => b.switchTab(t.id)}>
             <Favicon url={t.url} internal={false} />
             <span className="row-title">{t.title}</span>
             <span className={`audio-state${t.playingAudio ? " on" : ""}`}>{t.muted ? "stumm" : t.playingAudio ? "spielt" : "still"}</span>
-            <button className="btn" onClick={e => { e.stopPropagation(); b.setTabMuted(t.id, !t.muted); }}>{t.muted ? "Ton an" : "Stumm"}</button>
+            <button className="btn" onClick={e => { e.stopPropagation(); b.setTabMuted(t.id, !t.muted); }}>{t.muted ? "Ton einschalten" : "Stummschalten"}</button>
           </div>
         ))}
       </section>
       {audible.length > 1 && (
         <div className="row-end">
-          <button className="btn" onClick={() => audible.forEach(t => !t.muted && b.setTabMuted(t.id, true))}>Alle stumm</button>
-          <button className="btn ghost" onClick={() => audible.forEach(t => t.muted && b.setTabMuted(t.id, false))}>Alle laut</button>
+          <button className="btn" onClick={() => audible.forEach(t => !t.muted && b.setTabMuted(t.id, true))}>Alle stummschalten</button>
+          <button className="btn ghost" onClick={() => audible.forEach(t => t.muted && b.setTabMuted(t.id, false))}>Alle wieder einschalten</button>
         </div>
       )}
-      <p className="muted small">Benötigt WebView2-Runtime mit ICoreWebView2_8 (ab 1.0.1072). Status kommt aus dem Ereignis IsDocumentPlayingAudioChanged.</p>
+      <p className="muted small">Steuerbar ist der Ton je Tab. Wiedergabe und Lautstärke regelst du direkt auf der Seite.</p>
     </div>
   );
 }

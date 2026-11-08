@@ -25,7 +25,7 @@ export function stateText(d: DownloadItem): string {
 export function DownloadList({ compact = false, limit }: { compact?: boolean; limit?: number }) {
   const b = useBrowser();
   const list = limit ? b.downloads.slice(0, limit) : b.downloads;
-  if (!list.length) return <div className="empty"><IconDownload size={compact ? 22 : 32} /><p>Noch keine Downloads.</p></div>;
+  if (!list.length) return <div className="empty dl-empty"><IconDownload size={compact ? 22 : 32} /><p>Noch keine Downloads. Heruntergeladene Dateien erscheinen hier.</p></div>;
   return (
     <div className={`dl-list${compact ? " compact" : ""}`}>
       {list.map(d => {
@@ -49,7 +49,7 @@ export function DownloadList({ compact = false, limit }: { compact?: boolean; li
               {(running || paused) && <button className="btn ghost sm" onClick={() => b.downloadAction(d.id, "cancel")}>Abbrechen</button>}
               {d.live && d.state === "completed" && <button className="btn ghost sm" onClick={() => b.openDownload(d.id, false)}>Öffnen</button>}
               {d.live && d.state === "completed" && <button className="btn ghost sm" onClick={() => b.openDownload(d.id, true)}>Im Ordner zeigen</button>}
-              {!running && !paused && <button className="icon-btn sm" title="Aus Liste entfernen" onClick={() => b.removeDownload(d.key)}><IconClose size={13} /></button>}
+              {!running && !paused && <button className="icon-btn sm" title="Aus Liste entfernen" aria-label="Aus Liste entfernen" onClick={() => b.removeDownload(d.key)}><IconClose size={13} /></button>}
             </div>
           </div>
         );

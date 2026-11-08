@@ -28,13 +28,15 @@ export function HistoryPage() {
   return (
     <div className="page doc-page">
       <header className="page-head row">
-        <div><h1>Verlauf</h1><p className="muted">{b.history.length} Einträge</p></div>
+        <div><h1>Verlauf</h1><p className="muted">{b.history.length.toLocaleString("de-DE")} Einträge · Klick öffnet die Seite</p></div>
         <div className="row gap">
-          <label className="search-field"><IconSearch size={15} /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Verlauf durchsuchen" autoFocus /></label>
-          <button className="btn danger" disabled={!b.history.length} onClick={() => confirm("Gesamten Verlauf löschen?") && b.clearHistory()}>Alles löschen</button>
+          <label className="search-field"><IconSearch size={15} /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Verlauf durchsuchen" aria-label="Verlauf durchsuchen" autoFocus /></label>
+          <button className="btn danger" disabled={!b.history.length} onClick={() => confirm("Gesamten Verlauf löschen?") && b.clearHistory()}>Verlauf löschen</button>
         </div>
       </header>
-      {groups.length === 0 && <div className="empty card">{q ? "Keine Treffer." : "Noch kein Verlauf. Besuchte Seiten erscheinen hier."}</div>}
+      {groups.length === 0 && <div className="empty-state card">{q
+        ? <><h2>Keine Treffer</h2><p>Kein Eintrag passt zu „{q}“. Versuche einen Teil der Adresse.</p></>
+        : <><h2>Noch kein Verlauf</h2><p>Besuchte Seiten erscheinen hier, nach Tagen sortiert.</p></>}</div>}
       {groups.map(g => (
         <section key={g.day} className="card list-card">
           <h2>{g.day}</h2>
@@ -44,7 +46,7 @@ export function HistoryPage() {
               <Favicon url={h.url} />
               <span className="row-title">{h.title}</span>
               <span className="row-host">{hostOf(h.url)}</span>
-              <button className="icon-btn sm" title="Eintrag entfernen" onClick={e => { e.stopPropagation(); b.removeHistory(h.id); }}><IconTrash size={14} /></button>
+              <button className="icon-btn sm" title="Eintrag entfernen" aria-label="Eintrag entfernen" onClick={e => { e.stopPropagation(); b.removeHistory(h.id); }}><IconTrash size={14} /></button>
             </div>
           ))}
         </section>

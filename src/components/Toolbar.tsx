@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useBrowser } from "../store/BrowserStore";
 import { internalUrl, isWebUrl, securityOf } from "../lib/urls";
-import { IconBack, IconBookmarks, IconDownload, IconForward, IconHistory, IconHome, IconLock, IconMenu, IconPlus, IconReload, IconSettings, IconShield, IconStar, IconStop, IconWarn, IconGlobe, IconPuzzle, IconSearch, IconSidebar, JTechLogo } from "./Icons";
+import { IconBack, IconBookmarks, IconDownload, IconForward, IconHistory, IconHome, IconLock, IconMenu, IconPlus, IconReload, IconSettings, IconShield, IconStar, IconStop, IconWarn, IconGlobe, IconSearch, IconPalette, IconMusic, IconGauge, IconPrint, IconMoon, IconCommand, IconKeyboard, JTechLogo } from "./Icons";
 import { MenuItem, Popover } from "./Popover";
 import { DownloadList } from "./DownloadList";
 import { addressSuggestions, type Suggestion } from "../lib/suggest";
@@ -52,12 +52,12 @@ export function Toolbar() {
   return (
     <div className="toolbar">
       <div className="nav-group">
-        <button className="icon-btn" title="Zurück (Alt+←)" onClick={b.back} disabled={!tab || (!tab.canGoBack && !(page && isWebUrl(tab.url)))}><IconBack /></button>
-        <button className="icon-btn" title="Vorwärts (Alt+→)" onClick={b.forward} disabled={!tab || !!page || !tab.canGoForward}><IconForward /></button>
+        <button className="icon-btn" title="Zurück (Alt+←)" aria-label="Zurück" onClick={b.back} disabled={!tab || (!tab.canGoBack && !(page && isWebUrl(tab.url)))}><IconBack /></button>
+        <button className="icon-btn" title="Vorwärts (Alt+→)" aria-label="Vorwärts" onClick={b.forward} disabled={!tab || !!page || !tab.canGoForward}><IconForward /></button>
         {tab?.loading
-          ? <button className="icon-btn" title="Laden stoppen" onClick={b.stop}><IconStop /></button>
-          : <button className="icon-btn" title="Neu laden (Strg+R / F5)" onClick={b.reload} disabled={!tab || !!page}><IconReload /></button>}
-        <button className="icon-btn" title="Startseite" onClick={b.home}><IconHome /></button>
+          ? <button className="icon-btn" title="Laden stoppen (Esc)" aria-label="Laden stoppen" onClick={b.stop}><IconStop /></button>
+          : <button className="icon-btn" title="Neu laden (Strg+R / F5)" aria-label="Neu laden" onClick={b.reload} disabled={!tab || !!page}><IconReload /></button>}
+        <button className="icon-btn" title="Startseite (Alt+Pos1)" aria-label="Startseite" onClick={b.home}><IconHome /></button>
       </div>
 
       <div className="omni-wrap">
@@ -69,7 +69,7 @@ export function Toolbar() {
         <span className={`sec sec-${sec}`} title={
           sec === "secure" ? "Verbindung ist verschlüsselt (HTTPS)" :
           sec === "insecure" ? "Nicht sicher: unverschlüsselte Verbindung (HTTP)" :
-          sec === "internal" ? "Interne JTech-Seite" : ""}>
+          sec === "internal" ? "Interne JTech-Seite" : "Adresse"}>
           {sec === "secure" ? <IconLock size={14} /> : sec === "insecure" ? <><IconWarn size={14} /><span className="sec-label">Nicht sicher</span></> : sec === "internal" ? <JTechLogo size={15} /> : <IconGlobe size={14} />}
         </span>
         <input
@@ -91,10 +91,11 @@ export function Toolbar() {
           <button type="button" className="zoom-chip" title="Zoom zurücksetzen (Strg+0)" onClick={() => b.zoomStep(0)}>{Math.round(tab.zoom * 100)} %</button>
         )}
         <button type="button" data-pop-toggle="bookmark" className={`icon-btn star${bookmark ? " on" : ""}`} disabled={!canBookmark}
-          title={bookmark ? "Lesezeichen bearbeiten (Strg+D)" : "Lesezeichen hinzufügen (Strg+D)"}
+          title={bookmark ? "Lesezeichen bearbeiten (Strg+D)" : "Lesezeichen hinzufügen (Strg+D)"} aria-label={bookmark ? "Lesezeichen bearbeiten" : "Lesezeichen hinzufügen"}
           onClick={() => { if (tab && !bookmark) b.addBookmark(tab.url, tab.title); toggle("bookmark"); }}>
           <IconStar size={15} />
         </button>
+        {!editing && !text && <kbd className="omni-hint" aria-hidden>{b.keyHint("nav.address") || "Strg+L"}</kbd>}
         <span className="load-bar" />
       </form>
       {b.popover === "suggest" && (
@@ -111,12 +112,12 @@ export function Toolbar() {
       </div>
 
       <div className="nav-group">
-        <button data-pop-toggle="shield" className={`icon-btn shield${b.settings.adblock ? "" : " off"}${b.popover === "shield" ? " on" : ""}`} title="Tracker- und Werbeblocker" aria-expanded={b.popover === "shield"} onClick={() => toggle("shield")}>
+        <button data-pop-toggle="shield" className={`icon-btn shield${b.settings.adblock ? "" : " off"}${b.popover === "shield" ? " on" : ""}`} title={b.settings.adblock ? "JTech Shield: Werbung und Tracker werden blockiert" : "JTech Shield ist aus"} aria-label="JTech Shield" aria-expanded={b.popover === "shield"} onClick={() => toggle("shield")}>
           <IconShield />
           {b.settings.adblock && (tab?.blocked ?? 0) > 0 && <span className="count-badge">{(tab?.blocked ?? 0) > 99 ? "99+" : tab?.blocked}</span>}
         </button>
-        <button data-pop-toggle="downloads" className={`icon-btn${b.popover === "downloads" ? " on" : ""}`} title="Downloads" aria-expanded={b.popover === "downloads"} onClick={() => toggle("downloads")}><IconDownload />{running > 0 && <span className="count-badge">{running}</span>}</button>
-        <button data-pop-toggle="menu" className={`icon-btn${b.popover === "menu" ? " on" : ""}`} title="Menü" aria-expanded={b.popover === "menu"} onClick={() => toggle("menu")}><IconMenu /></button>
+        <button data-pop-toggle="downloads" className={`icon-btn${b.popover === "downloads" ? " on" : ""}`} title="Downloads" aria-label="Downloads" aria-expanded={b.popover === "downloads"} onClick={() => toggle("downloads")}><IconDownload />{running > 0 && <span className="count-badge">{running}</span>}</button>
+        <button data-pop-toggle="menu" className={`icon-btn${b.popover === "menu" ? " on" : ""}`} title="Menü" aria-label="Menü" aria-haspopup="menu" aria-expanded={b.popover === "menu"} onClick={() => toggle("menu")}><IconMenu /></button>
       </div>
 
       <Popover open={b.popover === "bookmark"} onClose={close} className="pop-right pop-bookmark">
@@ -140,31 +141,32 @@ export function Toolbar() {
       <Popover open={b.popover === "downloads"} onClose={close} className="pop-right">
         <div className="pop-head"><IconDownload size={18} /><div><strong>Downloads</strong><small>{running ? `${running} laufend` : "Zuletzt heruntergeladen"}</small></div></div>
         <DownloadList compact limit={5} />
-        <button className="btn ghost full" onClick={() => b.openPage("downloads")}>Alle Downloads (jtech://downloads)</button>
+        <button className="btn ghost full" onClick={() => b.openPage("downloads")}>Alle Downloads anzeigen</button>
       </Popover>
 
       <Popover open={b.popover === "menu"} onClose={close} className="pop-right pop-menu">
         <MenuItem icon={<IconPlus size={15} />} label="Neuer Tab" hint={b.keyHint("tab.new")} onClick={() => b.newTab()} />
-        <MenuItem icon={<IconMenu size={15} />} label="Befehlspalette" hint={b.keyHint("ui.palette")} onClick={() => b.openPalette("all")} />
+        <MenuItem icon={<IconCommand size={15} />} label="Befehlspalette" hint={b.keyHint("ui.palette")} onClick={() => b.openPalette("all")} />
         <div className="menu-sep" />
         <div className="menu-zoom">
-          <span>Zoom</span>
-          <button className="icon-btn sm" title="Verkleinern (Strg −)" disabled={!tab || !!page} onClick={() => b.zoomStep(-1)}>−</button>
+          <span className="menu-icon"><IconSearch size={15} /></span><span>Zoom</span>
+          <button className="icon-btn sm" title="Verkleinern (Strg −)" aria-label="Verkleinern" disabled={!tab || !!page} onClick={() => b.zoomStep(-1)}>−</button>
           <button className="zoom-val" title="Zurücksetzen (Strg 0)" disabled={!tab || !!page} onClick={() => b.zoomStep(0)}>{Math.round((tab && !page ? tab.zoom : 1) * 100)} %</button>
-          <button className="icon-btn sm" title="Vergrößern (Strg +)" disabled={!tab || !!page} onClick={() => b.zoomStep(1)}>+</button>
+          <button className="icon-btn sm" title="Vergrößern (Strg +)" aria-label="Vergrößern" disabled={!tab || !!page} onClick={() => b.zoomStep(1)}>+</button>
         </div>
-        <MenuItem icon={<IconSearch size={15} />} label="Auf Seite suchen" hint={b.keyHint("page.find")} onClick={() => { close(); b.openFind(); }} />
-        <MenuItem icon={<IconGlobe size={15} />} label="Drucken…" hint={b.keyHint("page.print")} onClick={() => { close(); b.print(); }} />
-        <MenuItem icon={<IconSidebar size={15} />} label="Inaktive Tabs schlafen legen" onClick={() => { close(); b.sleepInactiveTabs(); }} />
+        <MenuItem icon={<IconSearch size={15} />} label="Auf Seite suchen …" hint={b.keyHint("page.find")} onClick={() => { close(); b.openFind(); }} />
+        <MenuItem icon={<IconPrint size={15} />} label="Drucken …" hint={b.keyHint("page.print")} onClick={() => { close(); b.print(); }} />
+        <MenuItem icon={<IconMoon size={15} />} label="Inaktive Tabs schlafen legen" onClick={() => { close(); b.sleepInactiveTabs(); }} />
         <div className="menu-sep" />
         <MenuItem icon={<IconBookmarks size={15} />} label="Lesezeichen" hint={b.keyHint("open.bookmarks")} onClick={() => b.openPage("bookmarks")} />
         <MenuItem icon={<IconHistory size={15} />} label="Verlauf" hint={b.keyHint("open.history")} onClick={() => b.openPage("history")} />
         <MenuItem icon={<IconDownload size={15} />} label="Downloads" hint={b.keyHint("open.downloads")} onClick={() => b.openPage("downloads")} />
         <MenuItem icon={<IconShield size={15} />} label="Datenschutz" onClick={() => b.openPage("privacy")} />
-        <MenuItem icon={<IconSettings size={15} />} label="Design-Studio" onClick={() => b.openPage("themes")} />
-        <MenuItem icon={<IconGlobe size={15} />} label={`Audio-Hub${b.tabs.some(t => t.playingAudio) ? " (♪)" : ""}`} onClick={() => b.openPage("audio")} />
-        <MenuItem icon={<IconMenu size={15} />} label="Tastenkürzel" onClick={() => b.openPage("settings", { section: "shortcuts" })} />
-        <MenuItem icon={<IconPuzzle size={15} />} label="Erweiterungen (geplant)" onClick={() => b.setStatus("Erweiterungen sind noch nicht implementiert.")} />
+        <div className="menu-sep" />
+        <MenuItem icon={<IconPalette size={15} />} label="Design-Studio" onClick={() => b.openPage("themes")} />
+        <MenuItem icon={<IconMusic size={15} />} label={b.tabs.some(t => t.playingAudio) ? "Audio-Hub · spielt" : "Audio-Hub"} onClick={() => b.openPage("audio")} />
+        <MenuItem icon={<IconGauge size={15} />} label="Performance" onClick={() => b.openPage("performance")} />
+        <MenuItem icon={<IconKeyboard size={15} />} label="Tastenkürzel" onClick={() => b.openPage("settings", { section: "shortcuts" })} />
         <div className="menu-sep" />
         <MenuItem icon={<IconSettings size={15} />} label="Einstellungen" hint={b.keyHint("open.settings")} onClick={() => b.openPage("settings")} />
       </Popover>
