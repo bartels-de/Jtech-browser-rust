@@ -21,6 +21,8 @@ export interface Settings {
   /** Width of the expanded sidebar in px (drag handle) */
   sidebarWidth: number;
   showBookmarksBar: boolean;
+  /** Show the bookmarks bar only on the start page (when showBookmarksBar is on) */
+  bookmarksBarOnlyNewTab?: boolean;
   /** Port: eigene JTech Bangs */
   bangs: Bang[];
   /** Runde 3: inaktive Tabs nach X Minuten schlafen legen (0 = aus) */

@@ -47,8 +47,10 @@
 
   --sidebar-compact: 64px;
   --sidebar-expanded: 250px;
-  --toolbar-h: 48px;
-  --bookmarks-h: 34px;
+  --toolbar-h: 44px;
+  --bookmarks-h: 32px;
+  --caption-w: 46px;
+  --caption-close: #c42b1c;
 
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --dur: 140ms;

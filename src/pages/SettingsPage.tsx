@@ -154,8 +154,14 @@ function Appearance() {
         <button className="btn" disabled={s.sidebarWidth === SIDEBAR_DEFAULT_WIDTH && s.sidebarExpanded}
           onClick={() => b.updateSettings({ sidebarWidth: SIDEBAR_DEFAULT_WIDTH, sidebarExpanded: true })}>Zurücksetzen</button>
       </Row>
-      <Row title="Lesezeichenleiste" desc="Deine Lesezeichen als Leiste unter der Adressleiste.">
-        <Switch label="Lesezeichenleiste anzeigen" checked={s.showBookmarksBar} onChange={v => b.updateSettings({ showBookmarksBar: v })} />
+      <Row title="Lesezeichenleiste anzeigen" desc="Deine Lesezeichen als schmale Leiste unter der Adressleiste. Ohne Lesezeichen bleibt sie ausgeblendet." keywords="Lesezeichenleiste Lesezeichen Leiste">
+        <div className="segmented" role="radiogroup" aria-label="Lesezeichenleiste anzeigen">
+          {([["always", "Immer"], ["newtab", "Nur auf Startseite"], ["never", "Nie"]] as const).map(([k, label]) => {
+            const cur = !s.showBookmarksBar ? "never" : s.bookmarksBarOnlyNewTab ? "newtab" : "always";
+            return <button key={k} role="radio" aria-checked={cur === k} className={cur === k ? "on" : ""}
+              onClick={() => b.updateSettings({ showBookmarksBar: k !== "never", bookmarksBarOnlyNewTab: k === "newtab" })}>{label}</button>;
+          })}
+        </div>
       </Row>
     </Group>
     <Group title="Effekte">

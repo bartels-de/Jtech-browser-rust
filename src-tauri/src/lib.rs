@@ -1539,6 +1539,10 @@ pub fn run() {
                 .title("JTech Browser")
                 .inner_size(1280.0, 820.0)
                 .min_inner_size(640.0, 420.0)
+                // Frameless: the UI webview draws its own title area and window controls.
+                // On Windows the resize borders and the drop shadow stay available.
+                .decorations(false)
+                .shadow(true)
                 .build()
                 .map_err(|e| format!("Fenster: {e}"))?;
             let (w, h) = logical_window_size(&window)?;

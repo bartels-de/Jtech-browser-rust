@@ -6,7 +6,13 @@ manages.
 
 ## Window and webviews
 
-The app has one native window (`main`) with the standard Windows title bar. It contains:
+The app has one native window (`main`). It is frameless (`decorations(false)`, `shadow(true)`):
+the toolbar row doubles as the title area. Empty toolbar and sidebar-header space carries
+`data-tauri-drag-region` (drag, double-click to maximize); `WindowControls` draws minimize,
+maximize/restore and close. Their permissions are granted to the UI webview only
+(`capabilities/window.json`). Windows keeps the resize borders. The Windows 11 Snap Layouts
+flyout on the maximize button is not available with a custom button (Win+Z and edge snapping
+still work). The window contains:
 
 - **One UI webview (`ui`)** that covers the whole window. It renders the tab sidebar, the toolbar
   (address bar, buttons, popovers), the bookmarks bar, notification bars and all internal pages.

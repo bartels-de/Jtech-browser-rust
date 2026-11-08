@@ -1,12 +1,15 @@
 import { useBrowser } from "../store/BrowserStore";
 import { Favicon } from "./Favicon";
+import { IconBookmarks } from "./Icons";
 
+/** Slim bookmarks row. Hidden when empty, switched off, or (optionally) outside the start page. */
 export function BookmarksBar() {
   const b = useBrowser();
-  if (!b.settings.showBookmarksBar) return null;
+  const s = b.settings;
+  if (!s.showBookmarksBar || b.bookmarks.length === 0) return null;
+  if (s.bookmarksBarOnlyNewTab && b.activePage !== "newtab") return null;
   return (
-    <div className="bookmarks-bar">
-      {b.bookmarks.length === 0 && <span className="muted small">Lesezeichen mit dem Stern oder Strg+D hinzufügen</span>}
+    <div className="bookmarks-bar" role="toolbar" aria-label="Lesezeichenleiste">
       {b.bookmarks.map(bm => (
         <button key={bm.id} className="bm-chip" title={bm.url}
           onClick={e => (e.ctrlKey ? b.newTab(bm.url) : b.navigate(bm.url))}
@@ -14,8 +17,8 @@ export function BookmarksBar() {
           <Favicon url={bm.url} size={14} /><span>{bm.title}</span>
         </button>
       ))}
-      <span className="spacer" />
-      <button className="bm-chip subtle" onClick={() => b.openPage("bookmarks")}>Alle Lesezeichen</button>
+      <span className="spacer" data-tauri-drag-region />
+      <button className="bm-chip subtle" onClick={() => b.openPage("bookmarks")} title="Alle Lesezeichen"><IconBookmarks size={14} /><span>Alle</span></button>
     </div>
   );
 }

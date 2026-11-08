@@ -2,7 +2,7 @@ import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { useBrowser } from "../store/BrowserStore";
 import { GROUP_COLORS, SIDEBAR_COMPACT_WIDTH, SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH, type TabGroup, type UiTab } from "../store/types";
 import { Favicon } from "./Favicon";
-import { IconClose, IconDownload, IconPin, IconPlus, IconSidebar, IconStar, IconHistory, IconSettings, IconShield, IconMenu, IconVolume, IconMute, IconChevronDown, IconChevronRight, IconPalette, IconMusic, IconGauge, IconMoon, IconCopy, JTechLogo } from "./Icons";
+import { IconClose, IconDownload, IconPin, IconPlus, IconSidebar, IconStar, IconHistory, IconSettings, IconShield, IconVolume, IconMute, IconChevronDown, IconChevronRight, IconPalette, IconMusic, IconGauge, IconMoon, IconCopy, JTechLogo, IconLibrary } from "./Icons";
 import type { InternalPage } from "../lib/urls";
 import { MenuItem, Popover } from "./Popover";
 
@@ -106,11 +106,12 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
   const pinnedTabs = b.tabs.filter(t => t.pinned);
   const newTabKey = b.keyHint("tab.new");
   const normalTabs = b.tabs.filter(t => !t.pinned);
+  const running = b.downloads.filter(d => d.live && d.state === "progressing").length;
 
-  const renderTab = (t: UiTab) => (
+  const renderTab = (t: UiTab, tile = false) => (
     <div
       key={t.id}
-      className={`tab-item${t.active ? " active" : ""}${t.pinned ? " pinned" : ""}${t.sleeping ? " sleeping" : ""}${t.groupId && !t.pinned ? " grouped" : ""}${overId === t.id && dragId !== t.id ? " drop-target" : ""}${dragId === t.id ? " dragging" : ""}`}
+      className={`tab-item${tile ? " pin-tile" : ""}${t.active ? " active" : ""}${t.pinned ? " pinned" : ""}${t.sleeping ? " sleeping" : ""}${t.groupId && !t.pinned ? " grouped" : ""}${overId === t.id && dragId !== t.id ? " drop-target" : ""}${dragId === t.id ? " dragging" : ""}`}
       title={(t.internal ? t.title : `${t.title}\n${t.url}`) + (t.sleeping ? "\nSchläft – wird beim Anklicken neu geladen" : "")}
       aria-label={t.title || "Neuer Tab"}
       draggable
@@ -127,15 +128,15 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
     >
       <span className="tab-icon">
         {t.loading ? <span className="spinner" aria-label="lädt" /> : <Favicon url={t.url} internal={!!t.internal} />}
-        {t.blocked > 0 && !expanded && <span className="tab-badge" />}
+        {t.blocked > 0 && (!expanded || tile) && <span className="tab-badge" />}
       </span>
-      {expanded && <span className="tab-title">{t.title || "Neuer Tab"}</span>}
-      {expanded && t.sleeping && <span className="tab-zz" title="Schläft" aria-label="schläft"><IconMoon size={12} /></span>}
-      {expanded && (t.playingAudio || t.muted) && (
+      {expanded && !tile && <span className="tab-title">{t.title || "Neuer Tab"}</span>}
+      {expanded && !tile && t.sleeping && <span className="tab-zz" title="Schläft" aria-label="schläft"><IconMoon size={12} /></span>}
+      {expanded && !tile && (t.playingAudio || t.muted) && (
         <button className={`tab-audio${t.muted ? " muted" : ""}`} title={t.muted ? "Ton einschalten" : "Tab stummschalten"} aria-label={t.muted ? "Ton einschalten" : "Tab stummschalten"}
           onClick={e => { e.stopPropagation(); b.setTabMuted(t.id, !t.muted); }}>{t.muted ? <IconMute size={14} /> : <IconVolume size={14} />}</button>
       )}
-      {expanded && t.pinned && <IconPin size={13} className="tab-pin" />}
+      {expanded && !tile && t.pinned && <IconPin size={13} className="tab-pin" />}
       {expanded && !t.pinned && (
         <button className="tab-close" title={`Tab schließen${b.keyHint("tab.close") ? ` (${b.keyHint("tab.close")})` : ""}`} aria-label="Tab schließen" onClick={e => { e.stopPropagation(); b.closeTab(t.id); }}>
           <IconClose size={13} />
@@ -166,7 +167,7 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
             {expanded && <span className="group-count">{members.length}</span>}
             {expanded && <span className="group-chev">{g.collapsed ? <IconChevronRight size={13} /> : <IconChevronDown size={13} />}</span>}
           </button>
-          {visible.map(renderTab)}
+          {visible.map(t => renderTab(t))}
         </div>
       );
     }
@@ -181,35 +182,44 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
         onPointerDown={onResizeDown} onPointerMove={onResizeMove} onPointerUp={onResizeEnd} onPointerCancel={onResizeEnd}
         onLostPointerCapture={onResizeEnd}
         onDoubleClick={() => b.updateSettings({ sidebarExpanded: !expandedSetting })} />
-      <div className="sidebar-head">
-        <div className="brand"><JTechLogo size={26} />{expanded && <span className="brand-name">JTech<span>Browser</span></span>}</div>
+      <div className="sidebar-head" data-tauri-drag-region>
+        <div className="brand" data-tauri-drag-region title="JTech Browser"><JTechLogo size={22} /></div>
+        {expanded && <span className="head-drag" data-tauri-drag-region aria-hidden />}
         <button className="icon-btn" aria-label={expanded ? "Seitenleiste einklappen" : "Seitenleiste ausklappen"} title={expanded ? "Seitenleiste einklappen" : "Seitenleiste ausklappen"} onClick={() => b.updateSettings({ sidebarExpanded: !expanded })}>
           <IconSidebar />
         </button>
       </div>
 
+      {pinnedTabs.length > 0 && (
+        <div className={`pin-grid${expanded ? "" : " compact"}`} role="tablist" aria-label="Angeheftete Tabs">
+          {pinnedTabs.map(t => renderTab(t, expanded))}
+        </div>
+      )}
+
+      {/* A single new-tab affordance at the top of the list (Arc/Edge-like) */}
+      <button className="new-tab-btn" aria-label="Neuer Tab" onClick={() => b.newTab()} title={`Neuer Tab${newTabKey ? ` (${newTabKey})` : ""}`}
+        onDragOver={e => e.preventDefault()}>
+        <IconPlus size={16} />{expanded && <span>Neuer Tab</span>}{expanded && newTabKey && <kbd>{newTabKey}</kbd>}
+      </button>
+
       <div className="tab-list" role="tablist" aria-orientation="vertical">
-        {pinnedTabs.length > 0 && <div className={`tab-group pinned-group${expanded ? "" : " compact"}`}>{pinnedTabs.map(renderTab)}</div>}
-        {pinnedTabs.length > 0 && <div className="tab-sep" />}
         {renderNormal()}
-        {/* Runde 5: "Neuer Tab" direkt unter dem letzten Tab (scrollt mit der Liste) */}
-        <button className="new-tab-btn" aria-label="Neuer Tab" onClick={() => b.newTab()} title={`Neuer Tab${newTabKey ? ` (${newTabKey})` : ""}`}
-          onDragOver={e => e.preventDefault()}>
-          <IconPlus size={16} />{expanded && <span>Neuer Tab</span>}{expanded && newTabKey && <kbd>{newTabKey}</kbd>}
-        </button>
       </div>
 
       {/* Runde 5: kompaktes Menue statt 5 einzelner Icons */}
       <nav className="sidebar-foot" aria-label="Browser-Seiten">
-        <button className={`foot-btn${FOOT.some(([p]) => b.activeTab?.internal === p) ? " on" : ""}${footMenu ? " open" : ""}`} title="Lesezeichen, Verlauf, Downloads, Einstellungen …"
+        <button className={`foot-icon${FOOT.some(([p]) => b.activeTab?.internal === p && p !== "downloads" && p !== "settings") ? " on" : ""}${footMenu ? " open" : ""}`}
+          title="Bibliothek: Lesezeichen, Verlauf, Datenschutz, Design-Studio …" aria-label="Bibliothek"
           aria-haspopup="menu" aria-expanded={footMenu}
           onClick={e => { e.stopPropagation(); setFootMenu(v => !v); }}>
-          <IconMenu />{expanded && <span>Bibliothek &amp; Einstellungen</span>}
+          <IconLibrary />
         </button>
-        {expanded && (
-          <button className="icon-btn" title={`Einstellungen${b.keyHint("open.settings") ? ` (${b.keyHint("open.settings")})` : ""}`} aria-label="Einstellungen"
-            onClick={() => b.openPage("settings")}><IconSettings /></button>
-        )}
+        <button className={`foot-icon${b.activeTab?.internal === "downloads" ? " on" : ""}`} aria-label="Downloads"
+          title={`Downloads${b.keyHint("open.downloads") ? ` (${b.keyHint("open.downloads")})` : ""}`}
+          onClick={() => b.openPage("downloads")}><IconDownload />{running > 0 && <span className="count-badge">{running}</span>}</button>
+        <button className={`foot-icon${b.activeTab?.internal === "settings" ? " on" : ""}`} aria-label="Einstellungen"
+          title={`Einstellungen${b.keyHint("open.settings") ? ` (${b.keyHint("open.settings")})` : ""}`}
+          onClick={() => b.openPage("settings")}><IconSettings /></button>
         {footMenu && (
           <div className="popover glass foot-menu" role="menu">
             {FOOT.map(([page, label, cmd, Icon]) => (

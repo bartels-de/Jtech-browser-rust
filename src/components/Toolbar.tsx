@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useBrowser } from "../store/BrowserStore";
-import { internalUrl, isWebUrl, securityOf } from "../lib/urls";
+import { hostOf, internalUrl, isWebUrl, securityOf } from "../lib/urls";
 import { IconBack, IconBookmarks, IconDownload, IconForward, IconHistory, IconHome, IconLock, IconMenu, IconPlus, IconReload, IconSettings, IconShield, IconStar, IconStop, IconWarn, IconGlobe, IconSearch, IconPalette, IconMusic, IconGauge, IconPrint, IconMoon, IconCommand, IconKeyboard, JTechLogo } from "./Icons";
 import { MenuItem, Popover } from "./Popover";
 import { DownloadList } from "./DownloadList";
 import { addressSuggestions, type Suggestion } from "../lib/suggest";
 import { SiteShieldToggle } from "./SiteShieldToggle";
+import { WindowControls } from "./WindowControls";
 
 export function Toolbar() {
   const b = useBrowser();
@@ -44,13 +45,23 @@ export function Toolbar() {
   }, [b.focusTick]);
 
   const sec = securityOf(tab?.url ?? "", !!page);
+  /** Calm URL display (host emphasised, scheme hidden) while the field is not being edited */
+  const pretty = useMemo(() => {
+    if (editing || !tab || page || !tab.url.startsWith("https://") || Math.abs(tab.zoom - 1) > 0.001) return null;
+    const host = hostOf(tab.url);
+    if (!host) return null;
+    const i = tab.url.indexOf(host);
+    let rest = i >= 0 ? tab.url.slice(i + host.length) : "";
+    if (rest === "/") rest = "";
+    return { host: host.replace(/^www\./, ""), rest };
+  }, [editing, tab, page]);
   const bookmark = tab && !page ? b.isBookmarked(tab.url) : undefined;
   const canBookmark = !!tab && !page;
   const close = () => b.setPopover(null);
   const toggle = (p: Exclude<typeof b.popover, null>) => b.setPopover(b.popover === p ? null : p);
 
   return (
-    <div className="toolbar">
+    <div className="toolbar" data-tauri-drag-region>
       <div className="nav-group">
         <button className="icon-btn" title="Zurück (Alt+←)" aria-label="Zurück" onClick={b.back} disabled={!tab || (!tab.canGoBack && !(page && isWebUrl(tab.url)))}><IconBack /></button>
         <button className="icon-btn" title="Vorwärts (Alt+→)" aria-label="Vorwärts" onClick={b.forward} disabled={!tab || !!page || !tab.canGoForward}><IconForward /></button>
@@ -72,8 +83,14 @@ export function Toolbar() {
           sec === "internal" ? "Interne JTech-Seite" : "Adresse"}>
           {sec === "secure" ? <IconLock size={14} /> : sec === "insecure" ? <><IconWarn size={14} /><span className="sec-label">Nicht sicher</span></> : sec === "internal" ? <JTechLogo size={15} /> : <IconGlobe size={14} />}
         </span>
+        {pretty && (
+          <span className="omni-display" aria-hidden onMouseDown={e => { e.preventDefault(); inputRef.current?.focus(); }}>
+            <span className="omni-host">{pretty.host}</span><span className="omni-rest">{pretty.rest}</span>
+          </span>
+        )}
         <input
           ref={inputRef}
+          className={pretty ? "is-pretty" : undefined}
           value={text}
           spellCheck={false}
           placeholder="Suchen oder Adresse eingeben"
@@ -119,6 +136,8 @@ export function Toolbar() {
         <button data-pop-toggle="downloads" className={`icon-btn${b.popover === "downloads" ? " on" : ""}`} title="Downloads" aria-label="Downloads" aria-expanded={b.popover === "downloads"} onClick={() => toggle("downloads")}><IconDownload />{running > 0 && <span className="count-badge">{running}</span>}</button>
         <button data-pop-toggle="menu" className={`icon-btn${b.popover === "menu" ? " on" : ""}`} title="Menü" aria-label="Menü" aria-haspopup="menu" aria-expanded={b.popover === "menu"} onClick={() => toggle("menu")}><IconMenu /></button>
       </div>
+      <span className="drag-gap" data-tauri-drag-region aria-hidden />
+      <WindowControls />
 
       <Popover open={b.popover === "bookmark"} onClose={close} className="pop-right pop-bookmark">
         {bookmark && <BookmarkEditor id={bookmark.id} title={bookmark.title} onDone={close} />}
