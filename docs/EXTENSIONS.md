@@ -95,8 +95,15 @@ the `files` hashes (LF line endings, as stored in the repository).
 - Media playlists from Twitch (`*.ttvnw.net`) are checked for ad markers (stitched-ad / SCTE-35
   date ranges, `X-TV-TWITCH-AD`, non-`live` segment titles such as "Amazon").
 - While an ad is running, the script requests a playback token for another player type
-  (`embed`, `popout`, `autoplay`) from Twitch's own GQL endpoint and serves that variant's
-  playlist if it is ad-free. Otherwise the ad segments are removed from the playlist.
+  and platform (`embed`/web, `site`/ios, `popout`, `autoplay`/android, `picture-by-picture`)
+  from Twitch's own GQL endpoint and serves that variant's playlist if it is ad-free (also for
+  mid-rolls; backups are cached per channel/resolution and renewed after 8 minutes). Otherwise
+  the ad segments are removed; `MEDIA-SEQUENCE` and `DISCONTINUITY` are kept consistent, and a
+  playlist consisting only of ads is replaced by the last clean one.
+- The worker hook (since 1.1.0) loads the worker script synchronously and prepends the hook in a
+  new blob worker (fallback `importScripts`). Module workers are not hooked.
+- Debug: `localStorage.setItem('jtech-twitch-debug','1')`, reload; logs use the prefix
+  `[JTech TwitchAB]` (page and worker). Counter: `window.__jtechTwitchStats`.
 - `rules.txt` blocks Amazon ad system and Twitch ad endpoints on Twitch pages.
 - No third-party proxy is used.
 
