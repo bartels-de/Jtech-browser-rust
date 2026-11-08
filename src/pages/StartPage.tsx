@@ -3,7 +3,7 @@ import { useBrowser } from "../store/BrowserStore";
 import { SEARCH_ENGINES, hostOf } from "../lib/urls";
 import { Favicon } from "../components/Favicon";
 import { t, useT } from "../i18n";
-import { IconHistory, IconPlus, IconSearch, IconShield } from "../components/Icons";
+import { IconEyeOff, IconHistory, IconPlus, IconSearch, IconShield } from "../components/Icons";
 
 function greeting(h: number) {
   return t(h < 5 ? "sp.night" : h < 11 ? "sp.morning" : h < 18 ? "sp.day" : "sp.evening");
@@ -79,9 +79,13 @@ export function StartPage() {
           </div>
         </section>
 
-        {recent.length > 0 && (
+        {b.settings.startShowRecent !== false && recent.length > 0 && (
           <section className="start-section start-recent" aria-labelledby="start-recent-h">
-            <h2 id="start-recent-h"><IconHistory size={14} /> {tt("sp.recent")}</h2>
+            <div className="start-section-head">
+              <h2 id="start-recent-h"><IconHistory size={14} /> {tt("sp.recent")}</h2>
+              <button className="start-hide" onClick={() => b.updateSettings({ startShowRecent: false })}
+                title={tt("sp.recentHide")} aria-label={tt("sp.recentHide")}><IconEyeOff size={14} /></button>
+            </div>
             <div className="recent-list">
               {recent.map(h => (
                 <button key={h.id} className="recent-item" onClick={() => b.navigate(h.url)} title={h.url}>

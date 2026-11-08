@@ -25,6 +25,7 @@ export const IconMenu = mk(<><circle cx="12" cy="5.5" r="1.2" fill="currentColor
 export const IconSidebar = mk(<><rect x="3.5" y="4.5" width="17" height="15" rx="3" /><path d="M9.5 4.5v15" /></>);
 export const IconPin = mk(<><path d="M9 4h6l-1 6 3 3H7l3-3z" /><path d="M12 13v7" /></>);
 export const IconSettings = mk(<><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></>);
+export const IconEyeOff = mk(<><path d="M3 12s3.5-6.5 9-6.5c1.6 0 3 .5 4.2 1.3M21 12s-3.5 6.5-9 6.5c-1.6 0-3-.5-4.2-1.3" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2M4 4l16 16" /></>);
 export const IconHistory = mk(<><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l3 2" /></>);
 export const IconBookmarks = mk(<path d="M6 3.5h12v17l-6-4-6 4z" />);
 export const IconSearch = mk(<><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></>);

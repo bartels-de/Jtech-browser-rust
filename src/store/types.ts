@@ -36,6 +36,8 @@ export interface Settings {
   effects: EffectsSettings;
   /** Runde 5: Tabs der letzten Sitzung wiederherstellen */
   restoreSession: boolean;
+  /** Show "recently visited" on the start page (default true) */
+  startShowRecent?: boolean;
   /** Auto-update: check for updates on startup */
   autoUpdateCheck: boolean;
   /** Auto-update: additionally check every X hours (0 = startup only) */

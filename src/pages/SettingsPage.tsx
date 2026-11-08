@@ -136,6 +136,9 @@ function General() {
           <button className="btn" disabled={!ok} onClick={() => b.updateSettings({ startPage: startUrl.trim() })}>{t("c.apply")}</button>
         </div>
       </Row>
+      <Row title={t("set.startRecent")} desc={t("set.startRecentDesc")} keywords="Recent Verlauf">
+        <Switch label={t("set.startRecent")} checked={s.startShowRecent !== false} onChange={v => b.updateSettings({ startShowRecent: v })} />
+      </Row>
       <Row title={t("set.restore")} desc={t("set.restoreDesc")} keywords="session">
         <Switch label={t("set.restore")} checked={s.restoreSession} onChange={v => b.updateSettings({ restoreSession: v })} />
       </Row>

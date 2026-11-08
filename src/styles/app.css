@@ -647,6 +647,10 @@ select { cursor: pointer; padding-right: 28px; }
 .tile-icon { width: 48px; height: 48px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--border); box-shadow: var(--hairline-hi), var(--shadow-1); }
 .tile-add .tile-icon { background: transparent; border-style: dashed; border-color: var(--border-strong); color: var(--text-3); box-shadow: none; }
 .tile-add:hover .tile-icon { color: var(--accent); border-color: var(--accent-ring); }
+.start-section-head { display: flex; align-items: center; justify-content: space-between; }
+.start-hide { display: grid; place-items: center; width: 24px; height: 24px; margin-right: 6px; border: 0; border-radius: 6px; background: transparent; color: var(--text-3); cursor: pointer; opacity: 0; transition: opacity .15s, background .15s; }
+.start-recent:hover .start-hide, .start-hide:focus-visible { opacity: 1; }
+.start-hide:hover { background: var(--hover, rgba(127,127,127,.18)); color: var(--text-1, inherit); }
 .start-recent h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 var(--sp-2) 10px; font: 500 var(--fs-sm) var(--font-sans); color: var(--text-3); }
 .recent-list { max-width: 720px; margin: 0 auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px var(--sp-2); }
 .recent-item { display: flex; align-items: center; gap: 10px; min-width: 0; height: 38px; padding: 0 10px; border: 0; border-radius: var(--r-md); background: transparent; color: var(--text); cursor: pointer; text-align: left; transition: background var(--dur-fast) var(--ease); }
