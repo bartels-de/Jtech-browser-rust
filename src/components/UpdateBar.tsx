@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useBrowser } from "../store/BrowserStore";
+import { fmtPct, useT } from "../i18n";
 import { checkForUpdate, dismissUpdateBar, downloadUpdate, installAndRestart, useUpdater } from "../lib/updater";
 
 /**
@@ -9,6 +10,7 @@ import { checkForUpdate, dismissUpdateBar, downloadUpdate, installAndRestart, us
 export function UpdateBar() {
   const b = useBrowser();
   const u = useUpdater();
+  const { t } = useT();
   const { autoUpdateCheck, updateIntervalHours } = b.settings;
 
   useEffect(() => {
@@ -28,24 +30,24 @@ export function UpdateBar() {
   return (
     <div className="banner update-bar" role="status">
       {u.phase === "available" && <>
-        <strong>JTech {u.version} ist verfügbar</strong>
-        <span className="muted">Installiert: {u.currentVersion || "?"}</span>
+        <strong>{t("up.available", { version: u.version ?? "" })}</strong>
+        <span className="muted">{t("up.installed", { version: u.currentVersion || "?" })}</span>
         <span className="spacer" />
-        <button className="btn primary" onClick={() => downloadUpdate()}>Herunterladen</button>
-        <button className="btn ghost" onClick={details}>Details</button>
-        <button className="btn ghost" onClick={dismissUpdateBar} title="Bis zum nächsten Update ausblenden">Später</button>
+        <button className="btn primary" onClick={() => downloadUpdate()}>{t("c.download")}</button>
+        <button className="btn ghost" onClick={details}>{t("c.details")}</button>
+        <button className="btn ghost" onClick={dismissUpdateBar} title={t("up.hideTitle")}>{t("c.later")}</button>
       </>}
       {u.phase === "downloading" && <>
-        <strong>Update {u.version} wird geladen</strong>
-        <progress className="update-progress" max={100} value={pct} aria-label="Download-Fortschritt" />
-        <span className="muted">{pct === undefined ? "…" : `${pct} %`}</span>
+        <strong>{t("up.loading", { version: u.version ?? "" })}</strong>
+        <progress className="update-progress" max={100} value={pct} aria-label={t("up.progress")} />
+        <span className="muted">{pct === undefined ? "…" : fmtPct(pct)}</span>
       </>}
       {(u.phase === "ready" || u.phase === "installing") && <>
-        <strong>Update {u.version} ist bereit</strong>
-        <span className="muted">Wird beim Neustart installiert – offene Tabs werden wiederhergestellt, wenn „Sitzung wiederherstellen“ an ist.</span>
+        <strong>{t("up.ready", { version: u.version ?? "" })}</strong>
+        <span className="muted">{t("up.readyHint")}</span>
         <span className="spacer" />
-        <button className="btn primary" disabled={u.phase === "installing"} onClick={() => installAndRestart()}>{u.phase === "installing" ? "Wird installiert…" : "Jetzt neu starten"}</button>
-        <button className="btn ghost" onClick={dismissUpdateBar}>Später</button>
+        <button className="btn primary" disabled={u.phase === "installing"} onClick={() => installAndRestart()}>{u.phase === "installing" ? t("up.installing") : t("up.restartNow")}</button>
+        <button className="btn ghost" onClick={dismissUpdateBar}>{t("c.later")}</button>
       </>}
     </div>
   );

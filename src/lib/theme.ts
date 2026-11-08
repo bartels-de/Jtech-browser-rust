@@ -1,3 +1,4 @@
+import { t as tr, type TKey } from "../i18n";
 /**
  * Port aus Standardprojekt (src/renderer/js/app.js PRESETS, src/main/config.js normalizeTheme):
  * Theme-Editor fuer die Design-Tokens aus styles/tokens.css. Ein Theme besteht aus wenigen
@@ -79,6 +80,10 @@ export function luminance(hex: string): number {
 }
 
 const EXTRA = { glass: 78, blur: 18, glow: 0, font: "segoe" as FontId, customCss: "" };
+/** Display name of a font (localized where it carries a word). */
+export const fontName = (f: FontId): string => (f === "segoe" || f === "system" || f === "georgia" || f === "cascadia" ? tr(`th.font.${f}` as TKey) : FONTS[f].name);
+/** Display name of a theme: the built-in default is localized, user/preset names are shown as stored. */
+export const themeName = (x: { id: string; name: string }): string => (x.id === "jtech" ? tr("th.default") : x.name);
 export const JTECH_DEFAULT: ThemeSpec = { id: "jtech", name: "JTech (Standard)", mode: "dark", accent: "#2cc5c9", accent2: "#5fe0d6", bg: "#0f1215", text: "#e7ecef", textDim: "#a7b1ba", radius: 10, ...EXTRA };
 
 const p = (id: string, name: string, accent: string, accent2: string, bg: string, text: string, textDim: string, radius: number): ThemeSpec =>
@@ -105,7 +110,7 @@ export function normalizeTheme(input: unknown, fallback: ThemeSpec = JTECH_DEFAU
   if (!input || typeof input !== "object") return null;
   const t = input as Record<string, unknown>;
   const bg = normalizeHex(t.bg, fallback.bg);
-  const name = typeof t.name === "string" && t.name.trim() ? t.name.trim().slice(0, 40) : "Eigenes Theme";
+  const name = typeof t.name === "string" && t.name.trim() ? t.name.trim().slice(0, 40) : tr("th.custom");
   const id = typeof t.id === "string" && /^[a-z0-9-]{1,40}$/i.test(t.id) ? t.id : "custom-" + Date.now().toString(36);
   return {
     id, name,
@@ -183,8 +188,8 @@ export function exportTheme(t: ThemeSpec): string {
 
 /** Akzeptiert eigenes Format und Electron-Themes (accentAlt). Wirft bei kaputtem JSON. */
 export function importTheme(json: string): ThemeSpec {
-  if (json.length > 60000) throw new Error("Datei zu gross");
+  if (json.length > 60000) throw new Error(tr("th.err.tooBig"));
   const t = normalizeTheme(JSON.parse(json));
-  if (!t) throw new Error("Kein Theme-Objekt");
+  if (!t) throw new Error(tr("th.err.noTheme"));
   return { ...t, id: "custom-" + Date.now().toString(36) };
 }

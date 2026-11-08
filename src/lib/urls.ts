@@ -1,17 +1,10 @@
-export type InternalPage = "newtab" | "settings" | "history" | "bookmarks" | "privacy" | "downloads" | "themes" | "audio" | "performance";
-export const INTERNAL_PAGES: InternalPage[] = ["newtab", "settings", "history", "bookmarks", "privacy", "downloads", "themes", "audio", "performance"];
+import { t, type TKey } from "../i18n";
 
-export const INTERNAL_TITLES: Record<InternalPage, string> = {
-  newtab: "Neuer Tab",
-  settings: "Einstellungen",
-  history: "Verlauf",
-  bookmarks: "Lesezeichen",
-  privacy: "Datenschutz",
-  downloads: "Downloads",
-  themes: "Design-Studio",
-  audio: "Audio-Hub",
-  performance: "Performance",
-};
+export type InternalPage = "newtab" | "settings" | "history" | "bookmarks" | "privacy" | "downloads" | "themes" | "audio" | "performance" | "market" | "extensions";
+export const INTERNAL_PAGES: InternalPage[] = ["newtab", "settings", "history", "bookmarks", "privacy", "downloads", "themes", "audio", "performance", "market", "extensions"];
+
+/** Localized title of an internal page (jtech://...). */
+export const internalTitle = (p: InternalPage): string => t(`page.${p}` as TKey);
 
 export type SearchEngineId = "duckduckgo" | "google" | "bing" | "startpage" | "brave";
 

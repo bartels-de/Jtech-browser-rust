@@ -3,6 +3,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
+import { fmtNum, t } from "../i18n";
 
 /**
  * Auto-update via tauri-plugin-updater: signed releases (latest.json) from the GitHub repo.
@@ -37,23 +38,23 @@ export function useUpdater(): UpdateState {
   return useSyncExternalStore(cb => { subs.add(cb); return () => subs.delete(cb); }, () => state);
 }
 
-/** Technical error -> user-facing German message (the UI is German). */
+/** Technical error -> user-facing message in the current UI language. */
 export function explainUpdateError(e: unknown): string {
   const raw = String((e as { message?: string })?.message ?? e ?? "");
   const m = raw.toLowerCase();
   if (typeof navigator !== "undefined" && navigator.onLine === false)
-    return "Keine Internetverbindung – bitte später erneut versuchen.";
+    return t("up.err.offline");
   if (m.includes("signature") || m.includes("signatur") || m.includes("minisign") || m.includes("pubkey") || m.includes("public key") || m.includes("base64") || m.includes("different key"))
-    return "Die Signatur des Updates ist ungültig oder der öffentliche Schlüssel fehlt. Das Update wurde aus Sicherheitsgründen nicht installiert.";
+    return t("up.err.signature");
   if (m.includes("not allowed") || (m.includes("plugin") && m.includes("not found")))
-    return "Der Updater ist in diesem Build nicht verfügbar.";
+    return t("up.err.noUpdater");
   if (m.includes("platform") && (m.includes("not found") || m.includes("missing")))
-    return "Das neueste Release enthält kein Paket für Windows.";
+    return t("up.err.noPlatform");
   if (m.includes("valid release json") || m.includes("release json") || m.includes("404") || m.includes("not found"))
-    return "Es wurde noch kein Update veröffentlicht (kein Release mit latest.json gefunden).";
+    return t("up.err.noRelease");
   if (m.includes("error sending request") || m.includes("dns") || m.includes("connect") || m.includes("timed out") || m.includes("timeout") || m.includes("network"))
-    return "Update-Server nicht erreichbar – Internetverbindung prüfen.";
-  return `Update fehlgeschlagen: ${raw || "unbekannter Fehler"}`;
+    return t("up.err.network");
+  return t("up.err.generic", { detail: raw || t("c.unknownError") });
 }
 
 /** Checks for updates. silent = background check (errors are not surfaced as an error state). */
@@ -105,5 +106,5 @@ export async function installAndRestart(): Promise<void> {
 export function dismissUpdateBar(): void { set({ dismissed: state.version }); }
 
 export function fmtBytes(n: number): string {
-  return n >= 1048576 ? `${(n / 1048576).toFixed(1).replace(".", ",")} MB` : `${Math.round(n / 1024)} KB`;
+  return n >= 1048576 ? `${fmtNum(n / 1048576, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} MB` : `${fmtNum(Math.round(n / 1024))} KB`;
 }

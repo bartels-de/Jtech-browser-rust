@@ -1,34 +1,31 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Group, Row, Switch } from "../components/SettingsUI";
 import { useBrowser } from "../store/BrowserStore";
-import { CUSTOM_CSS_MAX, FONTS, JTECH_DEFAULT, PRESETS, exportTheme, importTheme, normalizeHex, sanitizeCss, type FontId, type ThemeSpec } from "../lib/theme";
+import { CUSTOM_CSS_MAX, FONTS, JTECH_DEFAULT, fontName, themeName, PRESETS, exportTheme, importTheme, normalizeHex, sanitizeCss, type FontId, type ThemeSpec } from "../lib/theme";
+import { t, useT, type TKey } from "../i18n";
 import { BACKGROUNDS, CURSOR_PRESETS, PRESET_EFFECTS, QUALITY, TRAILS, cursorSpec, imageToCursor, rescaleCursor, type BgId, type EffectsSettings, type Quality } from "../lib/fx/effects";
 
 /** Port: Design-Studio (Standardprojekt: Theme-Editor in index.html / app.js / studio.css). */
-const COLORS: { key: keyof ThemeSpec; label: string }[] = [
-  { key: "accent", label: "Akzent" },
-  { key: "accent2", label: "Zweiter Akzent" },
-  { key: "bg", label: "Hintergrund" },
-  { key: "text", label: "Text" },
-  { key: "textDim", label: "Gedimmter Text" },
-];
+const COLORS: { key: keyof ThemeSpec; readonly label: string }[] = (["accent", "accent2", "bg", "text", "textDim"] as const)
+  .map(key => ({ key, get label() { return t(`th.c.${key}` as TKey); } }));
 
 export function ThemesPage() {
   const b = useBrowser();
+  useT();
   const cur = b.customTheme ?? JTECH_DEFAULT;
   const [json, setJson] = useState("");
   const [msg, setMsg] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   // Jede Aenderung wird sofort angewendet (Live-Vorschau = gesamte Oberflaeche) und gespeichert.
-  const patch = (p: Partial<ThemeSpec>) => b.setCustomTheme({ ...cur, ...p, id: cur.id === "jtech" || PRESETS.some(x => x.id === cur.id) ? "custom-" + Date.now().toString(36) : cur.id, name: PRESETS.some(x => x.id === cur.id) ? `${cur.name} (angepasst)` : cur.name });
+  const patch = (p: Partial<ThemeSpec>) => b.setCustomTheme({ ...cur, ...p, id: cur.id === "jtech" || PRESETS.some(x => x.id === cur.id) ? "custom-" + Date.now().toString(36) : cur.id, name: PRESETS.some(x => x.id === cur.id) ? t("th.adjusted", { name: themeName(cur) }) : cur.name });
   const doImport = (text: string) => {
-    try { const t = importTheme(text); b.setCustomTheme(t); b.saveTheme(t); setMsg(`„${t.name}“ importiert.`); }
-    catch (e) { setMsg(`Import fehlgeschlagen: ${String(e instanceof Error ? e.message : e)}`); }
+    try { const x = importTheme(text); b.setCustomTheme(x); b.saveTheme(x); setMsg(t("th.imported", { name: x.name })); }
+    catch (e) { setMsg(t("th.importFailed", { detail: String(e instanceof Error ? e.message : e) })); }
   };
   const doExport = () => {
     const text = exportTheme(cur);
     setJson(text);
-    navigator.clipboard?.writeText(text).then(() => setMsg("JSON in die Zwischenablage kopiert."), () => setMsg("JSON unten angezeigt."));
+    navigator.clipboard?.writeText(text).then(() => setMsg(t("th.copied")), () => setMsg(t("th.shownBelow")));
     try {
       const a = document.createElement("a");
       a.href = URL.createObjectURL(new Blob([text], { type: "application/json" }));
@@ -38,42 +35,42 @@ export function ThemesPage() {
   };
   // Runde 5: wie im Electron-Original bringen Vorlagen ihren Hintergrund/Cursor-Effekt mit (abschaltbar).
   const [withFx, setWithFx] = useState(true);
-  const preset = (t: ThemeSpec) => {
-    b.setCustomTheme(t.id === "jtech" ? null : t);
-    if (withFx) b.updateEffects(PRESET_EFFECTS[t.id] ?? { bgEnabled: false, trail: "none" });
+  const preset = (x: ThemeSpec) => {
+    b.setCustomTheme(x.id === "jtech" ? null : x);
+    if (withFx) b.updateEffects(PRESET_EFFECTS[x.id] ?? { bgEnabled: false, trail: "none" });
   };
 
   return (
     <div className="page doc-page">
-      <header className="page-head"><h1>Design-Studio</h1><p className="muted">Gestalte JTech nach deinem Geschmack. Jede Änderung wirkt sofort und wird automatisch gespeichert.</p></header>
-      <nav className="studio-jump" aria-label="Bereiche des Design-Studios">
-        {[["st-presets", "Vorlagen"], ["st-edit", "Farben & Formen"], ["st-bg", "Hintergrund"], ["st-cursor", "Cursor"], ["st-trail", "Cursor-Spur"], ["st-io", "Teilen"], ["st-css", "Eigenes CSS"]].map(([id, l]) =>
-          <button key={id} className="chip-btn" onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })}>{l}</button>)}
+      <header className="page-head"><h1>{t("page.themes")}</h1><p className="muted">{t("th.lead")}</p></header>
+      <nav className="studio-jump" aria-label={t("th.jump")}>
+        {([["st-presets", "th.j.presets"], ["st-edit", "th.j.edit"], ["st-bg", "th.j.bg"], ["st-cursor", "th.j.cursor"], ["st-trail", "th.j.trail"], ["st-io", "th.j.io"], ["st-css", "th.j.css"]] as [string, TKey][]).map(([id, l]) =>
+          <button key={id} className="chip-btn" onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })}>{t(l)}</button>)}
       </nav>
 
-      <Group id="st-presets" title="Vorlagen" desc="Ein Klick wechselt das komplette Erscheinungsbild. Eigene Themes erscheinen hier ebenfalls."
-        actions={<label className="switch-row small"><span>Mit Hintergrund und Cursor-Spur</span>
-          <Switch label="Hintergrund und Cursor-Spur der Vorlage mit übernehmen" checked={withFx} onChange={setWithFx} /></label>}>
+      <Group id="st-presets" title={t("th.j.presets")} desc={t("th.presetsDesc")}
+        actions={<label className="switch-row small"><span>{t("th.withFx")}</span>
+          <Switch label={t("th.withFxLabel")} checked={withFx} onChange={setWithFx} /></label>}>
         <div className="theme-grid">
-          {[...PRESETS, ...b.savedThemes].map(t => (
-            <button key={t.id} className={`theme-card${(b.customTheme?.id ?? "jtech") === t.id ? " on" : ""}`} onClick={() => preset(t)} title={t.name}>
-              <span className="theme-swatch" style={{ background: t.bg, borderRadius: t.radius }}>
-                <i style={{ background: t.accent }} /><i style={{ background: t.accent2 }} /><i style={{ background: t.text }} />
+          {[...PRESETS, ...b.savedThemes].map(x => (
+            <button key={x.id} className={`theme-card${(b.customTheme?.id ?? "jtech") === x.id ? " on" : ""}`} onClick={() => preset(x)} title={themeName(x)}>
+              <span className="theme-swatch" style={{ background: x.bg, borderRadius: x.radius }}>
+                <i style={{ background: x.accent }} /><i style={{ background: x.accent2 }} /><i style={{ background: x.text }} />
               </span>
-              <span className="theme-name">{t.name}</span>
-              {b.savedThemes.some(s => s.id === t.id) && <span className="theme-del" role="button" aria-label={`${t.name} entfernen`} title="Entfernen" onClick={e => { e.stopPropagation(); b.removeTheme(t.id); }}>×</span>}
+              <span className="theme-name">{themeName(x)}</span>
+              {b.savedThemes.some(s => s.id === x.id) && <span className="theme-del" role="button" aria-label={t("th.removeNamed", { name: x.name })} title={t("c.remove")} onClick={e => { e.stopPropagation(); b.removeTheme(x.id); }}>×</span>}
             </button>
           ))}
         </div>
       </Group>
 
-      <Group id="st-edit" title="Farben und Formen" desc="Passe das aktive Theme an. Vorlagen werden dabei als eigene Kopie weitergeführt.">
-        <Row title="Name" desc="So erscheint das Theme in den Vorlagen.">
-          <input className="text-input" value={cur.name} maxLength={40} aria-label="Theme-Name" onChange={e => patch({ name: e.target.value })} />
+      <Group id="st-edit" title={t("th.editTitle")} desc={t("th.editDesc")}>
+        <Row title={t("c.name")} desc={t("th.nameDesc")}>
+          <input className="text-input" value={themeName(cur)} maxLength={40} aria-label={t("th.nameAria")} onChange={e => patch({ name: e.target.value })} />
         </Row>
-        <Row title="Grundton" desc="Hell oder dunkel – steuert auch Scrollbalken und Formularfelder.">
-          <div className="segmented" role="radiogroup" aria-label="Grundton">
-            {(["dark", "light"] as const).map(m => <button key={m} role="radio" aria-checked={cur.mode === m} className={cur.mode === m ? "on" : ""} onClick={() => patch({ mode: m })}>{m === "dark" ? "Dunkel" : "Hell"}</button>)}
+        <Row title={t("th.mode")} desc={t("th.modeDesc")}>
+          <div className="segmented" role="radiogroup" aria-label={t("th.mode")}>
+            {(["dark", "light"] as const).map(m => <button key={m} role="radio" aria-checked={cur.mode === m} className={cur.mode === m ? "on" : ""} onClick={() => patch({ mode: m })}>{m === "dark" ? t("c.dark") : t("c.light")}</button>)}
           </div>
         </Row>
         <div className="color-row">
@@ -81,44 +78,44 @@ export function ThemesPage() {
             <label key={c.key} className="color-swatch">
               <input type="color" value={cur[c.key] as string} aria-label={c.label} onChange={e => patch({ [c.key]: e.target.value } as Partial<ThemeSpec>)} />
               <span><strong>{c.label}</strong>
-                <input className="mono" value={cur[c.key] as string} maxLength={7} spellCheck={false} aria-label={`${c.label} als Hex-Wert`}
+                <input className="mono" value={cur[c.key] as string} maxLength={7} spellCheck={false} aria-label={t("th.hex", { label: c.label })}
                   onChange={e => { const v = normalizeHex(e.target.value, ""); if (v) patch({ [c.key]: v } as Partial<ThemeSpec>); }} /></span>
             </label>
           ))}
         </div>
-        <Slider label="Ecken-Rundung" value={cur.radius} min={0} max={24} unit=" px" onChange={v => patch({ radius: v })} />
-        <Slider label="Deckkraft von Menüs" value={cur.glass} min={30} max={100} unit=" %" hint="Menüs, Panels, Befehlspalette" onChange={v => patch({ glass: v })} />
-        <Slider label="Unschärfe hinter Menüs" value={cur.blur} min={0} max={40} unit=" px" onChange={v => patch({ blur: v })} />
-        <Slider label="Leuchten" value={cur.glow} min={0} max={100} unit=" %" hint="um Akzent-Elemente; 0 = aus" onChange={v => patch({ glow: v })} />
-        <Row title="Schrift" desc="Nur auf Windows installierte Schriften.">
-          <select value={cur.font} aria-label="Schrift" onChange={e => patch({ font: e.target.value as FontId })}>
-            {(Object.keys(FONTS) as FontId[]).map(f => <option key={f} value={f}>{FONTS[f].name}</option>)}
+        <Slider label={t("th.radius")} value={cur.radius} min={0} max={24} unit=" px" onChange={v => patch({ radius: v })} />
+        <Slider label={t("th.glass")} value={cur.glass} min={30} max={100} unit=" %" hint={t("th.glassHint")} onChange={v => patch({ glass: v })} />
+        <Slider label={t("th.blur")} value={cur.blur} min={0} max={40} unit=" px" onChange={v => patch({ blur: v })} />
+        <Slider label={t("th.glow")} value={cur.glow} min={0} max={100} unit=" %" hint={t("th.glowHint")} onChange={v => patch({ glow: v })} />
+        <Row title={t("th.font")} desc={t("th.fontDesc")}>
+          <select value={cur.font} aria-label={t("th.font")} onChange={e => patch({ font: e.target.value as FontId })}>
+            {(Object.keys(FONTS) as FontId[]).map(f => <option key={f} value={f}>{fontName(f)}</option>)}
           </select>
         </Row>
-        <div className="theme-preview glass" aria-label="Vorschau">
-          <span className="btn primary">Primär</span><span className="btn">Normal</span><span className="btn ghost">Dezent</span>
-          <span className="muted">Gedimmter Text</span>
+        <div className="theme-preview glass" aria-label={t("th.preview")}>
+          <span className="btn primary">{t("th.pPrimary")}</span><span className="btn">{t("th.pNormal")}</span><span className="btn ghost">{t("th.pSubtle")}</span>
+          <span className="muted">{t("th.c.textDim")}</span>
         </div>
         <div className="row-end">
-          <button className="btn ghost" onClick={() => b.setCustomTheme(null)}>Auf JTech-Standard zurücksetzen</button>
-          <button className="btn primary" disabled={!b.customTheme} onClick={() => { b.saveTheme(cur); setMsg(`„${cur.name}“ gespeichert.`); }}>Als eigenes Theme speichern</button>
+          <button className="btn ghost" onClick={() => b.setCustomTheme(null)}>{t("th.resetDefault")}</button>
+          <button className="btn primary" disabled={!b.customTheme} onClick={() => { b.saveTheme(cur); setMsg(t("th.saved", { name: cur.name })); }}>{t("th.saveOwn")}</button>
         </div>
         {msg && <p className="small form-msg" role="status">{msg}</p>}
       </Group>
 
       <EffectsEditor />
 
-      <Group id="st-io" title="Teilen" desc="Themes als Datei sichern oder von anderen übernehmen. Themes aus dem alten JTech-Browser (Electron) werden ebenfalls erkannt.">
+      <Group id="st-io" title={t("th.j.io")} desc={t("th.ioDesc")}>
         <div className="row-start">
-          <button className="btn" onClick={doExport}>Exportieren</button>
-          <button className="btn" onClick={() => fileRef.current?.click()}>Datei importieren …</button>
-          <button className="btn ghost" disabled={!json.trim()} onClick={() => doImport(json)}>Text unten importieren</button>
+          <button className="btn" onClick={doExport}>{t("th.export")}</button>
+          <button className="btn" onClick={() => fileRef.current?.click()}>{t("th.importFile")}</button>
+          <button className="btn ghost" disabled={!json.trim()} onClick={() => doImport(json)}>{t("th.importText")}</button>
           <input ref={fileRef} type="file" accept=".json,application/json" hidden onChange={e => {
             const f = e.target.files?.[0]; e.target.value = "";
-            if (f) { if (f.size > 20000) setMsg("Die Datei ist zu groß (max. 20 KB)."); else f.text().then(doImport); }
+            if (f) { if (f.size > 20000) setMsg(t("th.fileTooBig")); else f.text().then(doImport); }
           }} />
         </div>
-        <textarea className="mono theme-json" value={json} onChange={e => setJson(e.target.value)} placeholder='Theme-Text hier einfügen, z. B. {"format":"jtech-theme", …}' spellCheck={false} aria-label="Theme als Text" />
+        <textarea className="mono theme-json" value={json} onChange={e => setJson(e.target.value)} placeholder={t("th.jsonPlaceholder")} spellCheck={false} aria-label={t("th.jsonAria")} />
       </Group>
 
       <CustomCssEditor value={cur.customCss} onSave={css => patch({ customCss: css })} />
@@ -129,17 +126,18 @@ export function ThemesPage() {
 
 /** Runde 3: eigenes CSS – wirkt ausschliesslich auf die Browser-Oberflaeche (UI-Webview), nie auf Webseiten. */
 function CustomCssEditor({ value, onSave }: { value: string; onSave(css: string): void }) {
+  const { t, fmtNum } = useT();
   const [draft, setDraft] = useState(value);
   const clean = sanitizeCss(draft);
   const changed = clean !== draft;
   return (
-    <Group id="st-css" title="Eigenes CSS" desc={<>Für Fortgeschrittene: gilt nur für die Oberfläche von JTech, nicht für Webseiten. Aus Sicherheitsgründen werden <span className="mono">@import</span>, <span className="mono">url(…)</span>, <span className="mono">expression()</span> und HTML entfernt. Max. {CUSTOM_CSS_MAX.toLocaleString("de-DE")} Zeichen; Variablen wie <span className="mono">--accent</span> sind verfügbar.</>}>
+    <Group id="st-css" title={t("th.j.css")} desc={<>{t("th.cssDesc1")} <span className="mono">@import</span>, <span className="mono">url(…)</span>, <span className="mono">expression()</span> {t("th.cssDesc2", { max: fmtNum(CUSTOM_CSS_MAX) })} <span className="mono">--accent</span> {t("th.cssDesc3")}</>}>
       <textarea className="mono theme-json" value={draft} maxLength={CUSTOM_CSS_MAX} spellCheck={false} onChange={e => setDraft(e.target.value)}
-        placeholder={".tab-item.active { outline: 1px solid var(--accent); }"} aria-label="Eigenes CSS" />
-      {changed && <p className="small" style={{ color: "var(--warn)" }}>Einige Teile werden beim Übernehmen entfernt.</p>}
+        placeholder={".tab-item.active { outline: 1px solid var(--accent); }"} aria-label={t("th.j.css")} />
+      {changed && <p className="small" style={{ color: "var(--warn)" }}>{t("th.cssStripped")}</p>}
       <div className="row-end">
-        <button className="btn ghost" disabled={!value} onClick={() => { setDraft(""); onSave(""); }}>Entfernen</button>
-        <button className="btn primary" disabled={clean === value} onClick={() => { setDraft(clean); onSave(clean); }}>Übernehmen</button>
+        <button className="btn ghost" disabled={!value} onClick={() => { setDraft(""); onSave(""); }}>{t("c.remove")}</button>
+        <button className="btn primary" disabled={clean === value} onClick={() => { setDraft(clean); onSave(clean); }}>{t("c.apply")}</button>
       </div>
     </Group>
   );
@@ -180,7 +178,7 @@ function Color({ label, value, onChange }: { label: string; value: string; onCha
     <Row title={label}>
       <div className="color-field">
         <input type="color" value={value} aria-label={label} onChange={e => onChange(e.target.value)} />
-        <input className="mono" defaultValue={value} key={value} maxLength={7} spellCheck={false} aria-label={`${label} als Hex-Wert`} onBlur={e => { const v = normalizeHex(e.target.value, ""); if (v) onChange(v); }} />
+        <input className="mono" defaultValue={value} key={value} maxLength={7} spellCheck={false} aria-label={t("th.hex", { label })} onBlur={e => { const v = normalizeHex(e.target.value, ""); if (v) onChange(v); }} />
       </div>
     </Row>
   );
@@ -193,6 +191,7 @@ function EffectsEditor() {
   const set = (p: Partial<EffectsSettings>) => b.updateEffects(p);
   const fileRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState("");
+  useT();
   const accent = () => {
     const cs = getComputedStyle(document.documentElement);
     return [cs.getPropertyValue("--accent").trim(), cs.getPropertyValue("--accent-2").trim()].map(x => normalizeHex(x, "#2cc5c9"));
@@ -204,28 +203,28 @@ function EffectsEditor() {
   };
   return (
     <>
-      <Group id="st-bg" title="Animierter Hintergrund" desc="Liegt hinter Seitenleiste, Kopfbereich und internen Seiten. Webseiten bleiben unverändert. Fahre über eine Vorschau, um sie zu animieren.">
-        <Row title="Hintergrund anzeigen">
-          <Switch label="Hintergrund anzeigen" checked={e.bgEnabled} onChange={v => set({ bgEnabled: v })} />
+      <Group id="st-bg" title={t("th.bgTitle")} desc={t("th.bgDesc")}>
+        <Row title={t("th.bgShow")}>
+          <Switch label={t("th.bgShow")} checked={e.bgEnabled} onChange={v => set({ bgEnabled: v })} />
         </Row>
         <div className={`bg-grid${e.bgEnabled ? "" : " disabled"}`}>
           {BACKGROUNDS.map(x => <BgPreview key={x.id} id={x.id} on={e.bgEnabled && e.background === x.id} onPick={() => set({ background: x.id, bgEnabled: true })} />)}
         </div>
-        <Slider label="Intensität" value={e.bgIntensity} min={0} max={100} unit=" %" hint="Menge der Partikel und Linien" onChange={v => set({ bgIntensity: v })} />
-        <Slider label="Geschwindigkeit" value={e.bgSpeed} min={0} max={200} unit=" %" hint="0 = stehend" onChange={v => set({ bgSpeed: v })} />
-        <Slider label="Leuchten" value={e.bgGlow} min={0} max={100} unit=" %" onChange={v => set({ bgGlow: v })} />
-        <Slider label="Deckkraft der Oberfläche" value={e.surfaceAlpha} min={40} max={100} unit=" %" hint="Wie stark Seitenleiste und Kopfbereich den Hintergrund abdecken" onChange={v => set({ surfaceAlpha: v })} />
-        <Row title="Qualität" desc="Bildrate und Auflösung. Pausiert bei minimiertem Fenster und beachtet „Animationen reduzieren“ in Windows.">
-          <select value={e.quality} aria-label="Qualität" onChange={ev => set({ quality: ev.target.value as Quality })}>
+        <Slider label={t("th.intensity")} value={e.bgIntensity} min={0} max={100} unit=" %" hint={t("th.intensityHint")} onChange={v => set({ bgIntensity: v })} />
+        <Slider label={t("th.speed")} value={e.bgSpeed} min={0} max={200} unit=" %" hint={t("th.speedHint")} onChange={v => set({ bgSpeed: v })} />
+        <Slider label={t("th.glow")} value={e.bgGlow} min={0} max={100} unit=" %" onChange={v => set({ bgGlow: v })} />
+        <Slider label={t("th.surface")} value={e.surfaceAlpha} min={40} max={100} unit=" %" hint={t("th.surfaceHint")} onChange={v => set({ surfaceAlpha: v })} />
+        <Row title={t("th.quality")} desc={t("th.qualityDesc")}>
+          <select value={e.quality} aria-label={t("th.quality")} onChange={ev => set({ quality: ev.target.value as Quality })}>
             {(Object.keys(QUALITY) as Quality[]).map(q => <option key={q} value={q}>{QUALITY[q].name}</option>)}
           </select>
         </Row>
-        <Row title="Auf Webseiten pausieren" desc="Spart Akku und CPU – animiert nur auf internen Seiten.">
-          <Switch label="Auf Webseiten pausieren" checked={e.pauseOnWeb} onChange={v => set({ pauseOnWeb: v })} />
+        <Row title={t("th.pauseWeb")} desc={t("th.pauseWebDesc")}>
+          <Switch label={t("th.pauseWeb")} checked={e.pauseOnWeb} onChange={v => set({ pauseOnWeb: v })} />
         </Row>
       </Group>
 
-      <Group id="st-cursor" title="Eigener Cursor" desc="Ersetzt den Mauszeiger über der JTech-Oberfläche.">
+      <Group id="st-cursor" title={t("th.cursorTitle")} desc={t("th.cursorDesc")}>
         <div className="cursor-grid">
           {CURSOR_PRESETS.filter(c => c.id !== "image").map(c => {
             const sp = c.id ? cursorSpec({ ...e, cursor: c.id, cursorSize: 32 }) : null;
@@ -236,47 +235,47 @@ function EffectsEditor() {
               </button>
             );
           })}
-          <button className={`cursor-card${e.cursor === "image" ? " on" : ""}`} onClick={() => (e.cursorImage ? set({ cursor: "image" }) : fileRef.current?.click())} title="Eigenes Bild">
+          <button className={`cursor-card${e.cursor === "image" ? " on" : ""}`} onClick={() => (e.cursorImage ? set({ cursor: "image" }) : fileRef.current?.click())} title={t("fx.cur.image")}>
             <span className="cursor-thumb">{e.cursorImage ? <img src={e.cursorImage} alt="" width={28} height={28} /> : "+"}</span>
-            <span className="theme-name">Eigenes Bild</span>
+            <span className="theme-name">{t("fx.cur.image")}</span>
           </button>
         </div>
-        <Color label="Cursorfarbe" value={e.cursorColor} onChange={v => set({ cursorColor: v })} />
-        <Slider label="Größe" value={e.cursorSize} min={16} max={64} unit=" px" hint="Windows zeigt sehr große Cursor eventuell verkleinert" onChange={setSize} />
-        <Row title="Eigenes Bild" desc={`PNG, JPG, GIF, WebP, BMP oder SVG – wird auf ${e.cursorSize} px verkleinert und nur lokal gespeichert.`}>
-            <button className="btn" onClick={() => fileRef.current?.click()}>Bild wählen…</button>
-            {e.cursorImage && <button className="btn ghost" onClick={() => set({ cursorImage: "", cursor: e.cursor === "image" ? "" : e.cursor })}>Entfernen</button>}
+        <Color label={t("th.cursorColor")} value={e.cursorColor} onChange={v => set({ cursorColor: v })} />
+        <Slider label={t("th.size")} value={e.cursorSize} min={16} max={64} unit=" px" hint={t("th.sizeHint")} onChange={setSize} />
+        <Row title={t("fx.cur.image")} desc={t("th.imgDesc", { size: e.cursorSize })}>
+            <button className="btn" onClick={() => fileRef.current?.click()}>{t("th.pickImage")}</button>
+            {e.cursorImage && <button className="btn ghost" onClick={() => set({ cursorImage: "", cursor: e.cursor === "image" ? "" : e.cursor })}>{t("c.remove")}</button>}
             <input ref={fileRef} type="file" hidden accept="image/png,image/jpeg,image/gif,image/webp,image/bmp,image/svg+xml" onChange={async ev => {
               const f = ev.target.files?.[0]; ev.target.value = "";
               if (!f) return;
-              try { set({ cursorImage: await imageToCursor(f, e.cursorSize), cursor: "image" }); setMsg("Cursorbild übernommen."); }
+              try { set({ cursorImage: await imageToCursor(f, e.cursorSize), cursor: "image" }); setMsg(t("th.cursorTaken")); }
               catch (err) { setMsg(String(err instanceof Error ? err.message : err)); }
             }} />
         </Row>
         {e.cursor === "image" && (
-          <Row title="Klickpunkt" desc="Wo im Bild der Klick ausgelöst wird.">
+          <Row title={t("th.hotspot")} desc={t("th.hotspotDesc")}>
             <div className="segmented">
-              <button className={e.cursorHotspot === "center" ? "on" : ""} onClick={() => set({ cursorHotspot: "center" })}>Mitte</button>
-              <button className={e.cursorHotspot === "topleft" ? "on" : ""} onClick={() => set({ cursorHotspot: "topleft" })}>Oben links</button>
+              <button className={e.cursorHotspot === "center" ? "on" : ""} onClick={() => set({ cursorHotspot: "center" })}>{t("th.center")}</button>
+              <button className={e.cursorHotspot === "topleft" ? "on" : ""} onClick={() => set({ cursorHotspot: "topleft" })}>{t("th.topleft")}</button>
             </div></Row>
         )}
         {msg && <p className="small form-msg" role="status">{msg}</p>}
       </Group>
 
-      <Group id="st-trail" title="Cursor-Spur" desc="Ein Effekt, der dem Mauszeiger folgt.">
-        <Row title="Stil" col>
+      <Group id="st-trail" title={t("th.trailTitle")} desc={t("th.trailDesc")}>
+        <Row title={t("th.style")} col>
           <div className="segmented wrap">
-            {TRAILS.map(t => <button key={t.id} className={e.trail === t.id ? "on" : ""} onClick={() => set({ trail: t.id })}>{t.name}</button>)}
+            {TRAILS.map(x => <button key={x.id} className={e.trail === x.id ? "on" : ""} onClick={() => set({ trail: x.id })}>{x.name}</button>)}
           </div>
         </Row>
-        <Color label="Farbe" value={e.trailColor} onChange={v => set({ trailColor: v })} />
-        <Color label="Zweite Farbe" value={e.trailColor2} onChange={v => set({ trailColor2: v })} />
-        <div className="row-end"><button className="btn ghost sm" onClick={() => { const [a, c] = accent(); set({ trailColor: a, trailColor2: c, cursorColor: a }); }}>Akzentfarben des Themes übernehmen</button></div>
-        <Slider label="Größe" value={e.trailSize} min={2} max={40} unit=" px" onChange={v => set({ trailSize: v })} />
-        <Slider label="Länge" value={e.trailLength} min={0} max={100} unit=" %" hint="wie lange die Spur sichtbar bleibt" onChange={v => set({ trailLength: v })} />
-        <Slider label="Stärke" value={e.trailIntensity} min={0} max={100} unit=" %" onChange={v => set({ trailIntensity: v })} />
-        <Row title="Auch auf Webseiten" desc="Ohne diese Option wirken Cursor und Spur nur auf Seitenleiste, Kopfbereich und internen Seiten. Gilt ab dem nächsten Laden; manche Websites lassen das nicht zu.">
-          <Switch label="Cursor und Spur auch auf Webseiten" checked={e.inPages} onChange={v => set({ inPages: v })} />
+        <Color label={t("th.color")} value={e.trailColor} onChange={v => set({ trailColor: v })} />
+        <Color label={t("th.color2")} value={e.trailColor2} onChange={v => set({ trailColor2: v })} />
+        <div className="row-end"><button className="btn ghost sm" onClick={() => { const [a, c] = accent(); set({ trailColor: a, trailColor2: c, cursorColor: a }); }}>{t("th.takeAccent")}</button></div>
+        <Slider label={t("th.size")} value={e.trailSize} min={2} max={40} unit=" px" onChange={v => set({ trailSize: v })} />
+        <Slider label={t("th.length")} value={e.trailLength} min={0} max={100} unit=" %" hint={t("th.lengthHint")} onChange={v => set({ trailLength: v })} />
+        <Slider label={t("th.strength")} value={e.trailIntensity} min={0} max={100} unit=" %" onChange={v => set({ trailIntensity: v })} />
+        <Row title={t("th.inPages")} desc={t("th.inPagesDesc")}>
+          <Switch label={t("th.inPagesLabel")} checked={e.inPages} onChange={v => set({ inPages: v })} />
         </Row>
       </Group>
     </>

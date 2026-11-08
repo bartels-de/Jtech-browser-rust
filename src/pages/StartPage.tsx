@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useBrowser } from "../store/BrowserStore";
 import { SEARCH_ENGINES, hostOf } from "../lib/urls";
 import { Favicon } from "../components/Favicon";
+import { t, useT } from "../i18n";
 import { IconHistory, IconPlus, IconSearch, IconShield } from "../components/Icons";
 
 function greeting(h: number) {
-  return h < 5 ? "Gute Nacht" : h < 11 ? "Guten Morgen" : h < 18 ? "Guten Tag" : "Guten Abend";
+  return t(h < 5 ? "sp.night" : h < 11 ? "sp.morning" : h < 18 ? "sp.day" : "sp.evening");
 }
 
 /** Laufende Uhr, minutengenau. */
@@ -20,6 +21,7 @@ function useNow() {
 
 export function StartPage() {
   const b = useBrowser();
+  const { t: tt, fmtTime, fmtDate, fmtNum } = useT();
   const [q, setQ] = useState("");
   const now = useNow();
   const engine = SEARCH_ENGINES[b.settings.searchEngine].name;
@@ -45,21 +47,21 @@ export function StartPage() {
       <div className="start-inner">
         <header className="start-brand">
           <time className="start-clock" dateTime={now.toISOString()}>
-            {now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
+            {fmtTime(now)}
           </time>
           <p className="start-greet">
-            {greeting(now.getHours())} · {now.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" })}
+            {greeting(now.getHours())} · {fmtDate(now, { weekday: "long", day: "numeric", month: "long" })}
           </p>
         </header>
 
         <form className="start-search glass" role="search" onSubmit={e => { e.preventDefault(); if (q.trim()) b.navigate(q); }}>
           <IconSearch size={18} />
-          <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder={`Mit ${engine} suchen oder Adresse eingeben`}
-            spellCheck={false} aria-label="Suchen oder Adresse eingeben" />
+          <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder={tt("sp.searchWith", { engine })}
+            spellCheck={false} aria-label={tt("tb.placeholder")} />
           {q ? <kbd>Enter</kbd> : <span className="start-engine">{engine}</span>}
         </form>
 
-        <section className="start-section" aria-label="Lesezeichen">
+        <section className="start-section" aria-label={tt("page.bookmarks")}>
           <div className="tiles">
             {tiles.map(bm => (
               <button key={bm.id} className="tile" onClick={e => (e.ctrlKey ? b.newTab(bm.url) : b.navigate(bm.url))}
@@ -69,9 +71,9 @@ export function StartPage() {
               </button>
             ))}
             {tiles.length < 7 && (
-              <button className="tile tile-add" onClick={() => b.openPage("bookmarks")} title="Lesezeichen verwalten">
+              <button className="tile tile-add" onClick={() => b.openPage("bookmarks")} title={tt("sp.manageBm")}>
                 <span className="tile-icon"><IconPlus size={18} /></span>
-                <span className="tile-title">{tiles.length === 0 ? "Erstes Lesezeichen" : "Hinzufügen"}</span>
+                <span className="tile-title">{tiles.length === 0 ? tt("sp.firstBm") : tt("c.add")}</span>
               </button>
             )}
           </div>
@@ -79,7 +81,7 @@ export function StartPage() {
 
         {recent.length > 0 && (
           <section className="start-section start-recent" aria-labelledby="start-recent-h">
-            <h2 id="start-recent-h"><IconHistory size={14} /> Zuletzt besucht</h2>
+            <h2 id="start-recent-h"><IconHistory size={14} /> {tt("sp.recent")}</h2>
             <div className="recent-list">
               {recent.map(h => (
                 <button key={h.id} className="recent-item" onClick={() => b.navigate(h.url)} title={h.url}>
@@ -96,12 +98,12 @@ export function StartPage() {
           <button className="start-shield" onClick={() => b.openPage("privacy")}>
             <IconShield size={15} />
             <span>{b.settings.adblock
-              ? <><strong>{b.totalBlocked.toLocaleString("de-DE")}</strong> Tracker und Werbeanfragen blockiert</>
-              : "JTech Shield ist ausgeschaltet"}</span>
+              ? <><strong>{fmtNum(b.totalBlocked)}</strong> {tt("sp.blocked")}</>
+              : tt("sp.shieldOff")}</span>
           </button>
           <span className="start-keys">
-            {paletteKey && <span><kbd>{paletteKey}</kbd> Befehlspalette</span>}
-            {newTabKey && <span><kbd>{newTabKey}</kbd> Neuer Tab</span>}
+            {paletteKey && <span><kbd>{paletteKey}</kbd> {tt("cmd.ui.palette")}</span>}
+            {newTabKey && <span><kbd>{newTabKey}</kbd> {tt("c.newTab")}</span>}
           </span>
         </footer>
       </div>

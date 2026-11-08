@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useBrowser } from "../store/BrowserStore";
 import { IconLock } from "./Icons";
-import { call, PERMISSION_LABELS, type PermissionRequest } from "../lib/ipc";
+import { useT } from "../i18n";
+import { call, permissionLabel, type PermissionRequest } from "../lib/ipc";
 
 /**
  * Runde 4: Abfrage fuer Website-Berechtigungen (WebView2 PermissionRequested mit Deferral).
@@ -10,6 +11,7 @@ import { call, PERMISSION_LABELS, type PermissionRequest } from "../lib/ipc";
  */
 export function PermissionBar() {
   const b = useBrowser();
+  const { t } = useT();
   const [queue, setQueue] = useState<PermissionRequest[]>([]);
   const [remember, setRemember] = useState(true);
 
@@ -32,16 +34,16 @@ export function PermissionBar() {
   let host = req.origin;
   try { host = new URL(req.origin).host; } catch { /* Origin roh anzeigen */ }
   return (
-    <div className="perm-bar" role="alertdialog" aria-label="Berechtigungsanfrage">
+    <div className="perm-bar" role="alertdialog" aria-label={t("pb.label")}>
       <span className="perm-icon" aria-hidden><IconLock size={14} /></span>
       <div className="perm-text">
-        <strong>{host}</strong> fragt nach Zugriff: <strong>{PERMISSION_LABELS[req.kind] ?? req.kind}</strong>
-        {tab && tab.id !== b.activeTab?.id && <small className="muted"> (Tab „{tab.title}“)</small>}
-        {queue.length > 1 && <small className="muted"> · {queue.length - 1} weitere</small>}
+        <strong>{host}</strong> {t("pb.asks")} <strong>{permissionLabel(req.kind)}</strong>
+        {tab && tab.id !== b.activeTab?.id && <small className="muted"> {t("pb.tab", { title: tab.title })}</small>}
+        {queue.length > 1 && <small className="muted"> · {t("pb.more", { count: queue.length - 1 })}</small>}
       </div>
-      <label className="perm-remember"><input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} /> Für diese Seite merken</label>
-      <button className="btn" onClick={() => answer("deny")}>Blockieren</button>
-      <button className="btn primary" onClick={() => answer("allow")}>Erlauben</button>
+      <label className="perm-remember"><input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} /> {t("pb.remember")}</label>
+      <button className="btn" onClick={() => answer("deny")}>{t("c.block")}</button>
+      <button className="btn primary" onClick={() => answer("allow")}>{t("c.allow")}</button>
     </div>
   );
 }

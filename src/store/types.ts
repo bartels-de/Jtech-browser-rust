@@ -1,5 +1,6 @@
 import type { Bang, InternalPage, SearchEngineId } from "../lib/urls";
 import { DEFAULT_EFFECTS, type EffectsSettings } from "../lib/fx/effects";
+import type { LangSetting } from "../i18n";
 
 /** Sidebar width limits (px); compact matches --sidebar-compact */
 export const SIDEBAR_COMPACT_WIDTH = 64;
@@ -39,6 +40,8 @@ export interface Settings {
   autoUpdateCheck: boolean;
   /** Auto-update: additionally check every X hours (0 = startup only) */
   updateIntervalHours: number;
+  /** UI language ("system" follows navigator.language) */
+  language: LangSetting;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -57,6 +60,7 @@ export const DEFAULT_SETTINGS: Settings = {
   restoreSession: true,
   autoUpdateCheck: true,
   updateIntervalHours: 24,
+  language: "system",
 };
 
 export interface Bookmark { id: string; url: string; title: string; createdAt: number; }

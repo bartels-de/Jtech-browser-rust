@@ -12,6 +12,7 @@ import { PermissionBar } from "./components/PermissionBar";
 import { FxLayer } from "./components/FxLayer";
 import { UpdateBar } from "./components/UpdateBar";
 import { IconWarn } from "./components/Icons";
+import { useT } from "./i18n";
 import "./styles/tokens.css";
 import "./styles/app.css";
 
@@ -21,6 +22,7 @@ import "./styles/app.css";
  */
 function Shell() {
   const b = useBrowser();
+  const { t } = useT();
   const sideRef = useRef<HTMLElement>(null);
   const headRef = useRef<HTMLDivElement>(null);
   useShortcuts();
@@ -58,16 +60,16 @@ function Shell() {
           {err && (
             <div className="banner error" role="alert">
               <IconWarn size={16} className="banner-icon" />
-              <strong>Seite konnte nicht geladen werden</strong>
+              <strong>{t("app.loadFailed")}</strong>
               <span className="mono">{err.url}</span>
               <span className="muted">{err.message}</span>
               <span className="spacer" />
-              <button className="btn" onClick={b.reload}>Neu laden</button>
-              <button className="btn ghost" onClick={b.dismissError}>Schließen</button>
+              <button className="btn" onClick={b.reload}>{t("app.reload")}</button>
+              <button className="btn ghost" onClick={b.dismissError}>{t("c.close")}</button>
             </div>
           )}
           {b.status && !err && (
-            <button type="button" className="banner info" onClick={() => b.setStatus("")} title="Klicken zum Ausblenden" role="status">{b.status}</button>
+            <button type="button" className="banner info" onClick={() => b.setStatus("")} title={t("app.clickToHide")} role="status">{b.status}</button>
           )}
         </div>
         <ContentArea />

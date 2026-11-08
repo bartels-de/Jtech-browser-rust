@@ -1,19 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useBrowser } from "../store/BrowserStore";
+import { fmtBytes as fmtB, useT } from "../i18n";
 import { call } from "../lib/ipc";
 
 interface Proc { pid: number; name: string; memoryBytes: number; cpuTime100ns: number; commandLine: string; }
 interface PerfStats { totalMemoryBytes: number; processes: Proc[]; tabCount: number; }
 
-function fmtBytes(n: number): string {
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(n / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-}
+const fmtBytes = (n: number) => fmtB(n, n >= 1024 ** 3 ? 2 : 1);
 
 export function PerformancePage() {
   const b = useBrowser();
+  const { t, fmtPct } = useT();
   const [stats, setStats] = useState<PerfStats | null>(null);
   const [auto, setAuto] = useState(true);
   const [cpuPct, setCpuPct] = useState<Record<number, number>>({});
@@ -61,45 +58,45 @@ export function PerformancePage() {
     <div className="page doc-page perf-page">
       <header className="page-head row">
         <div>
-          <h1>Performance</h1>
-          <p className="muted">Speicher und CPU der Browser-Prozesse (WebView2){auto ? " · aktualisiert alle 2 Sekunden" : ""}</p>
+          <h1>{t("page.performance")}</h1>
+          <p className="muted">{t("pf.lead")}{auto ? t("pf.every2") : ""}</p>
         </div>
         <div className="row gap">
-          <label className="switch-row small"><span>Live</span>
-            <input type="checkbox" className="switch" aria-label="Automatisch aktualisieren" checked={auto} onChange={e => setAuto(e.target.checked)} /></label>
-          <button className="btn" onClick={refresh}>Jetzt aktualisieren</button>
+          <label className="switch-row small"><span>{t("pf.live")}</span>
+            <input type="checkbox" className="switch" aria-label={t("pf.auto")} checked={auto} onChange={e => setAuto(e.target.checked)} /></label>
+          <button className="btn" onClick={refresh}>{t("c.updateNow")}</button>
         </div>
       </header>
 
       <div className="kpi-row">
-        <div className="kpi"><span className="kpi-num">{stats ? fmtBytes(stats.totalMemoryBytes) : <span className="skeleton skel-num" aria-label="Wird geladen" />}</span><span className="kpi-label">Arbeitsspeicher gesamt</span></div>
-        <div className="kpi"><span className="kpi-num">{totalCpu.toFixed(1)} %</span><span className="kpi-label">CPU (Summe)</span></div>
-        <div className="kpi"><span className="kpi-num">{stats?.processes.length ?? 0}</span><span className="kpi-label">Prozesse</span></div>
-        <div className="kpi"><span className="kpi-num">{stats?.tabCount ?? 0}</span><span className="kpi-label">Tabs, davon {sleeping} schlafend</span></div>
+        <div className="kpi"><span className="kpi-num">{stats ? fmtBytes(stats.totalMemoryBytes) : <span className="skeleton skel-num" aria-label={t("c.loading")} />}</span><span className="kpi-label">{t("pf.memTotal")}</span></div>
+        <div className="kpi"><span className="kpi-num">{fmtPct(totalCpu, 1)}</span><span className="kpi-label">{t("pf.cpuSum")}</span></div>
+        <div className="kpi"><span className="kpi-num">{stats?.processes.length ?? 0}</span><span className="kpi-label">{t("pf.procs")}</span></div>
+        <div className="kpi"><span className="kpi-num">{stats?.tabCount ?? 0}</span><span className="kpi-label">{t("pf.tabsSleeping", { n: sleeping })}</span></div>
       </div>
 
       {heavy.length > 0 && (
         <div className="banner warn" role="status">
-          <strong>{heavy.length} {heavy.length === 1 ? "Prozess braucht" : "Prozesse brauchen"} über 200 MB</strong>
-          <span className="muted">Inaktive Tabs schlafen legen gibt Speicher frei.</span>
+          <strong>{t("pf.heavy", { count: heavy.length })}</strong>
+          <span className="muted">{t("pf.heavyHint")}</span>
           <span className="spacer" />
-          <button className="btn sm" onClick={b.sleepInactiveTabs}>Inaktive Tabs schlafen legen</button>
+          <button className="btn sm" onClick={b.sleepInactiveTabs}>{t("cmd.tab.sleepInactive")}</button>
         </div>
       )}
 
       <section className="card">
-        <h2>Speicherverlauf</h2>
+        <h2>{t("pf.memHistory")}</h2>
         {history.length === 0 && <div className="skeleton skel-chart" aria-hidden="true" />}
-        <div className="spark" role="img" aria-label={`Speicherverlauf der letzten ${history.length} Messungen`}>
+        <div className="spark" role="img" aria-label={t("pf.memHistoryAria", { count: history.length })}>
           {history.map((v, i) => <span key={i} title={fmtBytes(v)} style={{ height: `${Math.max(4, (v / maxHist) * 100)}%` }} />)}
         </div>
-        <small className="muted">Letzte {history.length} Messungen{top ? ` · größter Prozess: ${top.name} (${fmtBytes(top.memoryBytes)})` : ""}</small>
+        <small className="muted">{t("pf.lastN", { count: history.length })}{top ? t("pf.biggest", { name: top.name, size: fmtBytes(top.memoryBytes) }) : ""}</small>
       </section>
 
       <section className="card">
-        <h2>Prozesse nach Speicher</h2>
+        <h2>{t("pf.byMem")}</h2>
         <table className="data-table">
-          <thead><tr><th>Name</th><th className="num-col">PID</th><th className="num-col">Speicher</th><th>Anteil</th><th className="num-col">CPU</th></tr></thead>
+          <thead><tr><th>{t("pf.colName")}</th><th className="num-col">PID</th><th className="num-col">{t("pf.colMem")}</th><th>{t("pf.colShare")}</th><th className="num-col">CPU</th></tr></thead>
           <tbody>
             {(stats?.processes ?? []).map(p => {
               const share = stats && stats.totalMemoryBytes > 0 ? (p.memoryBytes / stats.totalMemoryBytes) * 100 : 0;
@@ -108,22 +105,22 @@ export function PerformancePage() {
                   <td>{p.name}</td>
                   <td className="num-col mono">{p.pid}</td>
                   <td className="num-col">{fmtBytes(p.memoryBytes)}</td>
-                  <td><span className="share"><span className="bar"><span style={{ width: `${share}%` }} /></span><span className="muted small">{share.toFixed(1)} %</span></span></td>
-                  <td className="num-col">{(cpuPct[p.pid] ?? 0).toFixed(1)} %</td>
+                  <td><span className="share"><span className="bar"><span style={{ width: `${share}%` }} /></span><span className="muted small">{fmtPct(share, 1)}</span></span></td>
+                  <td className="num-col">{fmtPct(cpuPct[p.pid] ?? 0, 1)}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
-        {!stats && <div className="skel-rows" role="status" aria-label="Daten werden geladen">{[0, 1, 2, 3].map(i => <span key={i} className="skeleton skel-row" />)}</div>}
+        {!stats && <div className="skel-rows" role="status" aria-label={t("pf.dataLoading")}>{[0, 1, 2, 3].map(i => <span key={i} className="skeleton skel-row" />)}</div>}
       </section>
 
       <section className="card">
-        <h2>So sparst du Ressourcen</h2>
+        <h2>{t("pf.tipsTitle")}</h2>
         <ul className="tips">
-          <li>Inaktive Tabs automatisch schlafen legen: Einstellungen → Tabs.</li>
-          <li>Der Werbeblocker verhindert viele Skripte und spart so Speicher und CPU.</li>
-          <li>Hohe CPU-Last kommt meist von Videos oder aufwendigen Skripten einer Seite.</li>
+          <li>{t("pf.tip1")}</li>
+          <li>{t("pf.tip2")}</li>
+          <li>{t("pf.tip3")}</li>
         </ul>
       </section>
     </div>

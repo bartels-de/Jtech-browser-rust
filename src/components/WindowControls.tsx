@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useT } from "../i18n";
 import { IconWinClose, IconWinMax, IconWinMin, IconWinRestore } from "./Icons";
 
 /**
@@ -8,6 +9,7 @@ import { IconWinClose, IconWinMax, IconWinMin, IconWinRestore } from "./Icons";
  * native caption button and is not available here; Win+Z and edge snapping still work.
  */
 export function WindowControls() {
+  const { t } = useT();
   const [max, setMax] = useState(false);
   useEffect(() => {
     let off: (() => void) | undefined;
@@ -24,11 +26,11 @@ export function WindowControls() {
     try { f(getCurrentWindow()).catch(() => {}); } catch { /* preview */ }
   };
   return (
-    <div className="win-controls" role="group" aria-label="Fenster">
-      <button className="win-btn" title="Minimieren" aria-label="Minimieren" onClick={run(w => w.minimize())}><IconWinMin /></button>
-      <button className="win-btn" title={max ? "Verkleinern" : "Maximieren"} aria-label={max ? "Verkleinern" : "Maximieren"}
+    <div className="win-controls" role="group" aria-label={t("win.label")}>
+      <button className="win-btn" title={t("win.min")} aria-label={t("win.min")} onClick={run(w => w.minimize())}><IconWinMin /></button>
+      <button className="win-btn" title={max ? t("win.restore") : t("win.max")} aria-label={max ? t("win.restore") : t("win.max")}
         onClick={run(w => w.toggleMaximize())}>{max ? <IconWinRestore /> : <IconWinMax />}</button>
-      <button className="win-btn close" title="Schließen" aria-label="Schließen" onClick={run(w => w.close())}><IconWinClose /></button>
+      <button className="win-btn close" title={t("c.close")} aria-label={t("c.close")} onClick={run(w => w.close())}><IconWinClose /></button>
     </div>
   );
 }

@@ -109,3 +109,19 @@ the `files` hashes (LF line endings, as stored in the repository).
 - A tab that is opened directly on Twitch may load the first page before the script is registered;
   a reload fixes this.
 - VODs and clips are not handled.
+
+## UI pages
+
+- `jtech://market` (`src/pages/MarketPage.tsx`): hero header, card grid from `market_fetch` merged with
+  `ext_list` (bundled extensions missing from the index are listed too; offline the list is built from
+  `ext_list` alone and a notice is shown). Detail view with permissions in plain language, match hosts,
+  license, version info and, for `jtech.twitch-adblock`, the known limits. Install = `ext_toggle(id, true)`,
+  uninstall = `ext_toggle(id, false)`. The page states that updates arrive with browser releases.
+- `jtech://extensions` (`src/pages/ExtensionsPage.tsx`): enabled extensions with on/off switch, per-site
+  pause (`ext_site_toggle`) for an open web tab (picker when several sites are open), paused-site chips,
+  per-extension and total `blocked` counters (refreshed every 5 s).
+- Both are singleton internal pages (command palette, toolbar menu, sidebar library). Wrappers in
+  `src/lib/extensions.ts`; every call passes the current UI language as `lang`.
+- Icons: `iconSvg` (SVG text) is rendered via an `<img>` `data:` URL (`src/components/ExtIcon.tsx`), so
+  scripts in the SVG never run in the UI webview. Non-SVG icons, missing icons and market entries that are
+  not bundled yet (the index carries no icon) fall back to a puzzle tile.

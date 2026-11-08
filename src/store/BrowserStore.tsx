@@ -1,12 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { call, type DownloadInfo, type RustTab, type TabEvent } from "../lib/ipc";
-import { INTERNAL_TITLES, hostOf, internalUrl, isWebUrl, normalizeBangs, parseInternal, resolveInput, type InternalPage } from "../lib/urls";
+import { internalTitle, hostOf, internalUrl, isWebUrl, normalizeBangs, parseInternal, resolveInput, type InternalPage } from "../lib/urls";
 import { COMMAND_BY_ID, bindingMap, effectiveKeys, normalizeShortcuts } from "../lib/commands";
 import { formatCombo, validCombo } from "../lib/keys";
 import { normalizeEffects, type EffectsSettings } from "../lib/fx/effects";
 import { applyTheme, normalizeTheme, type ThemeSpec } from "../lib/theme";
 import { load, save } from "./storage";
+import { I18nProvider, localizeBackend, normalizeLangSetting, setLang, systemLang, t as tr, type Lang } from "../i18n";
 import { DEFAULT_SETTINGS, GROUP_COLORS, clampSidebarWidth, type Bookmark, type DownloadItem, type HistoryEntry, type NavError, type PopoverId, type Settings, type TabGroup, type UiTab } from "./types";
 
 /** Runde 3: Zoomstufen wie in Chromium. */
@@ -26,7 +27,7 @@ function normalizeGroups(raw: unknown): TabGroup[] {
   if (!Array.isArray(raw)) return [];
   return raw.filter(g => g && typeof g === "object" && typeof g.id === "string").slice(0, 50).map(g => ({
     id: String(g.id).slice(0, 40),
-    name: typeof g.name === "string" ? g.name.slice(0, 30) : "Gruppe",
+    name: typeof g.name === "string" ? g.name.slice(0, 30) : tr("st.group"),
     color: GROUP_COLORS.includes(g.color) ? g.color : GROUP_COLORS[0],
     collapsed: !!g.collapsed,
   }));
@@ -133,7 +134,7 @@ export interface Store {
 const Ctx = createContext<Store | null>(null);
 export const useBrowser = () => {
   const s = useContext(Ctx);
-  if (!s) throw new Error("BrowserProvider fehlt");
+  if (!s) throw new Error("BrowserProvider missing");
   return s;
 };
 
@@ -152,8 +153,17 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
       autoGroupByDomain: typeof s.autoGroupByDomain === "boolean" ? s.autoGroupByDomain : true,
       autoUpdateCheck: typeof s.autoUpdateCheck === "boolean" ? s.autoUpdateCheck : true,
       updateIntervalHours: [0, 6, 12, 24, 72].includes(s.updateIntervalHours) ? s.updateIntervalHours : 24,
-      sidebarWidth: clampSidebarWidth(s.sidebarWidth) };
+      sidebarWidth: clampSidebarWidth(s.sidebarWidth), language: normalizeLangSetting(s.language) };
   });
+  // ---- i18n: language from settings ("system" follows navigator.language, also when it changes) ----
+  const [sysLang, setSysLang] = useState<Lang>(systemLang);
+  useEffect(() => {
+    const on = () => setSysLang(systemLang());
+    window.addEventListener("languagechange", on);
+    return () => window.removeEventListener("languagechange", on);
+  }, []);
+  const lang: Lang = settings.language === "system" ? sysLang : settings.language;
+  setLang(lang);
   const [settingsSection, setSettingsSection] = useState("general");
   /** Runde 5: interne Seiten, deren Tab gerade angelegt wird (verhindert Doppel-Tabs bei Doppelklick) */
   const pendingPages = useRef(new Set<InternalPage>());
@@ -198,7 +208,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
 
   const upsertDownload = useCallback((d: DownloadInfo) => {
     const key = `${dlStamp.current}-${d.id}`;
-    if (!knownDl.current.has(key)) { knownDl.current.add(key); if (d.state === "progressing") setStatus(`Download gestartet: ${d.fileName}`); }
+    if (!knownDl.current.has(key)) { knownDl.current.add(key); if (d.state === "progressing") setStatus(tr("st.dlStarted", { name: d.fileName })); }
     setDownloads(list => {
       const item: DownloadItem = { ...d, key, live: true };
       const i = list.findIndex(x => x.key === key);
@@ -228,7 +238,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     return {
       id: t.id,
       url: t.url,
-      title: page ? INTERNAL_TITLES[page] : (t.title && t.title !== t.url ? t.title : t.url),
+      title: page ? internalTitle(page) : (t.title && t.title !== t.url ? t.title : t.url),
       active: t.active,
       blocked: t.blocked ?? 0,
       pinned: pinned.includes(t.id),
@@ -242,7 +252,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
       zoom: tabZoom[t.id] ?? 1,
       groupId: tabGroup[t.id] ?? null,
     };
-  }), [rustTabs, internal, pinned, loading, navState, tabZoom, tabGroup]);
+  }), [rustTabs, internal, pinned, loading, navState, tabZoom, tabGroup, lang]); // eslint-disable-line react-hooks/exhaustive-deps
   const uiTabsRef = useRef<UiTab[]>([]);
   uiTabsRef.current = tabs;
   const activeTab = tabs.find(t => t.active) ?? null;
@@ -264,7 +274,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     const unDl = listen<DownloadInfo>("download-event", ({ payload }) => upsertDownload(payload));
     call<DownloadInfo[]>("list_downloads").then(list => list?.forEach(upsertDownload));
     const unEv = listen<TabEvent>("tab-event", ({ payload: ev }) => {
-      if (ev.kind === "error") { setStatus(ev.detail ?? "Fehler"); return; }
+      if (ev.kind === "error") { setStatus(localizeBackend(ev.detail) || tr("c.error")); return; }
       const id = ev.tabId;
       const patchUrl = (url?: string | null) => {
         if (!url) return;
@@ -301,7 +311,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
           if (ev.isSuccess === false) {
             const benign = !!ev.benign || ev.webErrorStatus === 14 || stoppedByUser.current[id];
             if (!benign)
-              setNavError({ tabId: id, url: ev.url ?? "", message: `${ev.errorName ?? "Fehler"} (WebErrorStatus ${ev.webErrorStatus ?? "?"})` });
+              setNavError({ tabId: id, url: ev.url ?? "", message: tr("st.navError", { name: ev.errorName ?? tr("c.error"), status: String(ev.webErrorStatus ?? "?") }) });
           } else if (ev.url && isWebUrl(ev.url)) {
             const t = tabsRef.current.find(x => x.id === id);
             const entry: HistoryEntry = { id: uid(), url: ev.url, title: t && t.title !== t.url ? t.title : ev.url, visitedAt: Date.now() };
@@ -328,13 +338,13 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
         }
         case "process-failed":
           endLoading();
-          setNavError({ tabId: id, url: ev.url ?? "", message: `WebView2-Prozess abgestürzt (${ev.detail ?? ""})` });
+          setNavError({ tabId: id, url: ev.url ?? "", message: tr("st.crashed", { detail: ev.detail ?? "" }) });
           break;
         case "history-changed":
           setNavState(n => ({ ...n, [id]: { back: !!ev.canGoBack, fwd: !!ev.canGoForward } }));
           break;
         case "popup-blocked":
-          setStatus(`Popup blockiert: ${ev.url ?? ""}`);
+          setStatus(tr("st.popupBlocked", { url: ev.url ?? "" }));
           break;
         case "shortcut":
           if (ev.key) shortcutRef.current(ev.key);
@@ -556,7 +566,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     if (Math.abs(want - cur) > 0.001) call("set_tab_zoom", { id: activeId, factor: want }, m => console.warn(m));
   }, [activeId, activeHost, zoomBySite]);
   const zoomStep = useCallback((dir: 1 | -1 | 0) => {
-    if (!activeId || !activeHost) { setStatus("Zoom ist nur auf Webseiten verfügbar"); return; }
+    if (!activeId || !activeHost) { setStatus(tr("st.zoomWebOnly")); return; }
     const cur = tabZoomRef.current[activeId] ?? zoomBySite[activeHost] ?? 1;
     const factor = dir === 0 ? 1 : nextZoom(cur, dir);
     setTabZoom(m => ({ ...m, [activeId]: factor }));
@@ -568,7 +578,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   // ---- Runde 3: Suchen / Drucken ----
   const isWebActive = !!activeTab && !activeTab.internal && !activeTab.sleeping;
   const openFind = useCallback(() => {
-    if (!isWebActive) { setStatus("Suchen ist nur auf Webseiten möglich"); return; }
+    if (!isWebActive) { setStatus(tr("st.findWebOnly")); return; }
     setFind(f => ({ ...f, open: true, tick: f.tick + 1 }));
   }, [isWebActive]);
   const findRun = useCallback((query: string, backwards = false) => {
@@ -584,7 +594,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   findOpenRef.current = find.open;
   useEffect(() => { if (findOpenRef.current) closeFind(); }, [activeId, closeFind]);
   const print = useCallback(() => {
-    if (!isWebActive) { setStatus("Drucken ist nur für Webseiten verfügbar"); return; }
+    if (!isWebActive) { setStatus(tr("st.printWebOnly")); return; }
     call("print_active", undefined, onError);
   }, [isWebActive, onError]);
 
@@ -601,7 +611,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   const sleepInactiveTabs = useCallback(() => {
     const list = uiTabsRef.current.filter(canSleep);
     list.forEach(t => call("sleep_tab", { id: t.id }, onError));
-    setStatus(list.length ? `${list.length} Tab(s) schlafen gelegt` : "Keine Tabs zum Schlafenlegen");
+    setStatus(list.length ? tr("st.slept", { count: list.length }) : tr("st.nothingToSleep"));
   }, [onError]);
   const sleepMinutes = settings.tabSleepMinutes;
   useEffect(() => {
@@ -627,7 +637,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   // ---- Runde 3: Befehlspalette / Gruppen ----
   const openPalette = useCallback((mode: "all" | "commands" = "all") => { setPaletteMode(mode); setPopover("palette"); }, []);
   const createGroup = useCallback((tabId: string) => {
-    const g: TabGroup = { id: uid(), name: `Gruppe ${groups.length + 1}`, color: GROUP_COLORS[groups.length % GROUP_COLORS.length], collapsed: false };
+    const g: TabGroup = { id: uid(), name: tr("st.groupN", { n: groups.length + 1 }), color: GROUP_COLORS[groups.length % GROUP_COLORS.length], collapsed: false };
     setGroups(gs => [...gs, g]);
     setTabGroupMap(m => ({ ...m, [tabId]: g.id }));
   }, [groups.length]);
@@ -680,6 +690,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     shortcuts: p.shortcuts ? normalizeShortcuts(p.shortcuts) : s.shortcuts,
     effects: p.effects ? normalizeEffects(p.effects) : s.effects,
     sidebarWidth: clampSidebarWidth(p.sidebarWidth ?? s.sidebarWidth),
+    language: normalizeLangSetting(p.language ?? s.language),
   })), []);
   const updateEffects = useCallback((p: Partial<EffectsSettings>) => setSettings(s => ({ ...s, effects: normalizeEffects({ ...s.effects, ...p }) })), []);
 
@@ -789,5 +800,5 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     settingsSection, setSettingsSection, updateEffects, runCommand, bindings, keysFor, keyHint, setShortcut,
   };
   storeRef.current = store;
-  return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
+  return <I18nProvider lang={lang}><Ctx.Provider value={store}>{children}</Ctx.Provider></I18nProvider>;
 }

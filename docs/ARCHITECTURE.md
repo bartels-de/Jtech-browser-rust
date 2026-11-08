@@ -109,3 +109,19 @@ WebView2 cookie manager and `ClearBrowsingData`.
 | `src/components/` | Sidebar, toolbar, popovers, bars, editors |
 | `src/pages/` | Internal `jtech://` pages |
 | `src/lib/` | IPC wrappers, URL handling, commands and shortcuts, visual effects, updater |
+
+## Languages (i18n)
+
+- `src/i18n/`: `de.ts` (reference), `en.ts` (typed as `Dict`, so a missing or extra key is a TypeScript
+  error), `index.tsx` with `t(key, params)` (`{name}` interpolation, plural forms `"one|other"` chosen by
+  `params.count` via `Intl.PluralRules`), Intl formatters (`fmtNum`, `fmtPct`, `fmtDate`, `fmtTime`,
+  `fmtDateTime`, `fmtBytes`) and `useT()`.
+- Setting `language` (`"system" | "de" | "en"`, Settings › General) is stored in the settings KV entry;
+  `system` follows `navigator.language` (and `languagechange`). The store sets the language during render
+  and wraps the tree in `I18nProvider`, so a change applies instantly; `<html lang>` follows.
+- Non-React modules (command list, effects, updater, store messages) call `t()` directly; command titles,
+  background/trail/quality/cursor names are getters, so they follow the current language.
+- Rust stays German for logs and technical errors. Known user-facing backend messages are mapped in
+  `localizeBackend()` (download/open errors, filter engine status, tab errors); filter list notes are mapped
+  by list id (`filterListNote`). Unknown messages are shown unchanged.
+- New language: add `xx.ts` typed as `Dict`, register it in `DICTS`, `LANGS` and `LOCALES`.

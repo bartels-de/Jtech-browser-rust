@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { localizeBackend, t, type TKey } from "../i18n";
 
 /** Tab-Zustand, wie ihn Rust (list_tabs / tabs-changed) liefert. */
 export interface RustTab { id: string; title: string; url: string; active: boolean; blocked?: number; playingAudio?: boolean; muted?: boolean; sleeping?: boolean; }
@@ -37,9 +38,11 @@ export async function call<T>(cmd: string, args?: Record<string, unknown>, onErr
   try {
     return await invoke<T>(cmd, args);
   } catch (e) {
-    const msg = `${cmd}: ${String(e)}`;
-    console.error(msg);
-    onError?.(msg);
+    console.error(`${cmd}: ${String(e)}`);
+    // Known backend messages are shown localized; technical ones keep the command name as context.
+    const raw = String(e);
+    const loc = localizeBackend(raw);
+    onError?.(loc !== raw ? loc : `${cmd}: ${raw}`);
     return undefined;
   }
 }
@@ -62,12 +65,9 @@ export interface PermissionRequest { id: number; tabId: string; origin: string; 
 export interface PermissionEntry { origin: string; kind: string; state: "allow" | "deny"; updated: number }
 export interface PrivacyOptions { clearCookiesOnExit: boolean; clearCacheOnExit: boolean }
 
-export const PERMISSION_LABELS: Record<string, string> = {
-  microphone: "Mikrofon", camera: "Kamera", geolocation: "Standort", notifications: "Benachrichtigungen",
-  "other-sensors": "Bewegungssensoren", "clipboard-read": "Zwischenablage lesen", "multiple-downloads": "Mehrere Downloads",
-  "file-read-write": "Dateien lesen/schreiben", autoplay: "Automatische Wiedergabe", "local-fonts": "Lokale Schriften",
-  "midi-sysex": "MIDI-Geräte", "window-management": "Fensterverwaltung", unknown: "Unbekannte Berechtigung",
-};
+const PERMISSION_KINDS = new Set(["microphone", "camera", "geolocation", "notifications", "other-sensors", "clipboard-read", "multiple-downloads", "file-read-write", "autoplay", "local-fonts", "midi-sysex", "window-management", "unknown"]);
+/** Localized name of a website permission kind (unknown kinds are shown raw). */
+export const permissionLabel = (kind: string): string => (PERMISSION_KINDS.has(kind) ? t(`perm.${kind}` as TKey) : kind);
 
 /** Host einer URL ohne "www." (fuer Allowlist/Cookies); null bei internen Seiten. */
 export function siteOf(url: string | undefined | null): string | null {
@@ -95,3 +95,11 @@ export interface MarketEntry {
   enabled: boolean;
 }
 export interface MarketResult { fetchedAt: number; indexUrl: string; hotfixInstallEnabled: boolean; entries: MarketEntry[]; }
+
+// ---- i18n helpers for backend payloads ----
+const FILTER_STATES = new Set(["idle", "loading", "building", "ready", "error", "empty"]);
+/** Localized label of FilterStatus.state. */
+export const filterStateLabel = (s: string): string => (FILTER_STATES.has(s) ? t(`fs.${s}` as TKey) : s);
+const LIST_NOTES = new Set(["easylist", "easyprivacy", "ublock-filters", "ublock-privacy", "peter-lowe", "fanboy-annoyance"]);
+/** Localized note of a built-in filter list (Rust sends German notes); unknown ids keep the backend text. */
+export const filterListNote = (id: string, fallback: string): string => (LIST_NOTES.has(id) ? t(`fs.note.${id}` as TKey) : fallback);

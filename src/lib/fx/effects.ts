@@ -1,32 +1,24 @@
+import { t, type TKey } from "../../i18n";
 /**
  * Runde 5: Design-Studio-Effekte (Port der Ideen aus Standardprojekt: backgrounds.js, cursor-fx.js,
  * CURSOR_PRESETS in app.js). Wirken auf die Browser-Oberflaeche (UI-Webview). Webseiten liegen als
  * eigene native WebView2 darueber – dort nur, wenn "Auch auf Webseiten" aktiv ist (per Script-Injektion).
  */
 export type BgId = "none" | "constellation" | "synthwave" | "flowfield" | "hyperdrive" | "hexgrid" | "nebula" | "ribbons" | "embers";
-export const BACKGROUNDS: { id: BgId; name: string; description: string }[] = [
-  { id: "none", name: "Ruhig", description: "Weicher Farbverlauf ohne Bewegung" },
-  { id: "constellation", name: "Netzwerk", description: "Treibende Punkte, die sich verbinden" },
-  { id: "synthwave", name: "Synthwave", description: "Retro-Horizont mit Sonne und Gitter" },
-  { id: "flowfield", name: "Strömung", description: "Partikel folgen einem Strömungsfeld" },
-  { id: "hyperdrive", name: "Hyperdrive", description: "Lichtstreifen im Warp-Flug" },
-  { id: "hexgrid", name: "Hex-Netz", description: "Wabengitter mit Energie-Impulsen" },
-  { id: "nebula", name: "Nebula", description: "Weiche, leuchtende Farbwolken" },
-  { id: "ribbons", name: "Wellenbänder", description: "Fließende Lichtbänder" },
-  { id: "embers", name: "Glut", description: "Aufsteigende Funken" },
-];
+/** name/description are getters in the current UI language (keys fx.bg.<id>, fx.bg.<id>.d) */
+const BG_IDS: BgId[] = ["none", "constellation", "synthwave", "flowfield", "hyperdrive", "hexgrid", "nebula", "ribbons", "embers"];
+export const BACKGROUNDS: { id: BgId; readonly name: string; readonly description: string }[] =
+  BG_IDS.map(id => ({ id, get name() { return t(`fx.bg.${id}` as TKey); }, get description() { return t(`fx.bg.${id}.d` as TKey); } }));
 
 export type TrailId = "none" | "trail" | "sparks" | "comet" | "ripple" | "laser" | "bubbles";
-export const TRAILS: { id: TrailId; name: string }[] = [
-  { id: "none", name: "Aus" }, { id: "trail", name: "Spur" }, { id: "comet", name: "Komet" }, { id: "sparks", name: "Funken" },
-  { id: "ripple", name: "Wellen" }, { id: "laser", name: "Laser" }, { id: "bubbles", name: "Blasen" },
-];
+const TRAIL_IDS: TrailId[] = ["none", "trail", "comet", "sparks", "ripple", "laser", "bubbles"];
+export const TRAILS: { id: TrailId; readonly name: string }[] = TRAIL_IDS.map(id => ({ id, get name() { return t(`fx.tr.${id}` as TKey); } }));
 
 export type Quality = "low" | "medium" | "high";
-export const QUALITY: Record<Quality, { name: string; fps: number; scale: number }> = {
-  low: { name: "Sparsam (20 fps)", fps: 20, scale: 0.5 },
-  medium: { name: "Ausgewogen (30 fps)", fps: 30, scale: 0.75 },
-  high: { name: "Hoch (60 fps)", fps: 60, scale: 1 },
+export const QUALITY: Record<Quality, { readonly name: string; fps: number; scale: number }> = {
+  low: { get name() { return t("fx.q.low"); }, fps: 20, scale: 0.5 },
+  medium: { get name() { return t("fx.q.medium"); }, fps: 30, scale: 0.75 },
+  high: { get name() { return t("fx.q.high"); }, fps: 60, scale: 1 },
 };
 
 export interface EffectsSettings {
@@ -59,23 +51,24 @@ export const DEFAULT_EFFECTS: EffectsSettings = {
   inPages: false,
 };
 
-/** SVG-Cursor (aus Standardprojekt CURSOR_PRESETS, skaliert ueber viewBox). [Name, Basisgroesse, Hotspot x, y, SVG-Inhalt mit {c} = Farbe] */
+/** SVG-Cursor (aus Standardprojekt CURSOR_PRESETS, skaliert ueber viewBox). [(unused name), base size, Hotspot x, y, SVG-Inhalt mit {c} = Farbe] */
 const P: Record<string, [string, number, number, number, string]> = {
-  dot: ["Punkt", 24, 12, 12, "<circle cx='12' cy='12' r='5' fill='{c}' stroke='white' stroke-width='2'/>"],
-  ring: ["Ring", 32, 16, 16, "<circle cx='16' cy='16' r='10' fill='none' stroke='{c}' stroke-width='2'/>"],
-  cross: ["Fadenkreuz", 24, 12, 12, "<path d='M12 2v20M2 12h20' stroke='{c}' stroke-width='2' stroke-linecap='round'/>"],
-  "arrow-glow": ["Pfeil (Glow)", 24, 4, 2, "<path d='M4 2l16 10-8 2 4 8-3 1-4-8-5 5z' fill='{c}' stroke='white' stroke-width='1'/>"],
-  target: ["Ziel", 32, 16, 16, "<circle cx='16' cy='16' r='12' fill='none' stroke='{c}' stroke-width='2'/><circle cx='16' cy='16' r='3' fill='{c}'/>"],
-  pointer: ["Zeiger", 24, 6, 2, "<path d='M6 2l12 8-5 1 4 9-3 1-4-9-4 4z' fill='{c}' stroke='white' stroke-width='1.2'/>"],
-  diamond: ["Diamant", 24, 12, 12, "<path d='M12 2l10 10-10 10L2 12z' fill='none' stroke='{c}' stroke-width='2'/><circle cx='12' cy='12' r='2' fill='{c}'/>"],
-  hex: ["Hexagon", 28, 14, 14, "<path d='M14 2l11.3 6.5v13L14 28 2.7 21.5v-13z' fill='none' stroke='{c}' stroke-width='2'/>"],
-  "circle-ring": ["Kreis-Ring", 32, 16, 16, "<circle cx='16' cy='16' r='12' fill='none' stroke='white' stroke-width='2'/><circle cx='16' cy='16' r='6' fill='{c}'/>"],
-  "crosshair-dot": ["Crosshair-Punkt", 24, 12, 12, "<path d='M12 4v6M12 14v6M4 12h6M14 12h6' stroke='{c}' stroke-width='2'/><circle cx='12' cy='12' r='2' fill='white'/>"],
-  beam: ["Strahl", 28, 14, 14, "<rect x='12' y='2' width='4' height='24' rx='2' fill='{c}'/>"],
-  scope: ["Zielfernrohr", 32, 16, 16, "<circle cx='16' cy='16' r='14' fill='none' stroke='white' stroke-width='1.5'/><path d='M16 2v6M16 24v6M2 16h6M24 16h6' stroke='{c}' stroke-width='1.5'/><circle cx='16' cy='16' r='2' fill='{c}'/>"],
-  play: ["Play", 24, 6, 4, "<path d='M6 4l14 8-14 8z' fill='{c}' stroke='white' stroke-width='1'/>"],
+  dot: ["", 24, 12, 12, "<circle cx='12' cy='12' r='5' fill='{c}' stroke='white' stroke-width='2'/>"],
+  ring: ["", 32, 16, 16, "<circle cx='16' cy='16' r='10' fill='none' stroke='{c}' stroke-width='2'/>"],
+  cross: ["", 24, 12, 12, "<path d='M12 2v20M2 12h20' stroke='{c}' stroke-width='2' stroke-linecap='round'/>"],
+  "arrow-glow": ["", 24, 4, 2, "<path d='M4 2l16 10-8 2 4 8-3 1-4-8-5 5z' fill='{c}' stroke='white' stroke-width='1'/>"],
+  target: ["", 32, 16, 16, "<circle cx='16' cy='16' r='12' fill='none' stroke='{c}' stroke-width='2'/><circle cx='16' cy='16' r='3' fill='{c}'/>"],
+  pointer: ["", 24, 6, 2, "<path d='M6 2l12 8-5 1 4 9-3 1-4-9-4 4z' fill='{c}' stroke='white' stroke-width='1.2'/>"],
+  diamond: ["", 24, 12, 12, "<path d='M12 2l10 10-10 10L2 12z' fill='none' stroke='{c}' stroke-width='2'/><circle cx='12' cy='12' r='2' fill='{c}'/>"],
+  hex: ["", 28, 14, 14, "<path d='M14 2l11.3 6.5v13L14 28 2.7 21.5v-13z' fill='none' stroke='{c}' stroke-width='2'/>"],
+  "circle-ring": ["", 32, 16, 16, "<circle cx='16' cy='16' r='12' fill='none' stroke='white' stroke-width='2'/><circle cx='16' cy='16' r='6' fill='{c}'/>"],
+  "crosshair-dot": ["", 24, 12, 12, "<path d='M12 4v6M12 14v6M4 12h6M14 12h6' stroke='{c}' stroke-width='2'/><circle cx='12' cy='12' r='2' fill='white'/>"],
+  beam: ["", 28, 14, 14, "<rect x='12' y='2' width='4' height='24' rx='2' fill='{c}'/>"],
+  scope: ["", 32, 16, 16, "<circle cx='16' cy='16' r='14' fill='none' stroke='white' stroke-width='1.5'/><path d='M16 2v6M16 24v6M2 16h6M24 16h6' stroke='{c}' stroke-width='1.5'/><circle cx='16' cy='16' r='2' fill='{c}'/>"],
+  play: ["", 24, 6, 4, "<path d='M6 4l14 8-14 8z' fill='{c}' stroke='white' stroke-width='1'/>"],
 };
-export const CURSOR_PRESETS: { id: string; name: string }[] = [{ id: "", name: "System" }, ...Object.entries(P).map(([id, v]) => ({ id, name: v[0] })), { id: "image", name: "Eigenes Bild" }];
+/** Preset names (P[..][0]) are German reference names; the displayed name is localized. */
+export const CURSOR_PRESETS: { id: string; readonly name: string }[] = ["", ...Object.keys(P), "image"].map(id => ({ id, get name() { return t(`fx.cur.${id || "system"}` as TKey); } }));
 
 const HEX = /^#[0-9a-f]{6}$/i;
 const hex = (v: unknown, f: string) => (typeof v === "string" && HEX.test(v.trim()) ? v.trim().toLowerCase() : f);
@@ -142,8 +135,8 @@ export const PRESET_EFFECTS: Record<string, Partial<EffectsSettings>> = {
 
 /** Bild-Datei -> quadratisches PNG in Cursorgroesse (data:-URL). */
 export async function imageToCursor(file: File, size: number): Promise<string> {
-  if (file.size > 5_000_000) throw new Error("Bild zu groß (max. 5 MB)");
-  if (!/^image\/(png|jpeg|gif|webp|bmp|svg\+xml)$/.test(file.type)) throw new Error("Nur PNG, JPG, GIF, WebP, BMP oder SVG");
+  if (file.size > 5_000_000) throw new Error(t("fx.err.tooBig"));
+  if (!/^image\/(png|jpeg|gif|webp|bmp|svg\+xml)$/.test(file.type)) throw new Error(t("fx.err.type"));
   const url = URL.createObjectURL(file);
   try { return await drawCursor(url, size); } finally { URL.revokeObjectURL(url); }
 }
@@ -152,16 +145,16 @@ export const rescaleCursor = (dataUrl: string, size: number) => drawCursor(dataU
 
 async function drawCursor(url: string, size: number): Promise<string> {
   {
-    const img = await new Promise<HTMLImageElement>((ok, bad) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => bad(new Error("Bild nicht lesbar")); i.src = url; });
+    const img = await new Promise<HTMLImageElement>((ok, bad) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => bad(new Error(t("fx.err.unreadable"))); i.src = url; });
     const c = document.createElement("canvas");
     c.width = size; c.height = size;
     const ctx = c.getContext("2d");
-    if (!ctx) throw new Error("Canvas nicht verfügbar");
+    if (!ctx) throw new Error(t("fx.err.canvas"));
     const k = Math.min(size / (img.naturalWidth || size), size / (img.naturalHeight || size));
     const w = (img.naturalWidth || size) * k, h = (img.naturalHeight || size) * k;
     ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
     const out = c.toDataURL("image/png");
-    if (out.length > CURSOR_IMAGE_MAX) throw new Error("Bild zu groß nach dem Verkleinern");
+    if (out.length > CURSOR_IMAGE_MAX) throw new Error(t("fx.err.tooBigAfter"));
     return out;
   }
 }

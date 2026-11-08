@@ -2,7 +2,8 @@
  * Runde 3: Vorschlaege fuer Adressleiste und Befehlspalette (Port-Idee aus Standardprojekt app.js).
  * Reine Funktionen, Daten kommen aus dem Store (Verlauf, Lesezeichen, Tabs, Bangs).
  */
-import { BUILTIN_BANGS, INTERNAL_PAGES, INTERNAL_TITLES, hostOf, internalUrl, type Bang } from "./urls";
+import { t as tr } from "../i18n";
+import { BUILTIN_BANGS, INTERNAL_PAGES, internalTitle, hostOf, internalUrl, type Bang } from "./urls";
 import type { Bookmark, HistoryEntry, UiTab } from "../store/types";
 
 export type SuggestKind = "go" | "bang" | "page" | "bookmark" | "history" | "tab" | "command";
@@ -63,11 +64,11 @@ export function addressSuggestions(text: string, d: { history: HistoryEntry[]; b
   out.unshift({ key: "go", kind: "go", title: q, value: q });
   for (const p of INTERNAL_PAGES) {
     if (out.length >= 3) break;
-    if (q.length >= 2 && (internalUrl(p).startsWith(norm(q)) || norm(INTERNAL_TITLES[p]).startsWith(norm(q))))
-      out.push({ key: "page:" + p, kind: "page", title: INTERNAL_TITLES[p], hint: internalUrl(p), value: internalUrl(p) });
+    if (q.length >= 2 && (internalUrl(p).startsWith(norm(q)) || norm(internalTitle(p)).startsWith(norm(q))))
+      out.push({ key: "page:" + p, kind: "page", title: internalTitle(p), hint: internalUrl(p), value: internalUrl(p) });
   }
   for (const t of d.tabs.filter(t => !t.active && !t.internal && matches(q, t.title, t.url)).slice(0, 2))
-    out.push({ key: "tab:" + t.id, kind: "tab", title: t.title, hint: "Zu Tab wechseln", tabId: t.id, value: t.url });
+    out.push({ key: "tab:" + t.id, kind: "tab", title: t.title, hint: tr("sug.switchTab"), tabId: t.id, value: t.url });
   const seen = new Set<string>();
   for (const b of d.bookmarks.filter(b => matches(q, b.title, b.url)).slice(0, 4)) {
     seen.add(b.url);

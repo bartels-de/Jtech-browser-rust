@@ -1,3 +1,5 @@
+import { t, type TKey } from "../i18n";
+
 /**
  * Runde 5: Tastenkombinationen in kanonischer Schreibweise, z. B. "ctrl+shift+t", "alt+left", "f5".
  * Reihenfolge der Modifier: ctrl, alt, shift. Muss zu combo_name()/valid_combo() in src-tauri/src/lib.rs passen.
@@ -61,14 +63,12 @@ export function comboFromEvent(e: KeyboardEvent): string | null {
   return buildCombo({ ctrl: e.ctrlKey || e.metaKey, alt: e.altKey, shift: e.shiftKey, key });
 }
 
-const KEY_LABEL: Record<string, string> = {
-  left: "←", right: "→", up: "↑", down: "↓", comma: ",", period: ".", plus: "+", minus: "−", tab: "Tab",
-  home: "Pos1", end: "Ende", pageup: "Bild↑", pagedown: "Bild↓", insert: "Einfg", delete: "Entf", space: "Leertaste", enter: "Enter", backspace: "Rücktaste",
-};
-/** Anzeige auf Deutsch, z. B. "Strg+Umschalt+T". */
+const KEY_SYMBOL: Record<string, string> = { left: "←", right: "→", up: "↑", down: "↓", comma: ",", period: ".", plus: "+", minus: "−" };
+const KEY_WORD = new Set(["tab", "home", "end", "pageup", "pagedown", "insert", "delete", "space", "enter", "backspace"]);
+/** Display in the current language, e.g. "Strg+Umschalt+T" / "Ctrl+Shift+T". */
 export function formatCombo(s: string): string {
   const c = parseCombo(s);
   if (!c) return s;
-  const key = KEY_LABEL[c.key] ?? c.key.toUpperCase();
-  return [c.ctrl && "Strg", c.alt && "Alt", c.shift && "Umschalt", key].filter(Boolean).join("+");
+  const key = KEY_SYMBOL[c.key] ?? (KEY_WORD.has(c.key) ? t(`key.${c.key}` as TKey) : c.key.toUpperCase());
+  return [c.ctrl && t("key.ctrl"), c.alt && t("key.alt"), c.shift && t("key.shift"), key].filter(Boolean).join("+");
 }

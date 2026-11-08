@@ -1,15 +1,19 @@
 import type { Store } from "../store/BrowserStore";
 import { validCombo } from "./keys";
 import { call } from "./ipc";
+import { t, type TKey } from "../i18n";
 
 /**
  * Runde 5: zentrale Befehlsliste. Wird von Tastenkuerzeln (UI + Rust AcceleratorKeyPressed),
  * der Befehlspalette und dem Kuerzel-Editor in den Einstellungen benutzt.
  */
-export type CommandCategory = "Tabs" | "Navigation" | "Seite" | "Öffnen" | "Ansicht";
+export type CommandCategory = "tabs" | "nav" | "page" | "open" | "view";
+export const COMMAND_CATEGORIES: CommandCategory[] = ["tabs", "nav", "page", "open", "view"];
+export const categoryLabel = (c: CommandCategory) => t(`cat.${c}` as TKey);
 export interface CommandDef {
   id: string;
-  title: string;
+  /** Localized title (getter, follows the current language) */
+  readonly title: string;
   category: CommandCategory;
   /** Standard-Kuerzel (kanonisch, siehe lib/keys.ts) */
   keys: string[];
@@ -24,57 +28,65 @@ const web = (b: Store) => !!b.activeTab && !b.activeTab.internal && !b.activeTab
 const hasTab = (b: Store) => !!b.activeTab;
 const gotoTab = (b: Store, i: number) => { const t = i < 0 ? b.tabs[b.tabs.length - 1] : b.tabs[i]; if (t) b.switchTab(t.id); };
 
-export const COMMANDS: CommandDef[] = [
+type RawCommand = Omit<CommandDef, "title">;
+const RAW: RawCommand[] = [
   // Tabs
-  { id: "tab.new", title: "Neuer Tab", category: "Tabs", keys: ["ctrl+t"], run: b => b.newTab() },
-  { id: "tab.close", title: "Tab schließen", category: "Tabs", keys: ["ctrl+w", "ctrl+f4"], when: hasTab, run: b => b.activeTab && b.closeTab(b.activeTab.id) },
-  { id: "tab.next", title: "Nächster Tab", category: "Tabs", keys: ["ctrl+tab", "ctrl+pagedown"], run: b => b.cycleTab(1) },
-  { id: "tab.prev", title: "Vorheriger Tab", category: "Tabs", keys: ["ctrl+shift+tab", "ctrl+pageup"], run: b => b.cycleTab(-1) },
-  { id: "tab.duplicate", title: "Tab duplizieren", category: "Tabs", keys: [], when: b => !!b.activeTab && (!b.activeTab.internal || b.activeTab.internal === "newtab"), run: b => { const t = b.activeTab; if (t) b.newTab(t.internal ? undefined : t.url); } },
-  { id: "tab.pin", title: "Tab anheften / lösen", category: "Tabs", keys: [], when: hasTab, run: b => b.activeTab && b.togglePin(b.activeTab.id) },
-  { id: "tab.mute", title: "Tab stumm / Ton an", category: "Tabs", keys: [], when: web, run: b => b.activeTab && b.setTabMuted(b.activeTab.id, !b.activeTab.muted) },
-  { id: "tab.group", title: "Tab in neue Gruppe", category: "Tabs", keys: [], when: b => !!b.activeTab && !b.activeTab.groupId, run: b => b.activeTab && b.createGroup(b.activeTab.id) },
-  { id: "tab.groupByDomain", title: "Tabs nach Domain gruppieren", category: "Tabs", keys: [], run: b => b.groupTabsByDomain() },
-  { id: "tab.closeOthers", title: "Andere Tabs schließen", category: "Tabs", keys: [], when: hasTab, run: b => b.activeTab && b.closeOtherTabs(b.activeTab.id) },
-  { id: "tab.sleepInactive", title: "Inaktive Tabs schlafen legen", category: "Tabs", keys: [], run: b => b.sleepInactiveTabs() },
-  ...Array.from({ length: 8 }, (_, i): CommandDef => ({ id: `tab.goto${i + 1}`, title: `Zu Tab ${i + 1}`, category: "Tabs", keys: [`ctrl+${i + 1}`], hidden: true, run: b => gotoTab(b, i) })),
-  { id: "tab.last", title: "Zum letzten Tab", category: "Tabs", keys: ["ctrl+9"], hidden: true, run: b => gotoTab(b, -1) },
+  { id: "tab.new", category: "tabs", keys: ["ctrl+t"], run: b => b.newTab() },
+  { id: "tab.close", category: "tabs", keys: ["ctrl+w", "ctrl+f4"], when: hasTab, run: b => b.activeTab && b.closeTab(b.activeTab.id) },
+  { id: "tab.next", category: "tabs", keys: ["ctrl+tab", "ctrl+pagedown"], run: b => b.cycleTab(1) },
+  { id: "tab.prev", category: "tabs", keys: ["ctrl+shift+tab", "ctrl+pageup"], run: b => b.cycleTab(-1) },
+  { id: "tab.duplicate", category: "tabs", keys: [], when: b => !!b.activeTab && (!b.activeTab.internal || b.activeTab.internal === "newtab"), run: b => { const t = b.activeTab; if (t) b.newTab(t.internal ? undefined : t.url); } },
+  { id: "tab.pin", category: "tabs", keys: [], when: hasTab, run: b => b.activeTab && b.togglePin(b.activeTab.id) },
+  { id: "tab.mute", category: "tabs", keys: [], when: web, run: b => b.activeTab && b.setTabMuted(b.activeTab.id, !b.activeTab.muted) },
+  { id: "tab.group", category: "tabs", keys: [], when: b => !!b.activeTab && !b.activeTab.groupId, run: b => b.activeTab && b.createGroup(b.activeTab.id) },
+  { id: "tab.groupByDomain", category: "tabs", keys: [], run: b => b.groupTabsByDomain() },
+  { id: "tab.closeOthers", category: "tabs", keys: [], when: hasTab, run: b => b.activeTab && b.closeOtherTabs(b.activeTab.id) },
+  { id: "tab.sleepInactive", category: "tabs", keys: [], run: b => b.sleepInactiveTabs() },
+  ...Array.from({ length: 8 }, (_, i): RawCommand => ({ id: `tab.goto${i + 1}`, category: "tabs", keys: [`ctrl+${i + 1}`], hidden: true, run: b => gotoTab(b, i) })),
+  { id: "tab.last", category: "tabs", keys: ["ctrl+9"], hidden: true, run: b => gotoTab(b, -1) },
   // Navigation
-  { id: "nav.back", title: "Zurück", category: "Navigation", keys: ["alt+left"], run: b => b.back() },
-  { id: "nav.forward", title: "Vorwärts", category: "Navigation", keys: ["alt+right"], run: b => b.forward() },
-  { id: "nav.reload", title: "Neu laden", category: "Navigation", keys: ["ctrl+r", "f5"], when: web, run: b => b.reload() },
-  { id: "nav.stop", title: "Laden stoppen", category: "Navigation", keys: [], when: web, run: b => b.stop() },
-  { id: "nav.home", title: "Startseite", category: "Navigation", keys: ["alt+home"], run: b => b.home() },
-  { id: "nav.address", title: "Adressleiste fokussieren", category: "Navigation", keys: ["ctrl+l", "alt+d", "f6"], run: b => b.focusAddressBar() },
+  { id: "nav.back", category: "nav", keys: ["alt+left"], run: b => b.back() },
+  { id: "nav.forward", category: "nav", keys: ["alt+right"], run: b => b.forward() },
+  { id: "nav.reload", category: "nav", keys: ["ctrl+r", "f5"], when: web, run: b => b.reload() },
+  { id: "nav.stop", category: "nav", keys: [], when: web, run: b => b.stop() },
+  { id: "nav.home", category: "nav", keys: ["alt+home"], run: b => b.home() },
+  { id: "nav.address", category: "nav", keys: ["ctrl+l", "alt+d", "f6"], run: b => b.focusAddressBar() },
   // Seite
-  { id: "page.bookmark", title: "Lesezeichen hinzufügen", category: "Seite", keys: ["ctrl+d"], when: web, run: b => { const t = b.activeTab; if (t && !t.internal) { b.addBookmark(t.url, t.title); b.setPopover("bookmark"); } } },
-  { id: "page.find", title: "Auf Seite suchen", category: "Seite", keys: ["ctrl+f"], when: web, run: b => b.openFind() },
-  { id: "page.findNext", title: "Weitersuchen", category: "Seite", keys: ["f3"], when: web, run: b => (b.find.query ? b.findRun(b.find.query, false) : b.openFind()) },
-  { id: "page.findPrev", title: "Rückwärts suchen", category: "Seite", keys: ["shift+f3"], when: web, run: b => (b.find.query ? b.findRun(b.find.query, true) : b.openFind()) },
-  { id: "page.print", title: "Drucken", category: "Seite", keys: ["ctrl+p"], when: web, run: b => b.print() },
-{ id: "page.pip", title: "Video in Bild-in-Bild", category: "Seite", keys: [], when: web, run: () => { call("pip_active"); } },
-  { id: "page.zoomIn", title: "Vergrößern", category: "Seite", keys: ["ctrl+plus"], when: web, run: b => b.zoomStep(1) },
-  { id: "page.zoomOut", title: "Verkleinern", category: "Seite", keys: ["ctrl+minus"], when: web, run: b => b.zoomStep(-1) },
-  { id: "page.zoomReset", title: "Zoom zurücksetzen", category: "Seite", keys: ["ctrl+0"], when: web, run: b => b.zoomStep(0) },
+  { id: "page.bookmark", category: "page", keys: ["ctrl+d"], when: web, run: b => { const t = b.activeTab; if (t && !t.internal) { b.addBookmark(t.url, t.title); b.setPopover("bookmark"); } } },
+  { id: "page.find", category: "page", keys: ["ctrl+f"], when: web, run: b => b.openFind() },
+  { id: "page.findNext", category: "page", keys: ["f3"], when: web, run: b => (b.find.query ? b.findRun(b.find.query, false) : b.openFind()) },
+  { id: "page.findPrev", category: "page", keys: ["shift+f3"], when: web, run: b => (b.find.query ? b.findRun(b.find.query, true) : b.openFind()) },
+  { id: "page.print", category: "page", keys: ["ctrl+p"], when: web, run: b => b.print() },
+  { id: "page.pip", category: "page", keys: [], when: web, run: () => { call("pip_active"); } },
+  { id: "page.zoomIn", category: "page", keys: ["ctrl+plus"], when: web, run: b => b.zoomStep(1) },
+  { id: "page.zoomOut", category: "page", keys: ["ctrl+minus"], when: web, run: b => b.zoomStep(-1) },
+  { id: "page.zoomReset", category: "page", keys: ["ctrl+0"], when: web, run: b => b.zoomStep(0) },
   // Oeffnen (immer als eigener Tab, siehe Store.openPage)
-  { id: "open.settings", title: "Einstellungen öffnen", category: "Öffnen", keys: ["ctrl+comma"], run: b => b.openPage("settings") },
-  { id: "open.history", title: "Verlauf öffnen", category: "Öffnen", keys: ["ctrl+h"], run: b => b.openPage("history") },
-  { id: "open.bookmarks", title: "Lesezeichen öffnen", category: "Öffnen", keys: ["ctrl+shift+o"], run: b => b.openPage("bookmarks") },
-  { id: "open.downloads", title: "Downloads öffnen", category: "Öffnen", keys: ["ctrl+j"], run: b => b.openPage("downloads") },
-  { id: "open.privacy", title: "Datenschutz öffnen", category: "Öffnen", keys: [], run: b => b.openPage("privacy") },
-  { id: "open.themes", title: "Design-Studio öffnen", category: "Öffnen", keys: [], run: b => b.openPage("themes") },
-  { id: "open.audio", title: "Audio-Hub öffnen", category: "Öffnen", keys: [], run: b => b.openPage("audio") },
-{ id: "open.performance", title: "Performance öffnen", category: "Öffnen", keys: [], run: b => b.openPage("performance") },
-  { id: "open.shortcuts", title: "Tastenkürzel bearbeiten", category: "Öffnen", keys: [], run: b => b.openPage("settings", { section: "shortcuts" }) },
+  { id: "open.settings", category: "open", keys: ["ctrl+comma"], run: b => b.openPage("settings") },
+  { id: "open.history", category: "open", keys: ["ctrl+h"], run: b => b.openPage("history") },
+  { id: "open.bookmarks", category: "open", keys: ["ctrl+shift+o"], run: b => b.openPage("bookmarks") },
+  { id: "open.downloads", category: "open", keys: ["ctrl+j"], run: b => b.openPage("downloads") },
+  { id: "open.privacy", category: "open", keys: [], run: b => b.openPage("privacy") },
+  { id: "open.themes", category: "open", keys: [], run: b => b.openPage("themes") },
+  { id: "open.audio", category: "open", keys: [], run: b => b.openPage("audio") },
+  { id: "open.performance", category: "open", keys: [], run: b => b.openPage("performance") },
+  { id: "open.market", category: "open", keys: [], run: b => b.openPage("market") },
+  { id: "open.extensions", category: "open", keys: [], run: b => b.openPage("extensions") },
+  { id: "open.shortcuts", category: "open", keys: [], run: b => b.openPage("settings", { section: "shortcuts" }) },
   // Ansicht
-  { id: "ui.palette", title: "Befehlspalette", category: "Ansicht", keys: ["ctrl+k"], run: b => b.openPalette("all") },
-  { id: "ui.commands", title: "Nur Befehle suchen", category: "Ansicht", keys: ["ctrl+shift+p"], run: b => b.openPalette("commands") },
-  { id: "ui.sidebar", title: "Seitenleiste ein-/ausklappen", category: "Ansicht", keys: [], run: b => b.updateSettings({ sidebarExpanded: !b.settings.sidebarExpanded }) },
-  { id: "ui.bookmarksBar", title: "Lesezeichenleiste ein/aus", category: "Ansicht", keys: ["ctrl+shift+b"], run: b => b.updateSettings({ showBookmarksBar: !b.settings.showBookmarksBar }) },
-  { id: "ui.adblock", title: "Werbeblocker ein/aus", category: "Ansicht", keys: [], run: b => b.updateSettings({ adblock: !b.settings.adblock }) },
-  { id: "ui.theme", title: "Hell/Dunkel umschalten", category: "Ansicht", keys: [], run: b => b.updateSettings({ theme: document.documentElement.dataset.theme === "light" ? "dark" : "light" }) },
-  { id: "ui.effects", title: "Animierten Hintergrund ein/aus", category: "Ansicht", keys: [], run: b => b.updateEffects({ bgEnabled: !b.settings.effects.bgEnabled }) },
+  { id: "ui.palette", category: "view", keys: ["ctrl+k"], run: b => b.openPalette("all") },
+  { id: "ui.commands", category: "view", keys: ["ctrl+shift+p"], run: b => b.openPalette("commands") },
+  { id: "ui.sidebar", category: "view", keys: [], run: b => b.updateSettings({ sidebarExpanded: !b.settings.sidebarExpanded }) },
+  { id: "ui.bookmarksBar", category: "view", keys: ["ctrl+shift+b"], run: b => b.updateSettings({ showBookmarksBar: !b.settings.showBookmarksBar }) },
+  { id: "ui.adblock", category: "view", keys: [], run: b => b.updateSettings({ adblock: !b.settings.adblock }) },
+  { id: "ui.theme", category: "view", keys: [], run: b => b.updateSettings({ theme: document.documentElement.dataset.theme === "light" ? "dark" : "light" }) },
+  { id: "ui.effects", category: "view", keys: [], run: b => b.updateEffects({ bgEnabled: !b.settings.effects.bgEnabled }) },
 ];
+const titleOf = (id: string): string => {
+  const m = /^tab\.goto(\d)$/.exec(id);
+  return m ? t("cmd.tab.goto", { n: m[1] }) : t(`cmd.${id}` as TKey);
+};
+export const COMMANDS: CommandDef[] = RAW.map(c => Object.defineProperty({ ...c }, "title", { get: () => titleOf(c.id), enumerable: true }) as CommandDef);
 export const COMMAND_BY_ID = new Map(COMMANDS.map(c => [c.id, c]));
 
 /** Gespeicherte Ueberschreibungen bereinigen: nur bekannte Befehle, gueltige Kombinationen, max. 4 je Befehl. */
