@@ -3,7 +3,7 @@
 All notable changes to JTech Browser. The in-app page `jtech://changelog` shows the same notes
 (localized, from `src/data/changelog.ts`).
 
-## [Unreleased]
+## [0.1.12]
 
 - Hub menu: one entry point for bookmarks, history, downloads, library, market, extensions, audio, performance, themes, privacy, changelog and settings, with a filter field.
 - Settings where you need them: right-click the start page to customize it, right-click empty sidebar space for sidebar options, right-click the toolbar to customize it.

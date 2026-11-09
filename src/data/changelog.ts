@@ -13,7 +13,7 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: "0.1.12", date: null,
+    version: "0.1.12", date: "2026-11-09",
     notes: {
       de: [
         "Hub-Menü: ein Einstieg für Lesezeichen, Verlauf, Downloads, Bibliothek, Market, Erweiterungen, Audio, Leistung, Themes, Datenschutz, Änderungen und Einstellungen – mit Filterfeld.",
