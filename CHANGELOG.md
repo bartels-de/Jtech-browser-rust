@@ -3,6 +3,13 @@
 All notable changes to JTech Browser. The in-app page `jtech://changelog` shows the same notes
 (localized, from `src/data/changelog.ts`).
 
+## [0.1.14]
+
+- New website with six pages, real screenshots and rich animations, deployed via GitHub Pages.
+- Better ad blocker: scriptlets (`+js(...)`) and procedural cosmetic filters (`:has-text`, `:upward`, `:matches-css`, `:min-text-length`, `:xpath` and more) are now executed in pages.
+- New toggle in Settings › Ad blocker to enable or disable scriptlets and procedural filters.
+- New tab (Ctrl+T / new tab button) now focuses the address bar immediately instead of the start page search box stealing focus.
+
 ## [0.1.13]
 
 - Own context menu on web pages: the native WebView2 menu now carries JTech actions.

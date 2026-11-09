@@ -13,6 +13,23 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.1.14", date: "2026-11-10",
+    notes: {
+      de: [
+        "Neue Website mit sechs Seiten, echten Screenshots und verrückt guten Animationen: jtech-browser.de (GitHub Pages).",
+        "Besserer Werbeblocker: Scriptlets (+js(...)) und prozedurale kosmetische Filter (:has-text, :upward, :matches-css, :min-text-length, :xpath und mehr) werden jetzt ausgeführt.",
+        "Neuer Schalter in den Einstellungen, um Scriptlets und prozedurale Filter separat zu aktivieren.",
+        "Neuer Tab: die Adressleiste wird sofort fokussiert, statt dass die Startseiten-Suche den Fokus stiehlt.",
+      ],
+      en: [
+        "New website with six pages, real screenshots and rich animations: jtech-browser.de (GitHub Pages).",
+        "Better ad blocker: scriptlets (+js(...)) and procedural cosmetic filters (:has-text, :upward, :matches-css, :min-text-length, :xpath and more) are now executed.",
+        "New setting to enable scriptlets and procedural filters separately.",
+        "New tab: the address bar is focused immediately instead of the start page search stealing focus.",
+      ],
+    },
+  },
+  {
     version: "0.1.13", date: "2026-11-09",
     notes: {
       de: [
