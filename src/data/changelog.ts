@@ -13,7 +13,7 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: "0.1.11", date: null,
+    version: "0.1.11", date: "2026-11-09",
     notes: {
       de: [
         "Radialmenü: mittlere Maustaste halten oder Alt+Q – 4 bis 8 frei belegbare Befehle mit Symbolen.",

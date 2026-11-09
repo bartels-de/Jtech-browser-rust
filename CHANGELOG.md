@@ -3,7 +3,7 @@
 All notable changes to JTech Browser. The in-app page `jtech://changelog` shows the same notes
 (localized, from `src/data/changelog.ts`).
 
-## [Unreleased]
+## [0.1.11]
 
 - Radial menu: hold the middle mouse button or press Alt+Q – 4 to 8 freely assignable commands with icons.
 - Resource limits: background tabs get a low memory target, idle background tabs are suspended, optional caps for total memory and CPU.
