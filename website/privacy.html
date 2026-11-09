@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy – JTech Browser</title>
+  <meta name="description" content="Privacy and security in JTech Browser: built-in ad and tracker blocking, no telemetry, local data storage and transparent network connections.">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" href="assets/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="stylesheet" href="css/site.css">
+</head>
+<body data-page="privacy">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    </defs>
+  </svg>
+
+  <div id="site-header-target"></div>
+
+  <main id="main">
+    <section class="page-hero">
+      <div class="wrap">
+        <h1 data-i18n="privacy.title">Privacy and blocking</h1>
+        <p class="lead" data-i18n="privacy.lead">JTech Browser blocks ads and trackers, respects your data and tells you openly what it connects to.</p>
+      </div>
+    </section>
+
+    <section class="privacy-section">
+      <div class="wrap">
+        <div class="privacy-grid">
+          <article class="privacy-card reveal tilt">
+            <h2>Built-in blocker</h2>
+            <p>Every request a page makes is checked in Rust with Brave's open-source adblock-rust engine. EasyList and EasyPrivacy are on by default; the uBlock filters, Peter Lowe's list and Fanboy's Annoyance list can be added. Lists update automatically, and you can allow any site you want to support.</p>
+            <ul>
+              <li><svg width="16" height="16"><use href="#i-check"/></svg> Network-level filtering</li>
+              <li><svg width="16" height="16"><use href="#i-check"/></svg> Multiple filter lists</li>
+              <li><svg width="16" height="16"><use href="#i-check"/></svg> Per-site allowlist</li>
+            </ul>
+          </article>
+
+          <article class="privacy-card reveal tilt">
+            <h2>What it does not do</h2>
+            <p>We would rather say so up front than oversell it.</p>
+            <ul>
+              <li><svg width="16" height="16"><use href="#i-check"/></svg> It does not block every ad and does not match mature blocker extensions.</li>
+              <li><svg width="16" height="16"><use href="#i-check"/></svg> Scriptlets and procedural cosmetic filters are not executed.</li>
+              <li><svg width="16" height="16"><use href="#i-check"/></svg> Elements added after loading are not re-checked, so an ad can briefly flash.</li>
+              <li><svg width="16" height="16"><use href="#i-check"/></svg> WebSocket traffic and some service worker requests cannot be filtered.</li>
+            </ul>
+            <a class="more" href="https://github.com/bartels-de/Jtech-browser-rust/blob/main/docs/ADBLOCK.md">Read how the blocker works</a>
+          </article>
+
+          <article class="privacy-card reveal tilt">
+            <h2>No telemetry, no account</h2>
+            <p>The browser sends no usage statistics. History, bookmarks and settings are stored in a local SQLite database on your PC.</p>
+          </article>
+
+          <article class="privacy-card reveal tilt">
+            <h2>Privacy tools included</h2>
+            <p>Block statistics, cookies per site, clearing browsing data, clearing cookies and cache on exit, and site permissions for camera, microphone, location and notifications.</p>
+          </article>
+        </div>
+
+        <div class="privacy-shots reveal">
+          <div class="detail-row reverse">
+            <div class="detail-text">
+              <h2>Privacy Dashboard</h2>
+              <p>See at a glance how many ads and trackers were blocked, which permissions a site requested and where your data stays.</p>
+            </div>
+            <figure class="detail-shot tilt"><img src="assets/feature-privacy.jpg" loading="lazy" alt="Privacy Dashboard showing blocked trackers and site permissions"></figure>
+          </div>
+          <div class="detail-row">
+            <div class="detail-text">
+              <h2>Filter lists</h2>
+              <p>Enable the lists you trust, update them on demand or add your own. JTech Browser ships with EasyList and EasyPrivacy and lets you import custom rules.</p>
+            </div>
+            <figure class="detail-shot tilt"><img src="assets/feature-filter.jpg" loading="lazy" alt="Filter list management"></figure>
+          </div>
+        </div>
+
+        <div class="connects reveal">
+          <h2>What does go out</h2>
+          <p>Apart from the websites you open, the browser makes these requests:</p>
+          <dl>
+            <div>
+              <dt>Search suggestions</dt>
+              <dd>While you type in the address bar, the text is sent to your chosen search engine to fetch suggestions. Web addresses are never sent. You can turn this off in Settings.</dd>
+            </div>
+            <div>
+              <dt>Update check</dt>
+              <dd>The browser asks GitHub for the latest release and verifies an update's signature before installing it. The check can be turned off.</dd>
+            </div>
+            <div>
+              <dt>Filter lists</dt>
+              <dd>Blocklists are downloaded from their publishers, for example easylist.to, every few days.</dd>
+            </div>
+            <div>
+              <dt>JTech Market</dt>
+              <dd>The market reads its list of extensions from the project's GitHub repository.</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="site-footer-target"></div>
+
+  <script src="js/site.js"></script>
+  <script src="js/shared.js"></script>
+</body>
+</html>

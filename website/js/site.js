@@ -1,5 +1,3 @@
-/* JTech Browser website: language switch, latest-release download link, active section in the rail.
-   The page works fully without this script. */
 (function () {
   "use strict";
 
@@ -7,108 +5,58 @@
   var STORE_KEY = "jtech-site-lang";
 
   var de = {
-    "meta.title": "JTech Browser – Open-Source-Browser für Windows",
-    "meta.description": "JTech Browser ist ein kostenloser Open-Source-Browser für Windows 10 und 11 mit vertikaler Tab-Leiste, geteilter Ansicht, eingebautem Werbe- und Trackerblocker und einem Design Studio für Themes.",
-    "skip": "Zum Inhalt springen",
-    "navLabel": "Abschnitte",
     "nav.overview": "Überblick",
     "nav.features": "Funktionen",
-    "nav.blocking": "Blocker und Erweiterungen",
-    "nav.design": "Design Studio",
-    "nav.open": "Open Source und Datenschutz",
+    "nav.privacy": "Datenschutz",
+    "nav.technology": "Technik",
+    "nav.faq": "FAQ",
     "nav.download": "Download",
-    "railGetLabel": "Zum Download",
-    "rail.get": "Für Windows holen",
-    "rail.free": "Kostenlos und Open Source",
-    "langLabel": "Sprache",
-    "logoAlt": "JTech-Browser-Logo",
     "hero.badge": "Frühe Version",
-    "hero.title": "Ein aufgeräumter Browser für Windows, mit Tabs in der Seitenleiste und eingebautem Werbeblocker.",
-    "hero.lead": "JTech Browser ist kostenlos und Open Source. Er ist in Rust auf Basis von Microsoft Edge WebView2 gebaut, Webseiten werden also mit derselben Engine wie in Edge dargestellt, und er hält sich selbst aktuell.",
+    "hero.title": "Ein fokussierter Browser für Windows, mit Tabs in der Seitenleiste und eingebautem Werbeblocker.",
+    "hero.lead": "JTech Browser ist kostenlos und Open Source. Er kombiniert eine schnelle Rust-Shell, Microsoft Edge WebView2 und eine React-Oberfläche zu einem Browser, der dir wieder Kontrolle über Tabs, Tracking und das Erscheinungsbild gibt.",
     "cta.download": "Für Windows herunterladen",
     "cta.sub": "Windows 10 und 11, 64-Bit",
     "cta.github": "Auf GitHub ansehen",
     "hero.note": "Version 0.x: neu und noch in Bewegung. Oberfläche auf Deutsch und Englisch.",
-    "heroAlt": "Startseite von JTech Browser: links die Tabs in einer Seitenleiste, oben eine mittige Adressleiste, darunter eine große Uhr, ein Suchfeld und Schnelllinks.",
-    "hero.cap": "Die Startseite mit der Tab-Leiste. Vorschau der aktuellen Oberfläche mit Beispielinhalten.",
-    "feat.title": "Gemacht für lange Sitzungen mit vielen Tabs",
-    "feat.lead": "Die Oberfläche hält sich zurück, bis du sie brauchst, und das meiste erreichst du, ohne die Tastatur loszulassen.",
-    "g1.t": "Tabs, die Ordnung halten",
-    "g1.p": "Die Tabs stehen untereinander in einer Seitenleiste, deren Breite du anpassen kannst, statt quer oben. Hefte an, was du immer brauchst, fasse Zusammengehöriges in Gruppen zusammen und ziehe Tabs, wohin du willst. Ungenutzte Tabs können schlafen, um Speicher freizugeben, und nach einem Neustart ist deine Sitzung wieder da.",
-    "g2.t": "Zwei Seiten gleichzeitig",
-    "g2.p": "Die geteilte Ansicht zeigt zwei Tabs nebeneinander oder übereinander, mit verschiebbarem Trenner. Mit <kbd>Umschalt</kbd> + Klick öffnest du einen Link im Peek-Fenster über der aktuellen Seite und schließt es wieder, wenn du fertig bist.",
-    "g3.t": "Schnell mit Tastatur und Maus",
-    "g3.p": "<kbd>Strg</kbd> + <kbd>K</kbd> öffnet die Befehlspalette für Tabs, Seiten und Aktionen, und jedes Tastenkürzel lässt sich neu belegen. Halte die mittlere Maustaste oder drücke <kbd>Alt</kbd> + <kbd>Q</kbd> für ein Radialmenü mit vier bis acht Befehlen deiner Wahl.",
-    "g4.t": "Ton und Ressourcen im Griff",
-    "g4.p": "Der Audio Hub zeigt jeden Tab, der Ton abspielt, mit Wiedergabe und Pause, Lautstärke pro Tab und Seiten, die immer stumm starten. Ressourcenlimits halten Hintergrund-Tabs schlank, auf Wunsch mit Obergrenzen für Arbeitsspeicher und CPU.",
-    "pair.t": "Ein Mini-Player in der Seitenleiste",
-    "pair.p": "Musik aus einem Hintergrund-Tab erscheint unten in der Seitenleiste mit Titel und Steuerung. So pausierst oder stummschaltest du sie, ohne den Tab zu suchen.",
-    "audioAlt": "Die Seite Audio Hub mit einem Tab, der Musik abspielt, samt Wiedergabe, Lautstärkeregler, Stummschalten und Immer stumm, und dem Mini-Player unten in der Seitenleiste.",
-    "blk.title": "Werbe- und Trackerblocker, mit offen benannten Grenzen",
-    "blk.lead": "Der Blocker ist Teil des Browsers, kein Zusatz. Er entfernt viel Werbung und Tracking, aber nicht alles, und das sagen wir lieber gleich.",
-    "blk.t": "Eingebauter Blocker",
-    "blk.p1": "Jede Anfrage einer Seite wird in Rust mit der Open-Source-Engine adblock-rust von Brave geprüft. EasyList und EasyPrivacy sind standardmäßig aktiv; die uBlock-Filter, Peter Lowe's List und Fanboy's Annoyance List lassen sich dazuschalten. Die Listen aktualisieren sich automatisch, und jede Seite, die du unterstützen möchtest, kannst du freigeben.",
-    "blk.limitsT": "Was er nicht kann",
-    "blk.l1": "Er blockiert nicht jede Werbung und erreicht nicht die Abdeckung ausgereifter Blocker-Erweiterungen.",
-    "blk.l2": "Scriptlets und prozedurale kosmetische Filter werden nicht ausgeführt, ein Teil der Listenregeln wirkt daher nicht.",
-    "blk.l3": "Elemente, die erst nach dem Laden erscheinen, werden nicht erneut geprüft; Werbung kann kurz aufblitzen.",
-    "blk.l4": "WebSocket-Verkehr und manche Service-Worker-Anfragen lassen sich nicht filtern.",
-    "blk.more": "So funktioniert der Blocker",
-    "ext.t": "JTech Market",
-    "ext.p": "Erweiterungen werden geprüft, mit dem Browser ausgeliefert und mit ihm zusammen aktualisiert. Du schaltest sie im JTech Market ein oder pausierst sie für einzelne Webseiten. Es wird kein Erweiterungscode aus dem Internet geladen.",
-    "ext.tw": "Twitch-Werbeblocker",
-    "ext.best": "ohne Garantie",
-    "ext.twp": "Versucht, Werbung aus Twitch-Streams herauszuhalten, ohne deinen Verkehr über einen fremden Proxy zu leiten. Twitch ändert seinen Player oft, daher kann er zeitweise nicht funktionieren, bis ein Update kommt.",
-    "ext.yt": "YouTube-Werbeblocker",
-    "ext.best2": "ohne Garantie",
-    "ext.ytp": "Entfernt Werbung aus YouTube-Seiten und dem Videoplayer. Auch YouTube ändert sich häufig, Teile davon können also hinterherhinken, bis die Erweiterung aktualisiert ist.",
-    "designAlt": "Das Design Studio mit einer Galerie von Theme-Vorlagen wie JTech, Nova, Synthwave, Toxic, Inferno, Hyperdrive, Abyss und Sakura, filterbar nach dunkel, hell, kräftig, ruhig und klassisch.",
-    "des.title": "Mach ihn zu deinem",
-    "des.lead": "Das Design Studio ändert den ganzen Look mit einer Vorlage auf einen Klick oder Schritt für Schritt. Jede Änderung wirkt sofort.",
-    "des.l1": "Eine Theme-Galerie mit dunklen, hellen, kräftigen und ruhigen Vorlagen",
-    "des.l2": "Eigene Farben und Formen oder eigenes CSS",
-    "des.l3": "Animierte Hintergründe, eigene Mauszeiger und Zeigerspuren",
-    "des.l4": "Themes duplizieren, importieren und exportieren, um sie zu teilen",
-    "des.l5": "Eine Startseite mit anpassbarem Hintergrund, Uhr, Begrüßung und Schnelllinks",
-    "open.title": "Open Source, ohne eigenes Tracking",
-    "open.lead": "Jede Zeile von JTech Browser ist einsehbar. Hier steht, was er für sich behält und womit er sich verbindet.",
-    "f1.t": "MIT-Lizenz",
-    "f1.p": "Der vollständige Quellcode liegt auf GitHub. Lies ihn, baue ihn selbst, ändere ihn oder melde ein Problem.",
-    "f2.t": "Keine Telemetrie, kein Konto",
-    "f2.p": "Der Browser sendet keine Nutzungsstatistiken. Verlauf, Lesezeichen und Einstellungen liegen in einer lokalen Datenbank auf deinem PC.",
-    "f3.t": "Datenschutz-Werkzeuge an Bord",
-    "f3.p": "Blockstatistiken, Cookies pro Seite, Browserdaten löschen, Cookies und Cache beim Beenden löschen sowie Seitenberechtigungen für Kamera, Mikrofon, Standort und Benachrichtigungen.",
-    "con.t": "Was trotzdem nach außen geht",
-    "con.p": "Neben den Webseiten, die du öffnest, stellt der Browser diese Anfragen:",
-    "con.s.t": "Suchvorschläge",
-    "con.s.d": "Während du in die Adressleiste tippst, wird der Text an deine gewählte Suchmaschine geschickt, um Vorschläge zu holen. Webadressen werden nie gesendet. Du kannst das in den Einstellungen abschalten.",
-    "con.u.t": "Update-Prüfung",
-    "con.u.d": "Der Browser fragt bei GitHub nach der neuesten Version und prüft die Signatur eines Updates, bevor er es installiert. Die Prüfung lässt sich abschalten.",
-    "con.f.t": "Filterlisten",
-    "con.f.d": "Blocklisten werden alle paar Tage von ihren Herausgebern geladen, zum Beispiel von easylist.to.",
-    "con.m.t": "JTech Market",
-    "con.m.d": "Der Market liest seine Liste der Erweiterungen aus dem GitHub-Repository des Projekts.",
-    "dl.title": "JTech Browser herunterladen",
-    "dl.lead": "Ein Installer für 64-Bit-Windows. Danach aktualisiert sich der Browser selbst.",
-    "cta.download2": "Für Windows herunterladen",
-    "cta.sub2": "Neueste Version auf GitHub",
-    "dl.all": "Alle Versionen",
-    "dl.changelog": "Änderungsprotokoll",
-    "dl.build": "Selbst kompilieren",
-    "req.t": "Systemvoraussetzungen",
-    "req.os": "<strong>Windows 10 oder 11</strong>, 64-Bit (x64)",
-    "req.wv": "<strong>Microsoft Edge WebView2 Runtime.</strong> Windows 11 bringt sie mit; unter Windows 10 ist sie meist vorhanden und wird sonst vom Installer eingerichtet.",
-    "warn.t": "Eine Warnung beim ersten Start ist normal",
-    "warn.p": "Der Installer ist noch nicht mit einem Windows-Herausgeberzertifikat signiert, deshalb kann Microsoft SmartScreen warnen. Wähle „Weitere Informationen“ und dann „Trotzdem ausführen“. Das ist unabhängig von der Update-Signatur, die der Browser vor der Installation seiner eigenen Updates prüft.",
-    "early.t": "Frühe Software",
-    "early.p": "JTech Browser steht bei Version 0.x. Rechne mit Ecken und Kanten und mit Änderungen zwischen den Versionen. Wenn etwas nicht funktioniert, <a href=\"https://github.com/bartels-de/Jtech-browser-rust/issues\">eröffne bitte ein Issue</a>.",
-    "footNav": "Projektlinks",
-    "ft.src": "Quellcode auf GitHub",
-    "ft.lic": "MIT-Lizenz",
-    "ft.issues": "Problem melden",
-    "ft.rel": "Versionen",
-    "ft.note": "Diese Seite setzt keine Cookies und nutzt keine Tracker. Sie fragt nur bei GitHub die neueste Versionsnummer ab.",
-    "ver.label": "Version {v}, 64-Bit-Installer"
+    "home.stats.tabs": "Tabs in der Seitenleiste",
+    "home.stats.block": "Werbe- und Tracker-Requests blockierbar",
+    "home.stats.theme": "Themes im Design Studio",
+    "home.feat.title": "Auf einen Blick",
+    "home.feat.lead": "Alles, was JTech Browser ausmacht – kompakt zusammengefasst.",
+    "feat.tabs.t": "Tabs, die Ordnung halten",
+    "feat.tabs.p": "Vertikale, anpassbare Seitenleiste mit Anheften, Gruppen, Drag & Drop, Schlaf-Modus und Sitzungswiederherstellung.",
+    "feat.split.t": "Zwei Seiten gleichzeitig",
+    "feat.split.p": "Split View, Peek-Fenster und Bild-in-Bild helfen dir, mehrere Inhalte im Blick zu behalten.",
+    "feat.block.t": "Eingebauter Blocker",
+    "feat.block.p": "adblock-rust prüft Anfragen auf Netzwerk-Ebene. EasyList, EasyPrivacy und weitere Listen inklusive.",
+    "feat.design.t": "Design Studio",
+    "feat.design.p": "Themes, Farben, animierte Hintergründe, Cursor-Effekte und eine anpassbare Startseite.",
+    "feat.privacy.t": "Privatsphäre",
+    "feat.privacy.p": "Keine Telemetrie, lokale SQLite-Datenbank, Berechtigungen pro Seite, Cookies und Cache automatisch löschen.",
+    "feat.speed.t": "Schnell und schlank",
+    "feat.speed.p": "Rust-Backend, Tauri 2 und WebView2 sorgen für geringen Speicherverbrauch und schnellen Start.",
+    "home.cta.t": "Bereit, JTech auszuprobieren?",
+    "home.cta.p": "Lade die neueste Version für Windows herunter oder schau dir den Quellcode an.",
+    "features.title": "Funktionen im Detail",
+    "features.lead": "JTech Browser ist für lange Sitzungen mit vielen Tabs gemacht. Hier ist alles, was er kann.",
+    "tech.title": "Womit er gebaut ist",
+    "tech.lead": "JTech Browser kombiniert eine schnelle native Shell mit einer modernen Web-Oberfläche und einem Rust-Backend.",
+    "tech.archT": "Wie die Teile zusammenspielen",
+    "privacy.title": "Privatsphäre und Blocker",
+    "privacy.lead": "JTech Browser blockt Werbung und Tracker, respektiert deine Daten und sagt dir offen, wohin er verbindet.",
+    "download.title": "JTech Browser herunterladen",
+    "download.lead": "Ein Installer für 64-Bit-Windows. Danach aktualisiert sich der Browser selbst.",
+    "faq.title": "Fragen und Antworten",
+    "faq.q1": "Ist JTech Browser ein Ersatz für Chrome oder Edge?",
+    "faq.a1": "Noch nicht. Er ist ein fokussierter Browser für alle, die vertikale Tabs, eingebautes Blocken und eine anpassbare Oberfläche möchten. Einige fortgeschrittene Funktionen wie ein vollständiger Erweiterungs-Store, Profile oder mobiles Synchronisieren fehlen noch.",
+    "faq.q2": "Warum warnt SmartScreen beim Installer?",
+    "faq.a2": "Der Installer ist noch nicht mit einem teuren Windows-Herausgeberzertifikat signiert. Die Datei ist sicher, der Quellcode ist öffentlich und der Browser prüft Update-Signaturen separat.",
+    "faq.q3": "Gibt es ihn für macOS oder Linux?",
+    "faq.a3": "Derzeit nur Windows 10 und 11, weil WebView2 die Rendering-Engine ist und der Fenster-Code momentan Windows-spezifisch ist.",
+    "faq.q4": "Wo werden meine Daten gespeichert?",
+    "faq.a4": "Lesezeichen, Verlauf, Einstellungen und Berechtigungen liegen in einer lokalen SQLite-Datei in deinem AppData-Ordner. Kein Konto, keine Cloud.",
+    "faq.q5": "Kann ich Lesezeichen aus einem anderen Browser importieren?",
+    "faq.a5": "Ja. Der Importer liest Lesezeichen und Verlauf aus Chrome-, Edge-, Brave- und Firefox-Profilen und fügt sie in JTech zusammen."
   };
 
   var en = { "ver.label": "Version {v}, 64-bit installer" };
@@ -117,22 +65,12 @@
 
   function $all(sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); }
 
-  // Remember the English text that is written in the HTML.
   $all("[data-i18n]").forEach(function (el) { en[el.getAttribute("data-i18n")] = el.textContent; });
   $all("[data-i18n-html]").forEach(function (el) { en[el.getAttribute("data-i18n-html")] = el.innerHTML; });
-  $all("[data-i18n-attr]").forEach(function (el) {
-    el.getAttribute("data-i18n-attr").split(";").forEach(function (pair) {
-      var p = pair.split(":");
-      en[p[1]] = el.getAttribute(p[0]);
-    });
-  });
-  var metaDesc = document.querySelector('meta[name="description"]');
-  en["meta.title"] = document.title;
-  en["meta.description"] = metaDesc ? metaDesc.getAttribute("content") : "";
 
   function t(key) {
     var dict = current === "de" ? de : en;
-    return Object.prototype.hasOwnProperty.call(dict, key) ? dict[key] : en[key];
+    return Object.prototype.hasOwnProperty.call(dict, key) ? dict[key] : en[key] || key;
   }
 
   function apply(lang) {
@@ -140,17 +78,7 @@
     document.documentElement.lang = current;
     $all("[data-i18n]").forEach(function (el) { el.textContent = t(el.getAttribute("data-i18n")); });
     $all("[data-i18n-html]").forEach(function (el) { el.innerHTML = t(el.getAttribute("data-i18n-html")); });
-    $all("[data-i18n-attr]").forEach(function (el) {
-      el.getAttribute("data-i18n-attr").split(";").forEach(function (pair) {
-        var p = pair.split(":");
-        el.setAttribute(p[0], t(p[1]));
-      });
-    });
-    document.title = t("meta.title");
-    if (metaDesc) metaDesc.setAttribute("content", t("meta.description"));
-    $all(".lang button").forEach(function (b) {
-      b.setAttribute("aria-pressed", String(b.getAttribute("data-lang") === current));
-    });
+    $all(".lang button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-lang") === current)); });
     showRelease();
   }
 
@@ -158,20 +86,14 @@
     try {
       var saved = window.localStorage.getItem(STORE_KEY);
       if (saved === "de" || saved === "en") return saved;
-    } catch (e) { /* storage unavailable */ }
+    } catch (e) {}
+    var url = new URL(window.location.href);
+    if (url.searchParams.has("lang")) return url.searchParams.get("lang") === "de" ? "de" : "en";
     var nav = (navigator.languages && navigator.languages[0]) || navigator.language || "";
     return /^de\b/i.test(nav) ? "de" : "en";
   }
 
-  $all(".lang button").forEach(function (b) {
-    b.addEventListener("click", function () {
-      var lang = b.getAttribute("data-lang");
-      try { window.localStorage.setItem(STORE_KEY, lang); } catch (e) { /* ignore */ }
-      apply(lang);
-    });
-  });
-
-  // ---------- Latest release: point the buttons straight at the installer ----------
+  // ---------- Latest release ----------
 
   function showRelease() {
     if (!release) return;
@@ -203,32 +125,138 @@
         release = { url: exe.browser_download_url, version: version };
         showRelease();
       })
-      .catch(function () { /* keep the releases/latest fallback */ })
+      .catch(function () {})
       .then(function () { clearTimeout(timer); });
   }
 
-  // ---------- Highlight the section in view, like the active tab ----------
+  // ---------- Animations ----------
 
-  function trackSections() {
-    if (!("IntersectionObserver" in window)) return;
-    var links = $all(".tabs a");
-    var byId = {};
-    links.forEach(function (a) { byId[a.getAttribute("href").slice(1)] = a; });
+  function initReveal() {
+    if (!("IntersectionObserver" in window)) {
+      $all(".reveal").forEach(function (el) { el.classList.add("is-visible"); });
+      return;
+    }
     var obs = new IntersectionObserver(function (entries) {
-      entries.forEach(function (e) {
-        if (!e.isIntersecting) return;
-        links.forEach(function (a) { a.removeAttribute("aria-current"); });
-        var a = byId[e.target.id];
-        if (a) a.setAttribute("aria-current", "true");
+      entries.forEach(function (e) { if (e.isIntersecting) e.target.classList.add("is-visible"); });
+    }, { threshold: 0.12, rootMargin: "0px 0px -40px 0px" });
+    $all(".reveal").forEach(function (el) { obs.observe(el); });
+  }
+
+  function initTilt() {
+    if (window.matchMedia("(pointer: coarse)").matches) return;
+    $all(".tilt").forEach(function (card) {
+      card.addEventListener("mousemove", function (e) {
+        var r = card.getBoundingClientRect();
+        var x = (e.clientX - r.left) / r.width - 0.5;
+        var y = (e.clientY - r.top) / r.height - 0.5;
+        card.style.transform = "perspective(1000px) rotateY(" + (x * 14) + "deg) rotateX(" + (-y * 14) + "deg) scale3d(1.02, 1.02, 1.02)";
       });
-    }, { rootMargin: "-45% 0px -50% 0px" });
-    Object.keys(byId).forEach(function (id) {
-      var s = document.getElementById(id);
-      if (s) obs.observe(s);
+      card.addEventListener("mouseleave", function () {
+        card.style.transform = "perspective(1000px) rotateY(0deg) rotateX(0deg) scale3d(1, 1, 1)";
+      });
     });
+  }
+
+  function initTypewriter() {
+    var el = document.querySelector(".typewriter");
+    if (!el) return;
+    var text = t(el.getAttribute("data-i18n"));
+    el.textContent = "";
+    var i = 0;
+    function step() {
+      if (i <= text.length) {
+        el.textContent = text.slice(0, i);
+        i++;
+        setTimeout(step, 28 + Math.random() * 24);
+      } else {
+        el.classList.remove("typing");
+      }
+    }
+    el.classList.add("typing");
+    setTimeout(step, 400);
+  }
+
+  function initCounters() {
+    $all(".counter").forEach(function (el) {
+      var target = parseInt(el.dataset.target, 10);
+      if (!target) return;
+      var dur = 1500;
+      var start = null;
+      function step(ts) {
+        if (!start) start = ts;
+        var p = Math.min((ts - start) / dur, 1);
+        var ease = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.floor(ease * target).toLocaleString();
+        if (p < 1) requestAnimationFrame(step);
+      }
+      var obs = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) { if (e.isIntersecting) { requestAnimationFrame(step); obs.unobserve(el); } });
+      }, { threshold: 0.5 });
+      obs.observe(el);
+    });
+  }
+
+  function initParticles() {
+    var canvas = document.getElementById("particles");
+    if (!canvas) return;
+    var ctx = canvas.getContext("2d");
+    var dpr = window.devicePixelRatio || 1;
+    var w, h, particles = [];
+    function resize() {
+      w = canvas.clientWidth;
+      h = canvas.clientHeight;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      ctx.scale(dpr, dpr);
+    }
+    function make() {
+      particles = [];
+      var count = Math.min(70, Math.floor(w / 16));
+      for (var i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * w, y: Math.random() * h,
+          vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
+          r: Math.random() * 2 + 1
+        });
+      }
+    }
+    function draw() {
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#2fc8c4";
+      for (var i = 0; i < particles.length; i++) {
+        var p = particles[i];
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0) p.x = w; if (p.x > w) p.x = 0;
+        if (p.y < 0) p.y = h; if (p.y > h) p.y = 0;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.globalAlpha = 0.35;
+        ctx.fill();
+      }
+      ctx.globalAlpha = 0.12;
+      ctx.strokeStyle = ctx.fillStyle;
+      for (var i = 0; i < particles.length; i++) {
+        for (var j = i + 1; j < particles.length; j++) {
+          var dx = particles[i].x - particles[j].x, dy = particles[i].y - particles[j].y;
+          if (dx * dx + dy * dy < 10000) {
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+      requestAnimationFrame(draw);
+    }
+    resize(); make(); draw();
+    window.addEventListener("resize", function () { resize(); make(); });
   }
 
   apply(initialLang());
   loadRelease();
-  trackSections();
+  initReveal();
+  initTilt();
+  initTypewriter();
+  initCounters();
+  initParticles();
 })();
