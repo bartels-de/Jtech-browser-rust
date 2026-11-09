@@ -196,12 +196,15 @@ export function PrivacyPage() {
           </Row>
         ))}
         <Row title={t("fs.autoUpdate")} desc={t("fs.autoUpdateDesc")}>
-          <select value={fs?.updateDays ?? 4} aria-label={t("fs.intervalAria")} onChange={e => fs && call("filter_set_options", { updateDays: Number(e.target.value), cosmetic: fs.cosmetic }, b.setStatus)}>
+          <select value={fs?.updateDays ?? 4} aria-label={t("fs.intervalAria")} onChange={e => fs && call("filter_set_options", { updateDays: Number(e.target.value), cosmetic: fs.cosmetic, scriptlets: fs.scriptlets }, b.setStatus)}>
             {[1, 2, 4, 7, 14, 30].map(d => <option key={d} value={d}>{t("fs.everyDays", { count: d })}</option>)}
           </select>
         </Row>
         <Row title={t("ab.cosmetic")} desc={t("ab.cosmeticDesc")}>
-          <Switch label={t("ab.cosmetic")} checked={fs?.cosmetic ?? true} onChange={v => fs && call("filter_set_options", { updateDays: fs.updateDays, cosmetic: v }, b.setStatus)} />
+          <Switch label={t("ab.cosmetic")} checked={fs?.cosmetic ?? true} onChange={v => fs && call("filter_set_options", { updateDays: fs.updateDays, cosmetic: v, scriptlets: fs.scriptlets }, b.setStatus)} />
+        </Row>
+        <Row title={t("ab.scriptlets")} desc={t("ab.scriptletsDesc")}>
+          <Switch label={t("ab.scriptlets")} checked={fs?.scriptlets ?? true} onChange={v => fs && call("filter_set_options", { updateDays: fs.updateDays, cosmetic: fs.cosmetic, scriptlets: v }, b.setStatus)} />
         </Row>
         <Row title={t("ab.exceptions")} desc={t("ab.exceptionsDescShort")} col>
           <div className="chips">

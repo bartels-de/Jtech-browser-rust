@@ -380,7 +380,10 @@ function AdblockSec() {
         <Switch label={t("ab.block")} checked={b.settings.adblock} onChange={v => b.updateSettings({ adblock: v })} />
       </Row>
       <Row title={t("ab.cosmetic")} desc={t("ab.cosmeticDesc")} keywords="cosmetic" advanced>
-        <Switch label={t("ab.cosmetic")} disabled={!fs} checked={fs?.cosmetic ?? true} onChange={v => fs && call("filter_set_options", { updateDays: fs.updateDays, cosmetic: v }, b.setStatus)} />
+        <Switch label={t("ab.cosmetic")} disabled={!fs} checked={fs?.cosmetic ?? true} onChange={v => fs && call("filter_set_options", { updateDays: fs.updateDays, cosmetic: v, scriptlets: fs.scriptlets }, b.setStatus)} />
+      </Row>
+      <Row title={t("ab.scriptlets")} desc={t("ab.scriptletsDesc")} keywords="scriptlets procedural ublock has-text" advanced>
+        <Switch label={t("ab.scriptlets")} disabled={!fs} checked={fs?.scriptlets ?? true} onChange={v => fs && call("filter_set_options", { updateDays: fs.updateDays, cosmetic: fs.cosmetic, scriptlets: v }, b.setStatus)} />
       </Row>
       <Row title={t("ab.exceptions")} desc={t("ab.exceptionsDesc")} col keywords="allowlist">
         <div className="chips">
@@ -397,7 +400,7 @@ function AdblockSec() {
         </Row>
       ))}
       <Row title={t("fs.autoUpdate")} desc={t("fs.autoUpdateDesc")} keywords="interval" advanced>
-        <select value={fs?.updateDays ?? 4} disabled={!fs} aria-label={t("fs.intervalAria")} onChange={e => fs && call("filter_set_options", { updateDays: Number(e.target.value), cosmetic: fs.cosmetic }, b.setStatus)}>
+        <select value={fs?.updateDays ?? 4} disabled={!fs} aria-label={t("fs.intervalAria")} onChange={e => fs && call("filter_set_options", { updateDays: Number(e.target.value), cosmetic: fs.cosmetic, scriptlets: fs.scriptlets }, b.setStatus)}>
           {[1, 2, 4, 7, 14, 30].map(d => <option key={d} value={d}>{t("fs.everyDays", { count: d })}</option>)}
         </select>
       </Row>

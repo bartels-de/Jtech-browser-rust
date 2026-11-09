@@ -74,7 +74,7 @@ export function StartPage() {
         {sp.search && (
           <form className="start-search glass" role="search" onSubmit={e => { e.preventDefault(); if (q.trim()) b.navigate(q); }}>
             <IconSearch size={18} />
-            <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder={tt("sp.searchWith", { engine })}
+            <input value={q} onChange={e => setQ(e.target.value)} placeholder={tt("sp.searchWith", { engine })}
               spellCheck={false} aria-label={tt("tb.placeholder")} />
             {q ? <kbd>Enter</kbd> : sp.showEngine && <span className="start-engine">{engine}</span>}
           </form>

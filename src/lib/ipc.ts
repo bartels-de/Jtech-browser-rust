@@ -56,7 +56,7 @@ export interface FilterListStatus {
 export interface FilterStatus {
   state: "idle" | "loading" | "building" | "ready" | "error" | "empty";
   message: string; lists: FilterListStatus[]; activeRules: number; engineBuiltAt: number;
-  fromCache: boolean; updateDays: number; cosmetic: boolean; allowlist: string[];
+  fromCache: boolean; updateDays: number; cosmetic: boolean; scriptlets: boolean; allowlist: string[];
 }
 export interface Count { name: string; count: number }
 export interface PrivacyStats { lifetimeTotal: number; sessionTotal: number; topSites: Count[]; topDomains: Count[]; sessionTopDomains: Count[] }
