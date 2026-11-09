@@ -14,7 +14,9 @@ import { checkForUpdate, downloadUpdate, fmtBytes, installAndRestart, useUpdater
 import { BACKGROUNDS } from "../lib/fx/effects";
 import { themeName } from "../lib/theme";
 import { Disclosure, Group, Row, SearchCtx, Switch } from "../components/SettingsUI";
-import { IconDownload, IconGlobe, IconInfo, IconKeyboard, IconSearch, IconSettings, IconShield, IconSidebar, IconPalette, IconLock, JTechLogo } from "../components/Icons";
+import { IconDownload, IconGlobe, IconInfo, IconKeyboard, IconSearch, IconSettings, IconShield, IconSidebar, IconPalette, IconLock, JTechLogo, IconHome, IconCommand, IconGauge } from "../components/Icons";
+import { StartEditor } from "../components/StartEditor";
+import { LimitSettingsSection, RadialSettings } from "../components/FeatureSettings";
 import { LANGS, localizeBackend, fmtDate, fmtDateTime, fmtTime, systemLang, t, useT, type LangSetting, type TKey } from "../i18n";
 import { formatCombo } from "../lib/keys";
 
@@ -23,13 +25,16 @@ import { formatCombo } from "../lib/keys";
  * Ohne Suche wird nur der gewaehlte Abschnitt gezeigt; mit Suche alle passenden Abschnitte/Zeilen.
  * i18n: titles/keywords come from the dictionaries (keywords contain both languages' terms where useful).
  */
-type SectionId = "general" | "appearance" | "search" | "tabs" | "privacy" | "adblock" | "permissions" | "downloads" | "shortcuts" | "about";
+type SectionId = "general" | "appearance" | "startpage" | "radial" | "search" | "tabs" | "resources" | "privacy" | "adblock" | "permissions" | "downloads" | "shortcuts" | "about";
 interface Section { id: SectionId; title: string; icon: ReactNode; keywords: string }
 const SECTION_ICONS: [SectionId, ReactNode][] = [
   ["general", <IconSettings size={16} />],
   ["appearance", <IconPalette size={16} />],
+  ["startpage", <IconHome size={16} />],
+  ["radial", <IconCommand size={16} />],
   ["search", <IconSearch size={16} />],
   ["tabs", <IconSidebar size={16} />],
+  ["resources", <IconGauge size={16} />],
   ["privacy", <IconLock size={16} />],
   ["adblock", <IconShield size={16} />],
   ["permissions", <IconGlobe size={16} />],
@@ -94,6 +99,9 @@ function SectionBody({ id, q }: { id: SectionId; q: string }) {
   switch (id) {
     case "general": return <General />;
     case "appearance": return <Appearance />;
+    case "startpage": return <div className="card"><StartEditor /></div>;
+    case "radial": return <RadialSettings />;
+    case "resources": return <LimitSettingsSection />;
     case "search": return <SearchSec />;
     case "tabs": return <TabsSec />;
     case "privacy": return <PrivacySec />;
@@ -365,6 +373,9 @@ function About() {
   return <>
     <Group>
       <div className="about-head"><JTechLogo size={48} /><div><strong>JTech Browser</strong><small className="muted">{t("ab.tagline", { v: u.currentVersion || "…" })}</small></div></div>
+      <Row title={t("page.changelog")} desc={t("cl.aboutDesc")} keywords="changelog what's new neu">
+        <button className="btn" onClick={() => b.openPage("changelog")}>{t("cl.show")}</button>
+      </Row>
       <Row title={t("ab.updates")} desc={<>
           <span className={u.phase === "error" ? "update-err" : undefined} role={u.phase === "error" ? "alert" : undefined}>{statusText}</span>
           {u.lastCheck ? <> {t("ab.lastCheck", { time: fmtTime(u.lastCheck) })}</> : null}

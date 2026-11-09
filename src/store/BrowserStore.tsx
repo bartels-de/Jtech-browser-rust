@@ -151,6 +151,12 @@ export interface Store {
   toggleSplitOrientation(): void;
   /** live = only update the preview; otherwise persist */
   setSplitRatio(r: number, live?: boolean): void;
+  /** Overlay over the content area (radial menu): hides the native webviews while true */
+  overlay: boolean;
+  setOverlay(v: boolean): void;
+  /** Recently closed web tabs (newest first) */
+  closedTabs: string[];
+  reopenClosedTab(): void;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -163,6 +169,7 @@ export const useBrowser = () => {
 export function BrowserProvider({ children }: { children: ReactNode }) {
   const [rustTabs, setRustTabs] = useState<RustTab[]>([]);
   const [internal, setInternal] = useState<Record<string, InternalPage | null>>({});
+  const internalRef = useRef<Record<string, InternalPage | null>>({});
   const [orphanPage, setOrphanPage] = useState<InternalPage>("newtab");
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [pinned, setPinned] = useState<string[]>([]);
@@ -248,6 +255,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
       const n = [...list]; n[i] = item; return n;
     });
   }, []);
+  internalRef.current = internal;
   const tabsRef = useRef<RustTab[]>([]);
   tabsRef.current = rustTabs;
   const lastHistoryByTab = useRef<Record<string, string>>({});
@@ -467,10 +475,11 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   // ---- Content-Sichtbarkeit: native Webview liegt UEBER React ----
   // While the sidebar is resized the native webview is hidden so the drag keeps receiving pointer events.
   const [sidebarResizing, setSidebarResizing] = useState(false);
+  const [overlay, setOverlay] = useState(false);
   const splitActive = !!split && !!activeTab && (activeTab.id === split.a || activeTab.id === split.b)
     && rustTabs.some(t => t.id === split.a) && rustTabs.some(t => t.id === split.b);
   // Split view: Rust shows each pane by its own flag (set_layout); here only overlays hide everything.
-  const contentVisible = !!activeTab && (splitActive || (!activeTab.internal && !activeTab.sleeping)) && popover === null && !sidebarResizing && !splitDragging;
+  const contentVisible = !!activeTab && (splitActive || (!activeTab.internal && !activeTab.sleeping)) && popover === null && !sidebarResizing && !splitDragging && !overlay;
   useEffect(() => { call("set_content_visible", { visible: contentVisible }, onError); }, [contentVisible, activeTab?.id, rustTabs.length, onError]);
 
   // ---- Adblock-Schalter an Rust ----
@@ -545,7 +554,10 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   }, [newTab, onError]);
   openPageRef.current = openPage;
 
+  const [closedTabs, setClosedTabs] = useState<string[]>([]);
   const closeTab = useCallback((id: string) => {
+    const ct = tabsRef.current.find(t => t.id === id);
+    if (ct && isWebUrl(ct.url) && !internalRef.current[id]) { const u = ct.url; setClosedTabs(l => [u, ...l.filter(x => x !== u)].slice(0, 25)); }
     setInternal(m => { const n = { ...m }; delete n[id]; return n; });
     call("close_tab", { id }, onError);
   }, [onError]);
@@ -897,6 +909,8 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     sleepTab, sleepInactiveTabs, runShortcut: (k: string) => shortcutRef.current(k),
     paletteMode, openPalette, groups, createGroup, setTabGroup, updateGroup, removeGroup, groupTabsByDomain, groupInternalTabs,
     split, splitActive, splitRatio, splitVertical, splitDragging, setSplitDragging, openSplit, closeSplit, toggleSplit, swapSplit, toggleSplitOrientation, setSplitRatio,
+    overlay, setOverlay, closedTabs,
+    reopenClosedTab: () => { const [u, ...rest] = closedTabs; if (u) { setClosedTabs(rest); newTab(u); } else setStatus(tr("st.noClosedTab")); },
     settingsSection, setSettingsSection, updateEffects, runCommand, bindings, keysFor, keyHint, setShortcut,
   };
   storeRef.current = store;

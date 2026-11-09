@@ -3,6 +3,7 @@ import { useBrowser } from "../store/BrowserStore";
 import { ExtIcon } from "../components/ExtIcon";
 import { IconBack, IconInfo, IconPuzzle, IconReload, IconStore, IconWarn } from "../components/Icons";
 import { Group } from "../components/SettingsUI";
+import { ThemeGallery } from "../components/ThemeGallery";
 import { TWITCH_ID, explainPermission, extList, extToggle, marketFetch, matchHost } from "../lib/extensions";
 import type { ExtInfo, MarketEntry, MarketResult } from "../lib/ipc";
 import { useT, type TKey } from "../i18n";
@@ -30,6 +31,7 @@ export function MarketPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [sel, setSel] = useState<string | null>(null);
+  const [tab, setTab] = useState<"extensions" | "themes">("extensions");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -78,6 +80,11 @@ export function MarketPage() {
         </div>
       </section>
 
+      <div className="segmented market-tabs" role="tablist" aria-label={t("page.market")}>
+        <button role="tab" aria-selected={tab === "extensions"} className={tab === "extensions" ? "on" : ""} onClick={() => setTab("extensions")}>{t("mk.tabExt")}</button>
+        <button role="tab" aria-selected={tab === "themes"} className={tab === "themes" ? "on" : ""} onClick={() => setTab("themes")}>{t("mk.tabThemes")}</button>
+      </div>
+      {tab === "themes" ? <><p className="muted small">{t("mk.themesLead")}</p><ThemeGallery /></> : <>
       <p className="market-note small"><IconInfo size={14} /> <span>{t("mk.honest")}</span></p>
       {error && !loading && <div className="banner warn" role="status"><IconWarn size={15} /><span>{t("mk.offline", { detail: error })}</span></div>}
 
@@ -115,6 +122,7 @@ export function MarketPage() {
           );
         })}
       </div>
+      </>}
     </div>
   );
 }

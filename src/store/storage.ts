@@ -9,7 +9,7 @@ import { invoke } from "@tauri-apps/api/core";
  */
 const PREFIX = "jtech.";
 /** Muss zu storage::KV_KEYS in Rust passen. */
-export const KV_KEYS = ["settings", "bookmarks", "history", "customTheme", "savedThemes", "zoom", "groups", "downloads", "session"] as const;
+export const KV_KEYS = ["settings", "bookmarks", "history", "customTheme", "savedThemes", "zoom", "groups", "downloads", "session", "startBg"] as const;
 
 const cache = new Map<string, string>();
 let backend: "rust" | "local" = "local";

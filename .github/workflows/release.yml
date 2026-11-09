@@ -44,6 +44,20 @@ jobs:
       - name: Check bundled extensions
         run: node scripts/check-extensions.mjs
 
+      - name: Release notes from CHANGELOG.md
+        id: notes
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          {
+            echo "body<<JTECH_NOTES_EOF"
+            node scripts/changelog-section.mjs "$VERSION"
+            echo ""
+            echo ""
+            echo "Installed copies update automatically."
+            echo "JTECH_NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build, sign and publish release
         uses: tauri-apps/tauri-action@v0.6.2
         env:
@@ -53,7 +67,7 @@ jobs:
         with:
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'v__VERSION__' }}
           releaseName: "JTech Browser v__VERSION__"
-          releaseBody: "See the assets below to download and install JTech Browser. Installed copies update automatically."
+          releaseBody: ${{ steps.notes.outputs.body }}
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true

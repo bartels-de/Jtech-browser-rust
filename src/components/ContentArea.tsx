@@ -11,6 +11,7 @@ import { PerformancePage } from "../pages/PerformancePage";
 import { MarketPage } from "../pages/MarketPage";
 import { useT } from "../i18n";
 import { ExtensionsPage } from "../pages/ExtensionsPage";
+import { ChangelogPage } from "../pages/ChangelogPage";
 import { SplitContent } from "./SplitView";
 import type { InternalPage } from "../lib/urls";
 
@@ -28,6 +29,7 @@ export function renderInternal(page: InternalPage): React.ReactNode | null {
     case "performance": return <PerformancePage />;
     case "market": return <MarketPage />;
     case "extensions": return <ExtensionsPage />;
+    case "changelog": return <ChangelogPage />;
     default: return null;
   }
 }

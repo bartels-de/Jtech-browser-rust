@@ -3,6 +3,8 @@ import { useBrowser } from "../store/BrowserStore";
 import { GROUP_COLORS, SIDEBAR_COMPACT_WIDTH, SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH, type TabGroup, type UiTab } from "../store/types";
 import { Favicon } from "./Favicon";
 import { IconClose, IconDownload, IconPin, IconPlus, IconSidebar, IconStar, IconHistory, IconSettings, IconShield, IconVolume, IconMute, IconChevronDown, IconChevronRight, IconPalette, IconMusic, IconGauge, IconMoon, IconCopy, JTechLogo, IconLibrary, IconPuzzle, IconStore, IconSplit } from "./Icons";
+import { throttleStore } from "../lib/bridge";
+import { MiniPlayer } from "./MediaControls";
 import { internalTitle, type InternalPage } from "../lib/urls";
 import { t as tr, useT } from "../i18n";
 import { MenuItem, Popover } from "./Popover";
@@ -114,6 +116,7 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
   const pinnedTabs = b.tabs.filter(t => t.pinned);
   const newTabKey = b.keyHint("tab.new");
   const normalTabs = b.tabs.filter(t => !t.pinned);
+  const throttle = throttleStore.use();
   const running = b.downloads.filter(d => d.live && d.state === "progressing").length;
 
   const renderTab = (t: UiTab, tile = false) => (
@@ -139,6 +142,10 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
         {t.blocked > 0 && (!expanded || tile) && <span className="tab-badge" />}
       </span>
       {expanded && !tile && <span className="tab-title">{t.title || tr("c.newTab")}</span>}
+      {expanded && !tile && !t.sleeping && !t.active && (throttle[t.id]?.suspended || throttle[t.id]?.low) && (
+        <span className={`tab-throttle${throttle[t.id]?.suspended ? " suspended" : ""}`} title={tr(throttle[t.id]?.suspended ? "rl.badgeSuspended" : "rl.badgeLow")}
+          aria-label={tr(throttle[t.id]?.suspended ? "rl.badgeSuspended" : "rl.badgeLow")}><IconGauge size={11} /></span>
+      )}
       {expanded && !tile && t.sleeping && <span className="tab-zz" title={tr("sb.sleeping")} aria-label={tr("sb.sleeping")}><IconMoon size={12} /></span>}
       {expanded && !tile && (t.playingAudio || t.muted) && (
         <button className={`tab-audio${t.muted ? " muted" : ""}`} title={t.muted ? tr("sb.unmute") : tr("sb.mute")} aria-label={t.muted ? tr("sb.unmute") : tr("sb.mute")}
@@ -230,6 +237,7 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
         {renderNormal()}
       </div>
 
+      <MiniPlayer expanded={expanded} />
       {/* Runde 5: kompaktes Menue statt 5 einzelner Icons */}
       <nav className="sidebar-foot" aria-label={t("sb.pages")}>
         <button className={`foot-icon${FOOT.some(([p]) => b.activeTab?.internal === p && p !== "downloads" && p !== "settings") ? " on" : ""}${footMenu ? " open" : ""}`}

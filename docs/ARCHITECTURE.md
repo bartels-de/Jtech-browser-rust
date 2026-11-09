@@ -96,6 +96,48 @@ again focuses the existing tab.
   prompt bar; WebView2 is told not to persist decisions itself, and remembered decisions are
   stored by the browser.
 
+### Page bridge (radial menu, peek, media session)
+
+Mouse events inside the native page webviews never reach React. Three features therefore use one
+small, audited script (`src-tauri/src/pagebridge.rs`, `BRIDGE_TEMPLATE`):
+
+- It is registered with `AddScriptToExecuteOnDocumentCreated` before a tab's first navigation
+  (same mechanism as extension scripts) and runs in the top frame only.
+- It talks to Rust only through `window.chrome.webview.postMessage` with a JSON string of the fixed
+  schema `{jtech: 1, type: "radial" | "peek" | "media", ...}`:
+  - `radial` – middle button held for 250 ms without moving (`x`, `y`). Short middle clicks and
+    autoscroll are not affected; the `auxclick` after an opened menu is suppressed.
+  - `peek` – Shift+click on an `http(s)` link (`url`); the default navigation is prevented.
+  - `media` – state of the page's media elements and `navigator.mediaSession.metadata` (title,
+    artist, album, artwork URL), sent only on change.
+- `WebMessageReceived` accepts messages only from `http(s)` documents. `pagebridge::parse`
+  validates the type and every field (8 KB limit, finite coordinates, absolute `http(s)` URLs
+  without credentials, text truncated, unknown types dropped). A valid message can only show the
+  radial menu, open the peek panel or update the audio hub display. Peek requests are
+  rate-limited. No Tauri command or privileged API is reachable from pages; any page can send the
+  same messages, which is harmless by design.
+- Media controls (play/pause/next/previous/volume) run a fixed script from Rust
+  (`media_control_script`): the action comes from an allowlist and the volume is clamped; no user
+  text is embedded. Per-tab volume sets `HTMLMediaElement.volume` (WebView2 has no native per-tab
+  volume; Web Audio output is not affected).
+- The radial/peek triggers can be switched off in the settings (`set_bridge_options`); Rust then
+  ignores the messages and the script stops preventing Shift+click.
+
+### Peek panel
+
+`src-tauri/src/peek.rs` creates a second native webview over the content area. It has no page
+bridge, no extension scripts and no ad blocking; popups from it open as normal tabs, Esc closes
+it. While it is open the page underneath is hidden and the UI draws a dimmed backdrop plus the
+frame header above the peek rectangle (native webviews cannot be dimmed or rounded with CSS).
+
+### Resource limits
+
+WebView2 has no hard per-tab memory or CPU cap, and tabs of the same site can share a renderer
+process. The limits (off by default) use what WebView2 offers: `MemoryUsageTargetLevel` LOW for
+background tabs (`ICoreWebView2_19`), `TrySuspend` for idle hidden tabs (`ICoreWebView2_3`, resumed
+automatically when shown) and the existing tab sleep when the total memory of all browser
+processes exceeds the cap. Pinned, audio, split-view and active tabs are never touched.
+
 ## Storage
 
 All persistent data lives in SQLite at `%APPDATA%\com.jtech.browser\jtech.sqlite3` (WAL mode,

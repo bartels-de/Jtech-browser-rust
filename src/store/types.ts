@@ -50,6 +50,113 @@ export interface Settings {
   splitRatio?: number;
   /** Split view: panes on top of each other instead of side by side */
   splitVertical?: boolean;
+  /** Radial menu (normalized by normalizeRadial) */
+  radial?: RadialSettings;
+  /** Resource limits (normalized by normalizeLimits) */
+  limits?: LimitSettings;
+  /** Start page layout (normalized by normalizeStart) */
+  start?: StartSettings;
+  /** Audio hub: sites that are always muted (host without www.) */
+  audioMuteSites?: string[];
+  /** Shift+click opens links in the peek panel */
+  peekEnabled?: boolean;
+  /** Changelog: last app version whose "what's new" was shown */
+  lastSeenVersion?: string;
+}
+
+// ---------- Radial menu ----------
+export type RadialTrigger = "mouse" | "keyboard" | "both";
+export interface RadialSettings { enabled: boolean; trigger: RadialTrigger; slots: string[]; }
+export const RADIAL_MIN = 4, RADIAL_MAX = 8;
+export const DEFAULT_RADIAL: RadialSettings = {
+  enabled: true, trigger: "both",
+  slots: ["nav.back", "nav.forward", "nav.reload", "tab.new", "tab.close", "tab.reopen", "view.split", "open.settings"],
+};
+export function normalizeRadial(raw: unknown, known: (id: string) => boolean): RadialSettings {
+  const r = (raw && typeof raw === "object" ? raw : {}) as Partial<RadialSettings>;
+  const trigger: RadialTrigger = r.trigger === "mouse" || r.trigger === "keyboard" || r.trigger === "both" ? r.trigger : DEFAULT_RADIAL.trigger;
+  let slots = Array.isArray(r.slots) ? r.slots.filter((x): x is string => typeof x === "string" && known(x)).slice(0, RADIAL_MAX) : DEFAULT_RADIAL.slots;
+  if (slots.length < RADIAL_MIN) slots = DEFAULT_RADIAL.slots;
+  return { enabled: typeof r.enabled === "boolean" ? r.enabled : true, trigger, slots };
+}
+
+// ---------- Resource limits ----------
+export interface LimitSettings {
+  enabled: boolean;
+  /** Background tabs get MemoryUsageTargetLevel LOW */
+  lowMemoryBackground: boolean;
+  /** Suspend (TrySuspend) background tabs after X minutes without use (0 = off) */
+  suspendAfterMin: number;
+  /** Total browser memory cap in MB; above it the least recently used tab is put to sleep (0 = off) */
+  globalMemoryMb: number;
+  /** Total CPU % threshold; above it (two samples in a row) background tabs are suspended (0 = off) */
+  cpuThreshold: number;
+}
+export const DEFAULT_LIMITS: LimitSettings = { enabled: false, lowMemoryBackground: true, suspendAfterMin: 10, globalMemoryMb: 0, cpuThreshold: 0 };
+const clampN = (v: unknown, min: number, max: number, d: number) => (typeof v === "number" && Number.isFinite(v) ? Math.round(Math.min(max, Math.max(min, v))) : d);
+export function normalizeLimits(raw: unknown): LimitSettings {
+  const r = (raw && typeof raw === "object" ? raw : {}) as Partial<LimitSettings>;
+  const d = DEFAULT_LIMITS;
+  return {
+    enabled: r.enabled === true,
+    lowMemoryBackground: typeof r.lowMemoryBackground === "boolean" ? r.lowMemoryBackground : d.lowMemoryBackground,
+    suspendAfterMin: clampN(r.suspendAfterMin, 0, 240, d.suspendAfterMin),
+    globalMemoryMb: clampN(r.globalMemoryMb, 0, 64000, d.globalMemoryMb),
+    cpuThreshold: clampN(r.cpuThreshold, 0, 400, d.cpuThreshold),
+  };
+}
+
+// ---------- Start page ----------
+export type StartBackground = "none" | "gradient" | "image" | "fx";
+export type IconStyle = "rounded" | "circle" | "square" | "minimal";
+export interface QuickLink { id: string; title: string; url: string; }
+export interface StartSettings {
+  background: StartBackground;
+  gradient: [string, string];
+  clock: boolean;
+  clock24: boolean;
+  seconds: boolean;
+  greeting: boolean;
+  name: string;
+  search: boolean;
+  showEngine: boolean;
+  quickLinks: boolean;
+  /** null = first bookmarks */
+  links: QuickLink[] | null;
+  rows: number;
+  cols: number;
+  iconStyle: IconStyle;
+  trackerStats: boolean;
+  shortcutHints: boolean;
+  density: "compact" | "comfortable" | "spacious";
+  align: "center" | "top";
+}
+export const DEFAULT_START: StartSettings = {
+  background: "none", gradient: ["#1b2a4a", "#0f1215"], clock: true, clock24: true, seconds: false, greeting: true, name: "",
+  search: true, showEngine: true, quickLinks: true, links: null, rows: 1, cols: 7, iconStyle: "rounded",
+  trackerStats: true, shortcutHints: true, density: "comfortable", align: "center",
+};
+const hex = (v: unknown, d: string) => (typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v) ? v : d);
+export function normalizeStart(raw: unknown): StartSettings {
+  const r = (raw && typeof raw === "object" ? raw : {}) as Partial<StartSettings>;
+  const d = DEFAULT_START;
+  const bool = (k: keyof StartSettings) => (typeof r[k] === "boolean" ? r[k] as boolean : d[k] as boolean);
+  const links = Array.isArray(r.links)
+    ? r.links.filter(l => l && typeof l.url === "string" && /^https?:\/\//i.test(l.url)).slice(0, 48)
+      .map(l => ({ id: String(l.id ?? Math.random().toString(36).slice(2)).slice(0, 40), title: String(l.title ?? "").slice(0, 60), url: l.url.slice(0, 2048) }))
+    : null;
+  return {
+    background: (["none", "gradient", "image", "fx"] as const).includes(r.background as StartBackground) ? r.background as StartBackground : d.background,
+    gradient: [hex(r.gradient?.[0], d.gradient[0]), hex(r.gradient?.[1], d.gradient[1])],
+    clock: bool("clock"), clock24: bool("clock24"), seconds: bool("seconds"), greeting: bool("greeting"),
+    name: typeof r.name === "string" ? r.name.slice(0, 40) : "",
+    search: bool("search"), showEngine: bool("showEngine"), quickLinks: bool("quickLinks"), links,
+    rows: clampN(r.rows, 1, 4, d.rows), cols: clampN(r.cols, 3, 10, d.cols),
+    iconStyle: (["rounded", "circle", "square", "minimal"] as const).includes(r.iconStyle as IconStyle) ? r.iconStyle as IconStyle : d.iconStyle,
+    trackerStats: bool("trackerStats"), shortcutHints: bool("shortcutHints"),
+    density: r.density === "compact" || r.density === "spacious" ? r.density : "comfortable",
+    align: r.align === "top" ? "top" : "center",
+  };
 }
 
 export const DEFAULT_SETTINGS: Settings = {

@@ -1,7 +1,7 @@
 import { t, type TKey } from "../i18n";
 
-export type InternalPage = "newtab" | "settings" | "history" | "bookmarks" | "privacy" | "downloads" | "themes" | "audio" | "performance" | "market" | "extensions";
-export const INTERNAL_PAGES: InternalPage[] = ["newtab", "settings", "history", "bookmarks", "privacy", "downloads", "themes", "audio", "performance", "market", "extensions"];
+export type InternalPage = "newtab" | "settings" | "history" | "bookmarks" | "privacy" | "downloads" | "themes" | "audio" | "performance" | "market" | "extensions" | "changelog";
+export const INTERNAL_PAGES: InternalPage[] = ["newtab", "settings", "history", "bookmarks", "privacy", "downloads", "themes", "audio", "performance", "market", "extensions", "changelog"];
 
 /** Localized title of an internal page (jtech://...). */
 export const internalTitle = (p: InternalPage): string => t(`page.${p}` as TKey);

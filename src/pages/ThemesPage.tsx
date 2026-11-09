@@ -1,9 +1,11 @@
+import { ThemeGallery } from "../components/ThemeGallery";
+import { isBuiltinTheme } from "../lib/themeGallery";
 import { useEffect, useId, useRef, useState } from "react";
 import { Group, Row, Switch } from "../components/SettingsUI";
 import { useBrowser } from "../store/BrowserStore";
-import { CUSTOM_CSS_MAX, FONTS, JTECH_DEFAULT, fontName, themeName, PRESETS, exportTheme, importTheme, normalizeHex, sanitizeCss, type FontId, type ThemeSpec } from "../lib/theme";
+import { CUSTOM_CSS_MAX, FONTS, JTECH_DEFAULT, fontName, themeName, exportTheme, importTheme, normalizeHex, sanitizeCss, type FontId, type ThemeSpec } from "../lib/theme";
 import { t, useT, type TKey } from "../i18n";
-import { BACKGROUNDS, CURSOR_PRESETS, PRESET_EFFECTS, QUALITY, TRAILS, cursorSpec, imageToCursor, rescaleCursor, type BgId, type EffectsSettings, type Quality } from "../lib/fx/effects";
+import { BACKGROUNDS, CURSOR_PRESETS, QUALITY, TRAILS, cursorSpec, imageToCursor, rescaleCursor, type BgId, type EffectsSettings, type Quality } from "../lib/fx/effects";
 
 /** Port: Design-Studio (Standardprojekt: Theme-Editor in index.html / app.js / studio.css). */
 const COLORS: { key: keyof ThemeSpec; readonly label: string }[] = (["accent", "accent2", "bg", "text", "textDim"] as const)
@@ -17,7 +19,7 @@ export function ThemesPage() {
   const [msg, setMsg] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   // Jede Aenderung wird sofort angewendet (Live-Vorschau = gesamte Oberflaeche) und gespeichert.
-  const patch = (p: Partial<ThemeSpec>) => b.setCustomTheme({ ...cur, ...p, id: cur.id === "jtech" || PRESETS.some(x => x.id === cur.id) ? "custom-" + Date.now().toString(36) : cur.id, name: PRESETS.some(x => x.id === cur.id) ? t("th.adjusted", { name: themeName(cur) }) : cur.name });
+  const patch = (p: Partial<ThemeSpec>) => b.setCustomTheme({ ...cur, ...p, id: cur.id === "jtech" || isBuiltinTheme(cur.id) ? "custom-" + Date.now().toString(36) : cur.id, name: isBuiltinTheme(cur.id) ? t("th.adjusted", { name: themeName(cur) }) : cur.name });
   const doImport = (text: string) => {
     try { const x = importTheme(text); b.setCustomTheme(x); b.saveTheme(x); setMsg(t("th.imported", { name: x.name })); }
     catch (e) { setMsg(t("th.importFailed", { detail: String(e instanceof Error ? e.message : e) })); }
@@ -35,10 +37,6 @@ export function ThemesPage() {
   };
   // Runde 5: wie im Electron-Original bringen Vorlagen ihren Hintergrund/Cursor-Effekt mit (abschaltbar).
   const [withFx, setWithFx] = useState(true);
-  const preset = (x: ThemeSpec) => {
-    b.setCustomTheme(x.id === "jtech" ? null : x);
-    if (withFx) b.updateEffects(PRESET_EFFECTS[x.id] ?? { bgEnabled: false, trail: "none" });
-  };
 
   return (
     <div className="page doc-page">
@@ -51,17 +49,7 @@ export function ThemesPage() {
       <Group id="st-presets" title={t("th.j.presets")} desc={t("th.presetsDesc")}
         actions={<label className="switch-row small"><span>{t("th.withFx")}</span>
           <Switch label={t("th.withFxLabel")} checked={withFx} onChange={setWithFx} /></label>}>
-        <div className="theme-grid">
-          {[...PRESETS, ...b.savedThemes].map(x => (
-            <button key={x.id} className={`theme-card${(b.customTheme?.id ?? "jtech") === x.id ? " on" : ""}`} onClick={() => preset(x)} title={themeName(x)}>
-              <span className="theme-swatch" style={{ background: x.bg, borderRadius: x.radius }}>
-                <i style={{ background: x.accent }} /><i style={{ background: x.accent2 }} /><i style={{ background: x.text }} />
-              </span>
-              <span className="theme-name">{themeName(x)}</span>
-              {b.savedThemes.some(s => s.id === x.id) && <span className="theme-del" role="button" aria-label={t("th.removeNamed", { name: x.name })} title={t("c.remove")} onClick={e => { e.stopPropagation(); b.removeTheme(x.id); }}>×</span>}
-            </button>
-          ))}
-        </div>
+        <ThemeGallery withFx={withFx} />
       </Group>
 
       <Group id="st-edit" title={t("th.editTitle")} desc={t("th.editDesc")}>

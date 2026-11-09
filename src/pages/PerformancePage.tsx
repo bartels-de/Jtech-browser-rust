@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useBrowser } from "../store/BrowserStore";
 import { fmtBytes as fmtB, useT } from "../i18n";
 import { call } from "../lib/ipc";
+import { throttleStore } from "../lib/bridge";
+import { normalizeLimits } from "../store/types";
 
 interface Proc { pid: number; name: string; memoryBytes: number; cpuTime100ns: number; commandLine: string; }
 interface PerfStats { totalMemoryBytes: number; processes: Proc[]; tabCount: number; }
@@ -49,6 +51,8 @@ export function PerformancePage() {
   }, [auto]);
 
   const sleeping = b.tabs.filter(t => t.sleeping).length;
+  const throttle = throttleStore.use();
+  const lim = normalizeLimits(b.settings.limits);
   const heavy = stats?.processes.filter(p => p.memoryBytes > 200 * 1024 * 1024) ?? [];
   const top = stats?.processes[0];
   const totalCpu = Object.values(cpuPct).reduce((a, c) => a + c, 0);
@@ -113,6 +117,23 @@ export function PerformancePage() {
           </tbody>
         </table>
         {!stats && <div className="skel-rows" role="status" aria-label={t("pf.dataLoading")}>{[0, 1, 2, 3].map(i => <span key={i} className="skeleton skel-row" />)}</div>}
+      </section>
+
+      <section className="card">
+        <div className="row"><h2>{t("pf.tabsTitle")}</h2><span className="spacer" /><button className="btn ghost sm" onClick={() => b.openPage("settings", { section: "resources" })}>{t("pf.limits")}</button></div>
+        <p className="muted small">{lim.enabled ? t("pf.limitsOn") : t("pf.limitsOff")}</p>
+        <table className="data-table">
+          <thead><tr><th>{t("pf.colTab")}</th><th>{t("pf.colState")}</th></tr></thead>
+          <tbody>
+            {b.tabs.filter(x => !x.internal).map(x => {
+              const th = throttle[x.id];
+              const state = x.sleeping ? t("pf.st.sleeping") : x.active ? t("pf.st.active") : th?.suspended ? t("pf.st.suspended") : th?.low ? t("pf.st.low")
+                : x.pinned || x.playingAudio ? t("pf.st.protected") : t("pf.st.normal");
+              return <tr key={x.id}><td className="row-title" title={x.url}>{x.title}</td><td>{state}</td></tr>;
+            })}
+          </tbody>
+        </table>
+        <small className="muted">{t("pf.perTabNote")}</small>
       </section>
 
       <section className="card">

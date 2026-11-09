@@ -12,6 +12,10 @@ import { CommandPalette } from "./components/CommandPalette";
 import { PermissionBar } from "./components/PermissionBar";
 import { FxLayer } from "./components/FxLayer";
 import { UpdateBar } from "./components/UpdateBar";
+import { WhatsNew } from "./components/WhatsNew";
+import { PageFeatures } from "./components/PageFeatures";
+import { PeekPanel } from "./components/PeekPanel";
+import { RadialMenu } from "./components/RadialMenu";
 import { IconWarn } from "./components/Icons";
 import { useT } from "./i18n";
 import "./styles/tokens.css";
@@ -70,6 +74,7 @@ function Shell() {
           <FindBar />
           <PermissionBar />
           <UpdateBar />
+          <WhatsNew />
           {err && (
             <div className="banner error" role="alert">
               <IconWarn size={16} className="banner-icon" />
@@ -88,6 +93,9 @@ function Shell() {
         <ContentArea />
       </div>
       <CommandPalette />
+      <PageFeatures />
+      <PeekPanel />
+      <RadialMenu />
     </div>
   );
 }

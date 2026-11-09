@@ -23,6 +23,9 @@ mod privacy;
 mod uifx;
 // JTech-Erweiterungen (gebuendelt, Market-Index, Content-Scripts, eigene Netzwerkregeln).
 mod extensions;
+// Page bridge (radial menu, peek, media session) and the peek panel webview.
+mod pagebridge;
+mod peek;
 
 thread_local! { static ENGINE: RefCell<Option<Engine>> = RefCell::new(None); }
 static BLOCKED: AtomicU64 = AtomicU64::new(0);
@@ -316,6 +319,32 @@ fn apply_layout(app: &AppHandle) {
     }
 }
 
+/// Current rectangle (logical px) of a tab's webview, same rules as apply_layout. None = not shown.
+fn tab_rect(app: &AppHandle, id: &str) -> Option<Bounds> {
+    let (window, top_h, sb_w, split, active, fs) = {
+        let state = app.state::<Mutex<TabManager>>();
+        let m = lock(&state);
+        let split = m.split.clone().filter(|s| m.active.as_deref().is_some_and(|a| a == s.a || a == s.b));
+        (m.window.clone()?, m.top_height, m.sidebar_width, split, m.active.clone(), m.fullscreen.is_some())
+    };
+    let (w, h) = logical_window_size(&window).ok()?;
+    if fs { return Some(Bounds { x: 0.0, y: 0.0, w, h }); }
+    let content = content_bounds(w, h, top_h, sb_w);
+    if let Some(s) = split {
+        let (ra, rb) = split_bounds(content, s.ratio, s.vertical);
+        if id == s.a { return Some(ra); }
+        if id == s.b { return Some(rb); }
+    }
+    (active.as_deref() == Some(id)).then_some(content)
+}
+
+/// Main window and content rectangle (for the peek panel).
+fn main_window(app: &AppHandle) -> Option<tauri::Window> {
+    let state = app.state::<Mutex<TabManager>>();
+    let m = lock(&state);
+    m.window.clone()
+}
+
 // ---------- Vollbild ----------
 
 fn emit_fullscreen(app: &AppHandle) {
@@ -588,6 +617,7 @@ fn destroy_webview(app: &AppHandle, id: &str, tab: Tab) {
         if let Err(e) = app.run_on_main_thread(move || privacy::cancel_pending_for(&app2, &id3)) { tracing::warn!("cancel permissions: {e}"); }
     }
     extensions::forget(tab.webview.label());
+    pagebridge::forget(tab.webview.label());
     if let Err(e) = tab.webview.close() { report_error(app, id, "close", e); }
 }
 
@@ -1567,7 +1597,35 @@ unsafe fn attach_handlers(pwv: &tauri::webview::PlatformWebview, app: &AppHandle
             }
         }) as Box<dyn FnOnce() + Send>
     });
-    extensions::attach_then(&core, tab.webview.label(), done);
+    // Page bridge first (radial/peek/media, validated postMessage channel), then the extension
+    // scripts; the first navigation starts only after both are registered.
+    {
+        let (core2, label2) = (core.clone(), tab.webview.label().to_string());
+        pagebridge::register_then(&core, tab.webview.label(), Box::new(move || extensions::attach_then(&core2, &label2, done)));
+    }
+
+    // Page bridge: WebMessageReceived. Only strictly validated messages of the fixed schema are used
+    // (pagebridge::parse); everything else is ignored. Tauri IPC is never reachable from pages.
+    {
+        let (app, id) = (app.clone(), tab_id.to_string());
+        let h = webview2_com::WebMessageReceivedEventHandler::create(Box::new(move |_s, args| {
+            let Some(args) = args else { return Ok(()) };
+            let mut sp = PWSTR::null();
+            let src = if unsafe { args.Source(&mut sp) }.is_ok() { take_pwstr(sp) } else { String::new() };
+            if !(src.starts_with("https://") || src.starts_with("http://")) { return Ok(()); }
+            let mut p = PWSTR::null();
+            if unsafe { args.TryGetWebMessageAsString(&mut p) }.is_err() { return Ok(()); }
+            let raw = take_pwstr(p);
+            if let Some(msg) = pagebridge::parse(&raw) { pagebridge::dispatch(&app, &id, msg); }
+            Ok(())
+        }));
+        let h: SYS::ICoreWebView2WebMessageReceivedEventHandler = h.cast().map_err(|e| format!("cast WebMessageReceived: {e}"))?;
+        let mut tok = 0i64;
+        match unsafe { core.add_WebMessageReceived(&h, &mut tok) } {
+            Ok(()) => push("WebMessageReceived", tok),
+            Err(e) => tracing::warn!(tab = tab_id, "add_WebMessageReceived: {e}"),
+        }
+    }
 
     // Adblock-Filter. Abschaltbar fuer Diagnose: JTECH_NO_ADBLOCK=1
     if std::env::var("JTECH_NO_ADBLOCK").map(|v| v == "1").unwrap_or(false) {
@@ -1675,6 +1733,7 @@ unsafe fn detach_handlers(pwv: &tauri::webview::PlatformWebview, tab_id: &str, t
                 },
                 "DownloadStarting" => core.cast::<SYS::ICoreWebView2_4>().and_then(|c| c.remove_DownloadStarting(tok)),
                 "PermissionRequested" => core.remove_PermissionRequested(tok),
+                "WebMessageReceived" => core.remove_WebMessageReceived(tok),
                 _ => Ok(()),
             }
         };
@@ -1798,6 +1857,78 @@ fn get_performance_stats(app: AppHandle) -> PerformanceStats {
     PerformanceStats { total_memory_bytes: 0, processes: vec![], tab_count }
 }
 
+// ---------- Resource limits ----------
+
+/// Resource limits: memory target of a (background) tab. WebView2 ICoreWebView2_19
+/// MemoryUsageTargetLevel LOW asks the renderer to trim memory; it is a hint, not a hard cap.
+#[tauri::command]
+fn set_tab_memory_target(app: AppHandle, id: String, low: bool) -> Result<(), String> {
+    let tab = tab_by_id(&app, &id)?;
+    #[cfg(windows)]
+    {
+        let (app2, id2) = (app.clone(), id.clone());
+        tab.webview.with_webview(move |pwv| {
+            use webview2_com_sys::Microsoft::Web::WebView2::Win32 as SYS;
+            use windows::core::Interface;
+            let level = if low { SYS::COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW } else { SYS::COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL };
+            let r = unsafe { pwv.controller().CoreWebView2() }
+                .and_then(|c| c.cast::<SYS::ICoreWebView2_19>())
+                .and_then(|c19| unsafe { c19.SetMemoryUsageTargetLevel(level) });
+            match r {
+                Ok(()) => emit_tab(&app2, TabEvent { tab_id: id2.clone(), kind: "throttle".into(), detail: Some(if low { "low" } else { "normal" }.into()), ..Default::default() }),
+                Err(e) => tracing::warn!(tab = id2.as_str(), "SetMemoryUsageTargetLevel (WebView2 >= 1.0.2210): {e}"),
+            }
+        }).map_err(|e| e.to_string())
+    }
+    #[cfg(not(windows))]
+    { let _ = (tab, low); Ok(()) }
+}
+
+/// Resource limits: suspend a hidden background tab (ICoreWebView2_3::TrySuspend). Scripts and
+/// timers stop; WebView2 resumes the tab automatically when it becomes visible again.
+/// Never for the active tab, split view panes or tabs playing audio.
+#[tauri::command]
+fn suspend_tab(app: AppHandle, id: String) -> Result<(), String> {
+    let tab = {
+        if !valid_tab_id(&id) { return Err(format!("ungueltige Tab-ID '{id}'")); }
+        let state = app.state::<Mutex<TabManager>>();
+        let m = lock(&state);
+        if m.active.as_deref() == Some(id.as_str()) { return Err("aktiver Tab wird nicht schlafen gelegt".into()); }
+        if m.split.as_ref().is_some_and(|s| s.a == id || s.b == id) { return Err("Tab in geteilter Ansicht wird nicht schlafen gelegt".into()); }
+        let t = m.tabs.get(&id).cloned().ok_or_else(|| format!("Tab {id} nicht gefunden"))?;
+        if t.playing_audio.load(Ordering::Relaxed) { return Err(format!("Tab {id} spielt Audio")); }
+        t
+    };
+    #[cfg(windows)]
+    {
+        let (app2, id2) = (app.clone(), id.clone());
+        tab.webview.with_webview(move |pwv| {
+            use webview2_com_sys::Microsoft::Web::WebView2::Win32 as SYS;
+            use windows::core::Interface;
+            let (app3, id3) = (app2.clone(), id2.clone());
+            let h = webview2_com::TrySuspendCompletedHandler::create(Box::new(move |_res, ok| {
+                let ok: bool = ok.into();
+                emit_tab(&app3, TabEvent { tab_id: id3.clone(), kind: "suspended".into(), is_success: Some(ok), ..Default::default() });
+                Ok(())
+            }));
+            let r = unsafe { pwv.controller().CoreWebView2() }
+                .and_then(|c| c.cast::<SYS::ICoreWebView2_3>())
+                .and_then(|c3| h.cast::<SYS::ICoreWebView2TrySuspendCompletedHandler>().and_then(|h| unsafe { c3.TrySuspend(&h) }));
+            if let Err(e) = r { tracing::warn!(tab = id2.as_str(), "TrySuspend: {e}"); }
+        }).map_err(|e| e.to_string())
+    }
+    #[cfg(not(windows))]
+    { let _ = tab; Ok(()) }
+}
+
+/// Audio hub: play/pause/next/prev/volume via the page bridge (fixed script, validated action).
+#[tauri::command]
+fn media_control(app: AppHandle, id: String, action: String, value: Option<f64>) -> Result<(), String> {
+    let js = pagebridge::media_control_script(&action, value).ok_or_else(|| format!("unbekannte Aktion '{action}'"))?;
+    let tab = tab_by_id(&app, &id)?;
+    tab.webview.eval(&js).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn pip_active(app: AppHandle) -> Result<(), String> {
     let Some((_id, tab)) = active_tab(&app) else { return Err("kein aktiver Tab".into()); };
@@ -1817,7 +1948,8 @@ pub fn run() {
             privacy::list_cookies, privacy::delete_cookies, privacy::clear_browsing_data,
             privacy::resolve_permission, privacy::list_permissions, privacy::set_permission,
             uifx::set_shortcuts, uifx::set_page_fx,
-            extensions::ext_list, extensions::ext_diagnostics, extensions::ext_toggle, extensions::ext_site_toggle, extensions::market_fetch, prepare_update_exit, get_performance_stats, pip_active])
+            extensions::ext_list, extensions::ext_diagnostics, extensions::ext_toggle, extensions::ext_site_toggle, extensions::market_fetch, prepare_update_exit, get_performance_stats, pip_active,
+            set_tab_memory_target, suspend_tab, media_control, pagebridge::set_bridge_options, peek::peek_open, peek::peek_bounds, peek::peek_close])
         .setup(|app| {
             // Runde 4: SQLite-Persistenz, Statistik, Filterlisten (Cache + Hintergrund-Update).
             let data_dir = app.path().app_data_dir().unwrap_or_else(|_| std::env::temp_dir().join("jtech-browser"));
