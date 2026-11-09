@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FAQ – JTech Browser</title>
+  <meta name="description" content="Frequently asked questions about JTech Browser: platform support, SmartScreen warnings, data storage and importing bookmarks.">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" href="assets/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="stylesheet" href="css/site.css">
+</head>
+<body data-page="faq">
+  <div id="site-header-target"></div>
+
+  <main id="main">
+    <section class="page-hero">
+      <div class="wrap">
+        <h1 data-i18n="faq.title">Questions and answers</h1>
+      </div>
+    </section>
+
+    <section class="faq-section">
+      <div class="wrap narrow">
+        <div class="faq-list">
+          <details class="faq-item reveal">
+            <summary><span data-i18n="faq.q1">Is JTech Browser a replacement for Chrome or Edge?</span><span class="faq-chev">▾</span></summary>
+            <p data-i18n="faq.a1">Not yet. It is a focused browser for people who want vertical tabs, built-in blocking and a customizable UI. Some advanced features like full extension stores, profiles or mobile sync are still missing.</p>
+          </details>
+          <details class="faq-item reveal">
+            <summary><span data-i18n="faq.q2">Why does the installer trigger SmartScreen?</span><span class="faq-chev">▾</span></summary>
+            <p data-i18n="faq.a2">The installer is not yet signed with an expensive Windows publisher certificate. The file is safe, the source code is public and the browser itself verifies update signatures separately.</p>
+          </details>
+          <details class="faq-item reveal">
+            <summary><span data-i18n="faq.q3">Does it work on macOS or Linux?</span><span class="faq-chev">▾</span></summary>
+            <p data-i18n="faq.a3">Currently only Windows 10 and 11 are supported, because WebView2 is the rendering engine and the windowing code is Windows-specific right now.</p>
+          </details>
+          <details class="faq-item reveal">
+            <summary><span data-i18n="faq.q4">Where is my data stored?</span><span class="faq-chev">▾</span></summary>
+            <p data-i18n="faq.a4">Bookmarks, history, settings and permissions are stored in a local SQLite file inside your AppData folder. No account or cloud is required.</p>
+          </details>
+          <details class="faq-item reveal">
+            <summary><span data-i18n="faq.q5">Can I import my bookmarks from another browser?</span><span class="faq-chev">▾</span></summary>
+            <p data-i18n="faq.a5">Yes. The importer can read bookmarks and history from Chrome, Edge, Brave and Firefox profiles and lets you merge them into JTech.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="site-footer-target"></div>
+
+  <script src="js/site.js"></script>
+  <script src="js/shared.js"></script>
+</body>
+</html>

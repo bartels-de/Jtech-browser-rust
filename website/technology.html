@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Technology – JTech Browser</title>
+  <meta name="description" content="How JTech Browser is built: Tauri 2, Rust, Microsoft Edge WebView2, React, adblock-rust, SQLite and signed updates.">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" href="assets/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="stylesheet" href="css/site.css">
+</head>
+<body data-page="technology">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    </defs>
+  </svg>
+
+  <div id="site-header-target"></div>
+
+  <main id="main">
+    <section class="page-hero">
+      <div class="wrap">
+        <h1 data-i18n="tech.title">What it is built with</h1>
+        <p class="lead" data-i18n="tech.lead">JTech Browser combines a fast native shell with a modern web UI and a Rust backend.</p>
+      </div>
+    </section>
+
+    <section class="tech-section">
+      <div class="wrap">
+        <div class="tech-grid">
+          <article class="tech-card reveal tilt">
+            <div class="tech-icon">⚡</div>
+            <h3>Tauri 2 + Rust</h3>
+            <p>The shell is written in Rust and uses Tauri 2 to create the window and host the UI webview. That keeps memory low, startup fast and the native layer small.</p>
+          </article>
+          <article class="tech-card reveal tilt">
+            <div class="tech-icon">🌐</div>
+            <h3>Microsoft Edge WebView2</h3>
+            <p>Websites render with the same engine as Edge, so compatibility is high. Each web tab is a separate WebView2 instance, managed from Rust.</p>
+          </article>
+          <article class="tech-card reveal tilt">
+            <div class="tech-icon">⚛️</div>
+            <h3>React + TypeScript</h3>
+            <p>The interface, settings, start page and all internal pages are built with React 19 and TypeScript, compiled by Vite.</p>
+          </article>
+          <article class="tech-card reveal tilt">
+            <div class="tech-icon">🛡️</div>
+            <h3>adblock-rust</h3>
+            <p>Network requests are checked in Rust with Brave's open-source engine against EasyList, EasyPrivacy and optional extra lists.</p>
+          </article>
+          <article class="tech-card reveal tilt">
+            <div class="tech-icon">🗄️</div>
+            <h3>SQLite</h3>
+            <p>Bookmarks, history, settings, permissions and block statistics live in a local SQLite database. Nothing leaves your PC unless you open a website.</p>
+          </article>
+          <article class="tech-card reveal tilt">
+            <div class="tech-icon">🔒</div>
+            <h3>Signed updates</h3>
+            <p>The built-in updater fetches releases from GitHub and verifies the signature before installing. You can disable automatic checks.</p>
+          </article>
+        </div>
+
+        <figure class="shot tilt reveal">
+          <img src="assets/hero-start.jpg" loading="lazy" alt="JTech Browser interface with sidebar tabs and content webview">
+        </figure>
+
+        <div class="architecture reveal">
+          <h2 data-i18n="tech.archT">How the pieces fit together</h2>
+          <div class="arch-grid">
+            <div class="arch-step reveal">
+              <span class="arch-num">1</span>
+              <h4>One UI webview</h4>
+              <p>Spans the whole window and draws the sidebar, toolbar and internal pages.</p>
+            </div>
+            <div class="arch-step reveal">
+              <span class="arch-num">2</span>
+              <h4>One content webview per tab</h4>
+              <p>Positioned over the content area and resized from Rust as the window or sidebar changes.</p>
+            </div>
+            <div class="arch-step reveal">
+              <span class="arch-num">3</span>
+              <h4>Rust in the middle</h4>
+              <p>Creates webviews, routes IPC commands, filters requests, persists data and handles WebView2 events.</p>
+            </div>
+            <div class="arch-step reveal">
+              <span class="arch-num">4</span>
+              <h4>React mirrors Rust state</h4>
+              <p>Through Tauri events, the UI updates without polling.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="tech-detail reveal">
+          <h2>Why this stack?</h2>
+          <p><strong>Rust</strong> gives memory safety and performance for the native layer. <strong>Tauri 2</strong> provides a small, secure bridge between web UI and native code. <strong>WebView2</strong> means websites work exactly as in Edge without shipping a separate rendering engine. <strong>React</strong> lets us build a rich, responsive interface quickly, while <strong>SQLite</strong> keeps all your data local and queryable.</p>
+          <p>The result is a browser that starts fast, uses fewer resources than Electron-based alternatives, and still supports modern web standards and a customizable interface.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="site-footer-target"></div>
+
+  <script src="js/site.js"></script>
+  <script src="js/shared.js"></script>
+</body>
+</html>

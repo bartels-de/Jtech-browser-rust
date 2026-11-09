@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Download – JTech Browser</title>
+  <meta name="description" content="Download JTech Browser for Windows 10 and 11. Free, open source, MIT licensed.">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" href="assets/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="stylesheet" href="css/site.css">
+</head>
+<body data-page="download">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="i-download" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    </defs>
+  </svg>
+
+  <div id="site-header-target"></div>
+
+  <main id="main">
+    <section class="page-hero">
+      <div class="wrap">
+        <h1 data-i18n="download.title">Download JTech Browser</h1>
+        <p class="lead" data-i18n="download.lead">One installer for 64-bit Windows. After that, the browser updates itself.</p>
+      </div>
+    </section>
+
+    <section class="download-section">
+      <div class="wrap">
+        <div class="dl-card reveal">
+          <div class="dl-main">
+            <img src="assets/jtech-logo.png" alt="" width="80" height="80" class="dl-logo">
+            <h2>JTech Browser for Windows</h2>
+            <p class="lead">Latest release · 64-bit installer · Windows 10/11</p>
+            <a class="btn btn-primary btn-lg js-download" href="https://github.com/bartels-de/Jtech-browser-rust/releases/latest">
+              <svg width="24" height="24" aria-hidden="true"><use href="#i-download"/></svg>
+              <span><span data-i18n="cta.download">Download for Windows</span><span class="sub js-version" data-i18n="cta.sub">Windows 10 and 11, 64-bit</span></span>
+            </a>
+            <div class="dl-links">
+              <a href="https://github.com/bartels-de/Jtech-browser-rust/releases">All releases</a>
+              <a href="https://github.com/bartels-de/Jtech-browser-rust/blob/main/CHANGELOG.md">Changelog</a>
+              <a href="https://github.com/bartels-de/Jtech-browser-rust#building-from-source">Build from source</a>
+            </div>
+          </div>
+          <div class="req">
+            <h3>System requirements</h3>
+            <ul>
+              <li><svg width="16" height="16"><use href="#i-check"/></svg><span><strong>Windows 10 or 11</strong>, 64-bit (x64)</span></li>
+              <li><svg width="16" height="16"><use href="#i-check"/></svg><span><strong>Microsoft Edge WebView2 Runtime.</strong> Windows 11 already includes it; on Windows 10 it is usually present and otherwise set up by the installer.</span></li>
+            </ul>
+            <div class="notice">
+              <strong>A warning on first start is expected</strong>
+              <span>The installer is not yet signed with a Windows publisher certificate, so Microsoft SmartScreen may warn you. Choose "More info" and then "Run anyway". This is separate from the update signature the browser checks before installing its own updates.</span>
+            </div>
+            <div class="notice quiet">
+              <strong>Early software</strong>
+              <span>JTech Browser is at version 0.x. Expect rough edges and changes between releases. If something breaks, please <a href="https://github.com/bartels-de/Jtech-browser-rust/issues">open an issue</a>.</span>
+            </div>
+          </div>
+          <figure class="dl-shot tilt reveal">
+            <img src="assets/hero-start.jpg" loading="lazy" alt="JTech Browser start page">
+          </figure>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="site-footer-target"></div>
+
+  <script src="js/site.js"></script>
+  <script src="js/shared.js"></script>
+</body>
+</html>
