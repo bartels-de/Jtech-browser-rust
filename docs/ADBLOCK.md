@@ -41,11 +41,17 @@ toolbar or the privacy page). Allowlist entries include subdomains.
 
 At `DOMContentLoaded` in the main frame the browser injects:
 
-1. a stylesheet with the URL-specific hide selectors, and
-2. after one pass over the class names and IDs present in the page, a second stylesheet with the
+1. a stylesheet with the URL-specific hide selectors,
+2. a stylesheet for procedural filters that can be expressed as plain CSS,
+3. a JavaScript runtime that executes scriptlets (`+js(...)`) and procedural cosmetic filters
+   (`:has-text`, `:upward`, `:matches-css`, `:min-text-length`, `:style()`, `:remove-attr()`,
+   `:remove-class()`, `:remove()`), and
+4. after one pass over the class names and IDs present in the page, a second stylesheet with the
    matching generic hide selectors.
 
-Cosmetic filtering can be turned off in the settings.
+Scriptlets and procedural filters run with a `MutationObserver` so dynamically added content is
+re-checked. They can be turned off separately in Settings › Ad blocker; cosmetic CSS hiding has its
+own toggle.
 
 ## Statistics
 
@@ -66,11 +72,14 @@ images, scripts, stylesheets, fonts, XHR/fetch, media, subframes and WebSocket h
 - Requests in some cross-origin iframes and popups may be covered only partially.
 - `$redirect` and replacement resources, `$csp`, `$removeparam` and `$header` rules are not
   applied.
-- Cosmetic filters run once per page load in the main frame only. Elements added later are not
-  re-checked (no mutation observer), and a brief flash of hidden content is possible. Iframes do
-  not receive cosmetic filters.
-- **Procedural cosmetic filters** (`:has-text`, `:upward`, …) and **scriptlets** (`+js(...)`) are
-  not executed. Parts of the uBlock and annoyance lists therefore have no effect.
+- Cosmetic filters run in the main frame only. Iframes do not receive cosmetic filters.
+- Scriptlets and procedural filters are injected at `DOMContentLoaded`. Very early page scripts may
+  already have run, so scriptlets that intercept `fetch`/`XMLHttpRequest` at the first moment may
+  not catch the earliest requests. A future update may move the injection to `document_start`.
+- Not every procedural operator from uBlock Origin is supported yet; unsupported operators are
+  skipped. The currently supported operators are: `:has-text`, `:upward`, `:matches-attr`,
+  `:matches-css`, `:matches-css-before`, `:matches-css-after`, `:matches-path`, `:min-text-length`
+  and `:xpath`. Unsupported operators in otherwise valid rules are ignored.
 - The displayed rule count is the number of non-comment lines, not the number of rules the
   engine accepted.
 

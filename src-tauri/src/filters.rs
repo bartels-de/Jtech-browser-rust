@@ -37,11 +37,17 @@ const MAX_COSMETIC_SELECTORS: usize = 8000;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase", default)]
-pub struct FilterConfig { pub enabled: HashMap<String, bool>, pub update_days: u32, pub cosmetic: bool }
+pub struct FilterConfig {
+    pub enabled: HashMap<String, bool>,
+    pub update_days: u32,
+    pub cosmetic: bool,
+    /// Execute scriptlets and procedural cosmetic filters in pages.
+    pub scriptlets: bool,
+}
 
 impl Default for FilterConfig {
     fn default() -> Self {
-        Self { enabled: LISTS.iter().map(|l| (l.id.to_string(), l.default_on)).collect(), update_days: 4, cosmetic: true }
+        Self { enabled: LISTS.iter().map(|l| (l.id.to_string(), l.default_on)).collect(), update_days: 4, cosmetic: true, scriptlets: true }
     }
 }
 
@@ -72,6 +78,7 @@ pub struct FilterStatus {
     from_cache: bool,
     update_days: u32,
     cosmetic: bool,
+    scriptlets: bool,
     allowlist: Vec<String>,
 }
 
@@ -80,6 +87,7 @@ static BUSY: AtomicBool = AtomicBool::new(false);
 static DIR: OnceLock<PathBuf> = OnceLock::new();
 static ALLOW: OnceLock<RwLock<HashSet<String>>> = OnceLock::new();
 pub static COSMETIC_ENABLED: AtomicBool = AtomicBool::new(true);
+pub static SCRIPTLETS_ENABLED: AtomicBool = AtomicBool::new(true);
 
 fn allow() -> &'static RwLock<HashSet<String>> { ALLOW.get_or_init(|| RwLock::new(HashSet::new())) }
 
@@ -166,7 +174,7 @@ fn build_status(state: &str, message: &str) -> FilterStatus {
     let prev = lock(&STATUS).clone().unwrap_or_default();
     let mut allowlist: Vec<String> = allow().read().unwrap_or_else(|p| p.into_inner()).iter().cloned().collect();
     allowlist.sort();
-    FilterStatus { state: state.into(), message: message.into(), lists, active_rules: active, engine_built_at: prev.engine_built_at, from_cache: prev.from_cache, update_days: cfg.update_days, cosmetic: cfg.cosmetic, allowlist }
+    FilterStatus { state: state.into(), message: message.into(), lists, active_rules: active, engine_built_at: prev.engine_built_at, from_cache: prev.from_cache, update_days: cfg.update_days, cosmetic: cfg.cosmetic, scriptlets: cfg.scriptlets, allowlist }
 }
 
 fn set_status(app: &AppHandle, state: &str, message: &str, built: Option<(u64, bool)>) {
@@ -337,6 +345,7 @@ pub fn start(app: &AppHandle) {
     { let mut w = allow().write().unwrap_or_else(|p| p.into_inner()); w.extend(saved.into_iter().filter_map(|h| normalize_host(&h))); }
     let cfg = load_config();
     COSMETIC_ENABLED.store(cfg.cosmetic, Ordering::Relaxed);
+    SCRIPTLETS_ENABLED.store(cfg.scriptlets, Ordering::Relaxed);
     *lock(&STATUS) = Some(build_status("idle", "Start"));
 
     let app = app.clone();
@@ -363,7 +372,15 @@ pub fn start(app: &AppHandle) {
 // ---------- Kosmetische Filter ----------
 
 /// CSS + Infos fuer die Seite (UI-Thread, da ENGINE thread_local ist).
-pub struct Cosmetic { pub css: String, pub generichide: bool, pub exceptions: HashSet<String> }
+pub struct Cosmetic {
+    pub css: String,
+    pub generichide: bool,
+    pub exceptions: HashSet<String>,
+    /// JavaScript code for scriptlet injections produced by adblock-rust.
+    pub script: String,
+    /// JSON-encoded procedural cosmetic filters produced by adblock-rust.
+    pub procedural: Vec<String>,
+}
 
 fn css_from(selectors: impl IntoIterator<Item = String>) -> String {
     let mut out = String::new();
@@ -386,7 +403,8 @@ pub fn cosmetic_for(url: &str) -> Option<Cosmetic> {
         let r = engine.url_cosmetic_resources(url);
         let mut sel: Vec<String> = r.hide_selectors.into_iter().collect();
         sel.sort();
-        Some(Cosmetic { css: css_from(sel), generichide: r.generichide, exceptions: r.exceptions })
+        let procedural: Vec<String> = r.procedural_actions.into_iter().collect();
+        Some(Cosmetic { css: css_from(sel), generichide: r.generichide, exceptions: r.exceptions, script: r.injected_script, procedural })
     })
 }
 
@@ -427,13 +445,15 @@ pub fn filter_set_list(app: AppHandle, id: String, enabled: bool) -> Result<(), 
 }
 
 #[tauri::command]
-pub fn filter_set_options(app: AppHandle, update_days: u32, cosmetic: bool) -> Result<(), String> {
+pub fn filter_set_options(app: AppHandle, update_days: u32, cosmetic: bool, scriptlets: bool) -> Result<(), String> {
     if !(1..=30).contains(&update_days) { return Err("Update-Intervall 1–30 Tage".into()); }
     let mut cfg = load_config();
     cfg.update_days = update_days;
     cfg.cosmetic = cosmetic;
+    cfg.scriptlets = scriptlets;
     save_config(&cfg)?;
     COSMETIC_ENABLED.store(cosmetic, Ordering::Relaxed);
+    SCRIPTLETS_ENABLED.store(scriptlets, Ordering::Relaxed);
     let built = lock(&STATUS).as_ref().map(|s| (s.engine_built_at, s.from_cache));
     let state = lock(&STATUS).as_ref().map(|s| s.state.clone()).unwrap_or_else(|| "idle".into());
     set_status(&app, &state, "Einstellungen gespeichert", built);

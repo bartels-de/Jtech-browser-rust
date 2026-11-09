@@ -29,6 +29,8 @@ mod peek;
 mod suggest;
 // Own context menu on web pages (customised native WebView2 menu).
 mod ctxmenu;
+// Procedural cosmetic filters and scriptlet runtime for the ad blocker.
+mod cosmetic_script;
 
 thread_local! { static ENGINE: RefCell<Option<Engine>> = RefCell::new(None); }
 static BLOCKED: AtomicU64 = AtomicU64::new(0);
@@ -118,10 +120,22 @@ struct Tab {
 #[derive(Clone, Debug)]
 struct SleepInfo { url: String, title: String, waking: bool }
 
+/// Tab without a native webview: an internal `jtech://` page (or the empty start page) that React
+/// renders. A webview is only created when the tab navigates to a real URL (`pending` = that URL
+/// while the webview is being created).
+#[derive(Clone, Debug, Default)]
+struct PageInfo { title: String, pending: Option<String> }
+
+/// Does a newly created tab need a native webview? `about:blank` is the empty tab the UI covers
+/// with an internal page, so it gets none.
+pub fn needs_webview(url: &str) -> bool { url != START_URL }
+
 struct TabManager {
     window: Option<tauri::Window>,
     /// Runde 3: schlafende Tabs (ID bleibt in `order`, aber nicht in `tabs`).
     sleeping: HashMap<String, SleepInfo>,
+    /// Tabs without a webview (internal pages, empty tab). ID is in `order`, not in `tabs`.
+    pages: HashMap<String, PageInfo>,
     /// Etappe G: EINE UI-Webview ueber das ganze Fenster (Sidebar + Toolbar + interne Seiten).
     ui: Option<tauri::Webview>,
     tabs: HashMap<String, Tab>,
@@ -183,7 +197,49 @@ struct FullscreenEvent { tab_id: Option<String>, fullscreen: bool, page: bool, b
 
 impl TabManager {
     fn new() -> Self {
-        Self { window: None, sleeping: HashMap::new(), ui: None, tabs: HashMap::new(), order: Vec::new(), active: None, counter: 0, top_height: DEFAULT_TOP_HEIGHT, sidebar_width: DEFAULT_SIDEBAR_WIDTH, content_visible: true, fullscreen: None, split: None }
+        Self { window: None, sleeping: HashMap::new(), pages: HashMap::new(), ui: None, tabs: HashMap::new(), order: Vec::new(), active: None, counter: 0, top_height: DEFAULT_TOP_HEIGHT, sidebar_width: DEFAULT_SIDEBAR_WIDTH, content_visible: true, fullscreen: None, split: None }
+    }
+}
+
+impl TabManager {
+    /// Tab known in any form (with webview, sleeping or webview-less page)?
+    fn knows(&self, id: &str) -> bool { self.tabs.contains_key(id) || self.sleeping.contains_key(id) || self.pages.contains_key(id) }
+
+    /// Adds a webview-less tab and returns its ID.
+    fn add_page_tab(&mut self, activate: bool) -> String {
+        self.counter += 1;
+        let id = format!("content-{}", self.counter);
+        self.pages.insert(id.clone(), PageInfo::default());
+        self.order.push(id.clone());
+        if activate || self.active.is_none() { self.active = Some(id.clone()); self.content_visible = true; }
+        id
+    }
+
+    /// Removes a tab from all maps, ends split view if it was a pane and picks the next active tab.
+    /// Returns the live tab (its webview must be destroyed by the caller) and a sleeping tab to wake.
+    fn remove_tab(&mut self, id: &str) -> Result<(Option<Tab>, Option<String>), String> {
+        let removed = self.tabs.remove(id);
+        let slept = self.sleeping.remove(id).is_some();
+        let page = self.pages.remove(id).is_some();
+        if removed.is_none() && !slept && !page { return Err(format!("Tab {id} nicht gefunden")); }
+        let pos = self.order.iter().position(|t| t == id);
+        if let Some(p) = pos { self.order.remove(p); }
+        if self.split.as_ref().is_some_and(|s| s.a == id || s.b == id) { self.split = None; }
+        if self.active.as_deref() == Some(id) {
+            let next = pos.and_then(|p| self.order.get(p.min(self.order.len().saturating_sub(1))).cloned());
+            self.active = next.or_else(|| self.order.last().cloned());
+        }
+        let wake = self.active.clone().filter(|a| self.sleeping.contains_key(a));
+        Ok((removed, wake))
+    }
+
+    /// Webview-less tab should load `url`: remembers it and returns true when a webview must be
+    /// created now (false = not a page tab, or a webview is already being created for it).
+    fn request_page_webview(&mut self, id: &str, url: &str) -> bool {
+        let Some(p) = self.pages.get_mut(id) else { return false };
+        let first = p.pending.is_none();
+        p.pending = Some(url.to_string());
+        first
     }
 }
 
@@ -441,7 +497,7 @@ fn toggle_fullscreen(app: AppHandle) -> Result<bool, String> {
     Ok(!on)
 }
 
-enum SnapEntry { Live(Tab), Sleeping(SleepInfo) }
+enum SnapEntry { Live(Tab), Sleeping(SleepInfo), Page(PageInfo) }
 
 fn snapshot_tabs(app: &AppHandle) -> Vec<TabInfo> {
     let tabs: Vec<(String, SnapEntry, bool)> = {
@@ -450,7 +506,8 @@ fn snapshot_tabs(app: &AppHandle) -> Vec<TabInfo> {
         m.order.iter().filter_map(|id| {
             let active = m.active.as_deref() == Some(id.as_str());
             if let Some(t) = m.tabs.get(id) { Some((id.clone(), SnapEntry::Live(t.clone()), active)) }
-            else { m.sleeping.get(id).map(|s| (id.clone(), SnapEntry::Sleeping(s.clone()), active)) }
+            else if let Some(s) = m.sleeping.get(id) { Some((id.clone(), SnapEntry::Sleeping(s.clone()), active)) }
+            else { m.pages.get(id).map(|p| (id.clone(), SnapEntry::Page(p.clone()), active)) }
         }).collect()
     };
     tabs.into_iter().map(|(id, e, active)| match e {
@@ -462,6 +519,11 @@ fn snapshot_tabs(app: &AppHandle) -> Vec<TabInfo> {
             TabInfo { id, title: if title.is_empty() { url.clone() } else { title }, url, active, blocked, playing_audio, muted, sleeping: false }
         }
         SnapEntry::Sleeping(s) => TabInfo { id, title: if s.title.is_empty() { s.url.clone() } else { s.title }, url: s.url, active, blocked: 0, playing_audio: false, muted: false, sleeping: true },
+        // While its webview is being created the tab already reports the target URL.
+        SnapEntry::Page(p) => {
+            let url = p.pending.unwrap_or_else(|| START_URL.to_string());
+            TabInfo { id, title: if p.title.is_empty() { url.clone() } else { p.title }, url, active, blocked: 0, playing_audio: false, muted: false, sleeping: false }
+        }
     }).collect()
 }
 
@@ -470,6 +532,13 @@ fn content_webviews(app: &AppHandle) -> Vec<tauri::Webview> {
     let state = app.state::<Mutex<TabManager>>();
     let m = lock(&state);
     m.tabs.values().map(|t| t.webview.clone()).collect()
+}
+
+/// Active tab is a webview-less internal page.
+fn active_is_page(app: &AppHandle) -> bool {
+    let state = app.state::<Mutex<TabManager>>();
+    let m = lock(&state);
+    m.active.as_ref().is_some_and(|a| m.pages.contains_key(a))
 }
 
 fn active_tab(app: &AppHandle) -> Option<(String, Tab)> {
@@ -486,6 +555,19 @@ fn create_tab(app: &AppHandle, raw_url: &str) -> Result<String, String> { create
 /// `activate = false`: background tab (context menu "Open link in background tab").
 fn create_tab_with(app: &AppHandle, raw_url: &str, activate: bool) -> Result<String, String> {
     let parsed = normalize_url(raw_url)?;
+    if !needs_webview(parsed.as_str()) {
+        // Internal page / empty tab: no native webview until it navigates to a real URL.
+        let id = {
+            let state = app.state::<Mutex<TabManager>>();
+            let mut m = lock(&state);
+            if m.window.is_none() { return Err("kein Hauptfenster".into()); }
+            m.add_page_tab(activate)
+        };
+        tracing::info!(tab = id.as_str(), "Tab ohne Webview (interne Seite)");
+        apply_layout(app); // hides the previously active webview
+        emit_tabs_changed(app);
+        return Ok(id);
+    }
     let id = {
         let state = app.state::<Mutex<TabManager>>();
         let mut m = lock(&state);
@@ -538,6 +620,7 @@ fn spawn_webview(app: &AppHandle, id: &str, label: &str, parsed: tauri::Url, tit
         m.tabs.insert(id.clone(), tab.clone());
         if !m.order.contains(&id) { m.order.push(id.clone()); }
         m.sleeping.remove(&id);
+        m.pages.remove(&id);
         if activate || m.active.is_none() {
             m.active = Some(id.clone());
             m.content_visible = true;
@@ -610,6 +693,27 @@ fn schedule_wake(app: &AppHandle, id: String) {
     });
 }
 
+/// Creates the webview of a webview-less tab for its pending URL (asynchronously, like waking).
+fn schedule_page_webview(app: &AppHandle, id: String) {
+    let app2 = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let job = {
+            let state = app2.state::<Mutex<TabManager>>();
+            let mut m = lock(&state);
+            m.counter += 1;
+            let label = format!("{id}-n{}", m.counter);
+            m.pages.get(&id).and_then(|p| p.pending.clone().map(|u| (u, p.title.clone(), label)))
+        };
+        let Some((url, title, label)) = job else { return }; // closed in the meantime
+        let r = normalize_url(&url).and_then(|parsed| spawn_webview(&app2, &id, &label, parsed, title, false));
+        if let Err(e) = r {
+            { let state = app2.state::<Mutex<TabManager>>(); let mut m = lock(&state); if let Some(p) = m.pages.get_mut(&id) { p.pending = None; } }
+            emit_tabs_changed(&app2);
+            report_error(&app2, &id, "Webview erzeugen", e);
+        }
+    });
+}
+
 /// Webview eines Tabs abbauen: Handler entfernen, Webview schliessen.
 fn destroy_webview(app: &AppHandle, id: &str, tab: Tab) {
     #[cfg(windows)]
@@ -675,23 +779,12 @@ async fn new_tab(app: AppHandle, url: String, background: Option<bool>) -> Resul
 
 #[tauri::command]
 fn close_tab(app: AppHandle, id: String) -> Result<(), String> {
+    // Removes the tab (with webview, sleeping or webview-less), ends split view if it was a pane,
+    // picks the next active tab and reports a sleeping one to wake.
     let (removed, wake) = {
         let state = app.state::<Mutex<TabManager>>();
         let mut m = lock(&state);
-        let removed = m.tabs.remove(&id);
-        let slept = m.sleeping.remove(&id).is_some();
-        if removed.is_none() && !slept { return Err(format!("Tab {id} nicht gefunden")); }
-        let pos = m.order.iter().position(|t| t == &id);
-        if let Some(p) = pos { m.order.remove(p); }
-        // Schliessen eines Bereichs beendet die geteilte Ansicht.
-        if m.split.as_ref().is_some_and(|s| s.a == id || s.b == id) { m.split = None; }
-        if m.active.as_deref() == Some(id.as_str()) {
-            let next = pos.and_then(|p| m.order.get(p.min(m.order.len().saturating_sub(1))).cloned());
-            m.active = next.or_else(|| m.order.last().cloned());
-        }
-        // Runde 3: neuer aktiver Tab schlaeft -> aufwecken
-        let wake = m.active.clone().filter(|a| m.sleeping.contains_key(a));
-        (removed, wake)
+        m.remove_tab(&id)?
     };
     if let Some(tab) = removed { destroy_webview(&app, &id, tab); }
     check_fullscreen_tab(&app);
@@ -711,6 +804,7 @@ fn sleep_tab(app: AppHandle, id: String) -> Result<(), String> {
         let mut m = lock(&state);
         if m.active.as_deref() == Some(id.as_str()) { return Err("aktiver Tab wird nicht schlafen gelegt".into()); }
         if m.split.as_ref().is_some_and(|s| s.a == id || s.b == id) { return Err("Tab in geteilter Ansicht wird nicht schlafen gelegt".into()); }
+        if m.pages.contains_key(&id) { return Ok(()); } // no webview, nothing to release
         let playing = m.tabs.get(&id).map(|t| t.playing_audio.load(Ordering::Relaxed)).ok_or_else(|| format!("Tab {id} nicht gefunden"))?;
         if playing { return Err(format!("Tab {id} spielt Audio")); }
         let Some(t) = m.tabs.remove(&id) else { return Err(format!("Tab {id} nicht gefunden")); };
@@ -730,7 +824,7 @@ fn switch_tab(app: AppHandle, id: String) -> Result<(), String> {
         let state = app.state::<Mutex<TabManager>>();
         let mut m = lock(&state);
         let sleeping = m.sleeping.contains_key(&id);
-        if !m.tabs.contains_key(&id) && !sleeping { return Err(format!("Tab {id} nicht gefunden")); }
+        if !m.knows(&id) { return Err(format!("Tab {id} nicht gefunden")); }
         m.active = Some(id.clone());
         sleeping
     };
@@ -744,6 +838,21 @@ fn switch_tab(app: AppHandle, id: String) -> Result<(), String> {
 #[tauri::command]
 fn navigate_active(app: AppHandle, url: String) -> Result<String, String> {
     let parsed = normalize_url(&url)?;
+    // Webview-less tab (internal page): create its webview for the real URL.
+    let page = {
+        let state = app.state::<Mutex<TabManager>>();
+        let mut m = lock(&state);
+        m.active.clone().filter(|a| m.pages.contains_key(a)).map(|a| {
+            let start = needs_webview(parsed.as_str()) && m.request_page_webview(&a, parsed.as_str());
+            (a, start)
+        })
+    };
+    if let Some((id, start)) = page {
+        tracing::info!(tab = id.as_str(), "navigate {parsed} (Webview wird erzeugt)");
+        if start { schedule_page_webview(&app, id); }
+        emit_tabs_changed(&app);
+        return Ok(parsed.to_string());
+    }
     let Some((id, tab)) = active_tab(&app) else {
         // kein Tab offen -> neuen anlegen ist hier nicht erlaubt (sync command), UI ruft new_tab
         return Err("kein aktiver Tab".into());
@@ -776,6 +885,7 @@ fn eval_active(app: &AppHandle, what: &str, js: &str) -> Result<(), String> {
 /// Etappe CD: native WebView2-Aktion auf der aktiven Content-Webview (GoBack/GoForward/Stop).
 #[cfg(windows)]
 fn native_active(app: &AppHandle, what: &'static str) -> Result<(), String> {
+    if active_is_page(app) { return Ok(()); } // internal page: no history of its own
     let Some((id, tab)) = active_tab(app) else { return Err("kein aktiver Tab".into()); };
     if what == "stop" { tab.user_stopped.store(true, Ordering::SeqCst); }
     tracing::info!(tab = id.as_str(), "{what} (nativ)");
@@ -1194,12 +1304,23 @@ fn exec_script(core: &webview2_com_sys::Microsoft::Web::WebView2::Win32::ICoreWe
 }
 
 /// Runde 4: Element-Hiding per eingefuegtem Stylesheet (adblock url_cosmetic_resources +
-/// hidden_class_id_selectors, ein Durchlauf bei DOMContentLoaded – kein MutationObserver, keine Scriptlets).
+/// hidden_class_id_selectors, ein Durchlauf bei DOMContentLoaded) plus scriptlets and procedural
+/// cosmetic filters via cosmetic_script runtime.
 #[cfg(windows)]
 fn inject_cosmetic(core: &webview2_com_sys::Microsoft::Web::WebView2::Win32::ICoreWebView2, url: &str) {
     let Some(c) = filters::cosmetic_for(url) else { return };
+    // 1. Static CSS rules (existing fast path).
     if !c.css.is_empty() { exec_script(core, &filters::style_script(&c.css, "jtech-cosmetic"), None); }
+    // Extra CSS from procedural filters that can be expressed without JS.
+    let extra_css = cosmetic_script::extra_css(&c, &c.exceptions);
+    if !extra_css.is_empty() { exec_script(core, &filters::style_script(&extra_css, "jtech-cosmetic-proc"), None); }
+    // 2. Scriptlets + procedural filters.
+    if filters::SCRIPTLETS_ENABLED.load(Ordering::Relaxed) && (!c.script.is_empty() || !c.procedural.is_empty()) {
+        let script = cosmetic_script::build(&c, url, false);
+        if !script.is_empty() { exec_script(core, &script, None); }
+    }
     if c.generichide { return; }
+    // 3. Generic class/id rules (existing).
     let core2 = core.clone();
     let exceptions = c.exceptions;
     exec_script(core, filters::COLLECT_CLASS_ID_JS, Some(Box::new(move |json| {
@@ -1959,6 +2080,7 @@ const PIP_JS: &str = "(function(){try{var v=document.querySelector('video'); if(
 
 #[tauri::command]
 fn pip_active(app: AppHandle) -> Result<(), String> {
+    if active_is_page(&app) { return Ok(()); }
     let Some((_id, tab)) = active_tab(&app) else { return Err("kein aktiver Tab".into()); };
     tab.webview.eval(PIP_JS).map_err(|e| e.to_string())
 }
@@ -2108,6 +2230,37 @@ mod tests {
         assert_eq!(shortcut_name(0x54, true, false, false), Some("ctrl+t"));
         assert_eq!(shortcut_name(0x09, true, true, false), Some("ctrl+shift+tab"));
         assert_eq!(shortcut_name(0x54, false, false, false), None);
+    }
+
+    #[test]
+    fn page_tabs_without_webview() {
+        assert!(!needs_webview("about:blank"));
+        assert!(needs_webview("https://example.com/"));
+        let mut m = TabManager::new();
+        let a = m.add_page_tab(true);
+        let b = m.add_page_tab(false);
+        assert_eq!(m.active.as_deref(), Some(a.as_str()));
+        assert_eq!(m.order, vec![a.clone(), b.clone()]);
+        assert!(m.knows(&a) && m.knows(&b) && !m.knows("content-99"));
+        assert!(valid_tab_id(&a));
+        // navigating: first request starts a webview, a second one only updates the URL
+        assert!(m.request_page_webview(&b, "https://example.com/"));
+        assert!(!m.request_page_webview(&b, "https://example.org/"));
+        assert_eq!(m.pages[&b].pending.as_deref(), Some("https://example.org/"));
+        assert!(!m.request_page_webview("content-99", "https://example.com/"));
+        // closing the active page tab activates the neighbour, split view ends
+        m.split = Some(SplitState { a: a.clone(), b: b.clone(), ratio: 0.5, vertical: false, show_a: false, show_b: false });
+        let (live, wake) = m.remove_tab(&a).unwrap();
+        assert!(live.is_none() && wake.is_none());
+        assert!(m.split.is_none());
+        assert_eq!(m.active.as_deref(), Some(b.as_str()));
+        assert!(m.remove_tab(&a).is_err());
+        // a sleeping neighbour is reported for waking
+        m.order.push("content-50".into());
+        m.sleeping.insert("content-50".into(), SleepInfo { url: "https://example.com/".into(), title: String::new(), waking: false });
+        let (_, wake) = m.remove_tab(&b).unwrap();
+        assert_eq!(wake.as_deref(), Some("content-50"));
+        assert!(m.pages.is_empty());
     }
 
     #[test]
