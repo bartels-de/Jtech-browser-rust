@@ -11,6 +11,26 @@ import { PerformancePage } from "../pages/PerformancePage";
 import { MarketPage } from "../pages/MarketPage";
 import { useT } from "../i18n";
 import { ExtensionsPage } from "../pages/ExtensionsPage";
+import { SplitContent } from "./SplitView";
+import type { InternalPage } from "../lib/urls";
+
+/** Internal page component (also used inside a split-view pane). */
+export function renderInternal(page: InternalPage): React.ReactNode | null {
+  switch (page) {
+    case "newtab": return <StartPage />;
+    case "settings": return <SettingsPage />;
+    case "history": return <HistoryPage />;
+    case "bookmarks": return <BookmarksPage />;
+    case "privacy": return <PrivacyPage />;
+    case "downloads": return <DownloadsPage />;
+    case "themes": return <ThemesPage />;
+    case "audio": return <AudioPage />;
+    case "performance": return <PerformancePage />;
+    case "market": return <MarketPage />;
+    case "extensions": return <ExtensionsPage />;
+    default: return null;
+  }
+}
 
 /**
  * Bereich unter der Toolbar. Bei Webseiten liegt hier die native WebView2 DARUEBER.
@@ -20,22 +40,9 @@ export function ContentArea() {
   const b = useBrowser();
   const page = b.activePage;
   const { t } = useT();
-  let body: React.ReactNode;
-  switch (page) {
-    case "newtab": body = <StartPage />; break;
-    case "settings": body = <SettingsPage />; break;
-    case "history": body = <HistoryPage />; break;
-    case "bookmarks": body = <BookmarksPage />; break;
-    case "privacy": body = <PrivacyPage />; break;
-    case "downloads": body = <DownloadsPage />; break;
-    case "themes": body = <ThemesPage />; break;
-    case "audio": body = <AudioPage />; break;
-    case "performance": body = <PerformancePage />; break;
-    case "market": body = <MarketPage />; break;
-    case "extensions": body = <ExtensionsPage />; break;
-    default:
-      // Webseite: sichtbar nur, wenn ein Menue die Webview kurz ausblendet
-      body = <div className="content-placeholder"><span>{b.activeTab?.sleeping ? t("ca.waking", { title: b.activeTab.title }) : b.activeTab?.title}</span></div>;
-  }
+  if (b.splitActive && !b.fullscreen) return <SplitContent renderPage={tab => <div className="split-page" key={tab.internal ?? "web"}>{tab.internal ? renderInternal(tab.internal) : null}</div>} />;
+  // Web page: visible only while a menu briefly hides the webview
+  const body = (page ? renderInternal(page) : null)
+    ?? <div className="content-placeholder"><span>{b.activeTab?.sleeping ? t("ca.waking", { title: b.activeTab.title }) : b.activeTab?.title}</span></div>;
   return <main className="content" key={page ?? "web"}>{body}</main>;
 }

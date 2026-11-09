@@ -70,3 +70,6 @@ export const IconWinMax = cap(<rect x="0.5" y="0.5" width="9" height="9" rx="1.2
 export const IconWinRestore = cap(<><rect x="0.5" y="2.5" width="7" height="7" rx="1.2" /><path d="M2.5 2.5V1.7c0-.7.5-1.2 1.2-1.2h4.6c.7 0 1.2.5 1.2 1.2v4.6c0 .7-.5 1.2-1.2 1.2h-.8" /></>);
 export const IconWinClose = cap(<path d="M0.5 0.5l9 9M9.5 0.5l-9 9" />);
 export const IconLibrary = mk(<><path d="M5 4v16M9.5 4v16" /><path d="M14 4.8l4.6 14.4" /></>);
+export const IconSplit = mk(<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M12 5v14" /></>);
+export const IconSplitRows = mk(<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 12h18" /></>);
+export const IconSwap = mk(<><path d="M7 7h11l-3-3" /><path d="M17 17H6l3 3" /></>);

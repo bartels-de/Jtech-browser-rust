@@ -86,6 +86,8 @@ const BACKEND: [RegExp, TKey][] = [
   [/^Datei nicht gefunden/, "be.fileNotFound"],
   [/^kein aktiver Tab/, "be.noActiveTab"],
   [/^aktiver Tab wird nicht schlafen gelegt/, "be.activeNoSleep"],
+  [/^Tab in geteilter Ansicht wird nicht schlafen gelegt/, "be.splitNoSleep"],
+  [/^geteilte Ansicht: /, "be.splitInvalid"],
   [/^Tab \S+ spielt Audio/, "be.tabPlaysAudio"],
   [/^Tab \S+ nicht gefunden/, "be.tabNotFound"],
   [/^Suchbegriff zu lang/, "be.queryTooLong"],

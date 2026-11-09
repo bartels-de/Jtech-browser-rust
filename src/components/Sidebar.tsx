@@ -2,7 +2,7 @@ import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { useBrowser } from "../store/BrowserStore";
 import { GROUP_COLORS, SIDEBAR_COMPACT_WIDTH, SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH, type TabGroup, type UiTab } from "../store/types";
 import { Favicon } from "./Favicon";
-import { IconClose, IconDownload, IconPin, IconPlus, IconSidebar, IconStar, IconHistory, IconSettings, IconShield, IconVolume, IconMute, IconChevronDown, IconChevronRight, IconPalette, IconMusic, IconGauge, IconMoon, IconCopy, JTechLogo, IconLibrary, IconPuzzle, IconStore } from "./Icons";
+import { IconClose, IconDownload, IconPin, IconPlus, IconSidebar, IconStar, IconHistory, IconSettings, IconShield, IconVolume, IconMute, IconChevronDown, IconChevronRight, IconPalette, IconMusic, IconGauge, IconMoon, IconCopy, JTechLogo, IconLibrary, IconPuzzle, IconStore, IconSplit } from "./Icons";
 import { internalTitle, type InternalPage } from "../lib/urls";
 import { t as tr, useT } from "../i18n";
 import { MenuItem, Popover } from "./Popover";
@@ -106,6 +106,9 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
     // Angepinnte bleiben oben
     const pinned = new Set(b.tabs.filter(t => t.pinned).map(t => t.id));
     b.reorder([...ids.filter(i => pinned.has(i)), ...ids.filter(i => !pinned.has(i))]);
+    // Dropping onto a grouped tab joins that group (web and internal tabs alike)
+    const target = b.tabs.find(t => t.id === targetId), dragged = b.tabs.find(t => t.id === dragId);
+    if (target?.groupId && dragged && !dragged.pinned && !target.pinned && dragged.groupId !== target.groupId) b.setTabGroup(dragId, target.groupId);
   };
 
   const pinnedTabs = b.tabs.filter(t => t.pinned);
@@ -155,16 +158,32 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
   const renderNormal = () => {
     const out: React.ReactNode[] = [];
     const done = new Set<string>();
+    const sp = b.split;
+    const pairIds = sp && normalTabs.some(x => x.id === sp.a) && normalTabs.some(x => x.id === sp.b) ? [sp.a, sp.b] : null;
     for (const t of normalTabs) {
+      if (pairIds && pairIds.includes(t.id)) {
+        if (done.has("split")) continue;
+        done.add("split");
+        const pair = pairIds.map(i => normalTabs.find(x => x.id === i)!);
+        out.push(
+          <div key="split-pair" className={`split-pair${b.splitActive ? " on" : ""}`} role="group" aria-label={tr("split.pair")} title={tr("split.pair")}>
+            {pair.map(x => renderTab(x))}
+          </div>
+        );
+        continue;
+      }
       const g = t.groupId ? groupById.get(t.groupId) : undefined;
       if (!g) { out.push(renderTab(t)); continue; }
       if (done.has(g.id)) continue;
       done.add(g.id);
-      const members = normalTabs.filter(x => x.groupId === g.id);
+      const members = normalTabs.filter(x => x.groupId === g.id && !(pairIds && pairIds.includes(x.id)));
       const visible = g.collapsed ? members.filter(x => x.active) : members;
       out.push(
         <div key={"g:" + g.id} className={`tab-group-block${g.collapsed ? " collapsed" : ""}`} style={{ "--group-color": g.color } as React.CSSProperties}>
-          <button className="group-head" aria-expanded={!g.collapsed} title={tr("sb.groupTitle", { name: g.name, count: members.length })}
+          <button className={`group-head${overId === "g:" + g.id ? " drop-target" : ""}`} aria-expanded={!g.collapsed}
+            onDragOver={e => { if (dragId) { e.preventDefault(); setOverId("g:" + g.id); } }}
+            onDragLeave={() => setOverId(o => (o === "g:" + g.id ? null : o))}
+            onDrop={e => { e.preventDefault(); const d = b.tabs.find(x => x.id === dragId); if (d && !d.pinned) b.setTabGroup(d.id, g.id); setDragId(null); setOverId(null); }} title={tr("sb.groupTitle", { name: g.name, count: members.length })}
             onClick={() => b.updateGroup(g.id, { collapsed: !g.collapsed })}
             onContextMenu={e => { e.preventDefault(); setGmenu({ group: g, x: e.clientX, y: e.clientY }); b.setPopover("groupmenu"); }}>
             <span className="group-dot" />
@@ -246,6 +265,10 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
           {!menu.tab.internal && <MenuItem icon={<IconStar size={15} />} label={t("sb.saveBm")} onClick={() => { b.addBookmark(menu.tab.url, menu.tab.title); closeMenu(); }} />}
           {!menu.tab.active && !menu.tab.pinned && !menu.tab.sleeping && !menu.tab.playingAudio && !menu.tab.internal &&
             <MenuItem icon={<IconMoon size={15} />} label={t("sb.sleepTab")} onClick={() => { b.sleepTab(menu.tab.id); closeMenu(); }} />}
+          <div className="menu-sep" />
+          {b.split && (b.split.a === menu.tab.id || b.split.b === menu.tab.id)
+            ? <MenuItem icon={<IconSplit size={15} />} label={t("split.end")} onClick={() => { b.closeSplit(); closeMenu(); }} />
+            : <MenuItem icon={<IconSplit size={15} />} label={t("split.openWith")} onClick={() => { const id = menu.tab.id; closeMenu(); void b.openSplit(menu.tab.active ? undefined : id); }} />}
           {!menu.tab.pinned && <>
             <div className="menu-sep" />
             <MenuItem icon={<IconPlus size={15} />} label={t("sb.newGroup")} onClick={() => { b.createGroup(menu.tab.id); closeMenu(); }} />

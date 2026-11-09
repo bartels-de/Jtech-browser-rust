@@ -36,6 +36,15 @@ while a menu, popover or dialog overlaps the content area (`set_content_visible`
 - On exit the window leaves fullscreen (tao restores size/position) and is re-maximized if it was maximized. Switching or closing the tab exits fullscreen (`check_fullscreen_tab`, calls `document.exitFullscreen()` in the old page).
 - No "Press Esc to exit" toast: the UI webview lies below the content webview and cannot draw over it.
 
+### Split view
+
+- Two tabs side by side (or stacked). The pair lives in the UI store (`split = { a, b }`, a = left/top). It is shown while one of the two tabs is active; the active tab is the **focused pane** (address bar, toolbar, shortcuts act on it). Activating another tab shows that tab normally; the pair stays joined in the sidebar and returns when one of its tabs is activated.
+- `set_layout` takes an optional `split` (`a`, `b`, `ratio`, `vertical`, `showA`, `showB`). Rust validates the tab IDs (known, distinct), clamps the ratio to 0.15–0.85 and drops the split if a tab is gone. `split_bounds` computes two rects with a 6 px gap (`SPLIT_GAP`, same constant in `store/types.ts`); the React divider lies in that gap, outside both webviews. Dragging hides both webviews (like the sidebar resize) and reports the final ratio, which is stored in settings (`splitRatio`, `splitVertical`).
+- Focus: each content webview registers `ICoreWebView2Controller::GotFocus` and emits `tab-event` `focus`; the UI then switches the active tab to that pane. Clicks on an internal pane switch focus in React.
+- Internal `jtech://` pages are allowed in a pane: their webview stays hidden (`showA/showB = false`) and React renders the page inside the pane rectangle.
+- Fullscreen: only the fullscreen tab (or, for F11, the focused pane) fills the screen; a page fullscreen request from either pane focuses that pane. Split tabs are never put to sleep (UI and `sleep_tab`); a sleeping tab in a new split is woken by `set_layout`. Closing one pane ends split view. Session restore stores the pair (`split: "a" | "b"` on the session entries).
+- Open/close: tab context menu, command `view.split` (Ctrl+Shift+S, palette), split bar under the toolbar (focus, swap, orientation, end). Dropping a tab onto the content edge is not supported: native webviews cover the content area and receive no HTML drag events.
+
 ## Tabs
 
 `TabManager` (Rust) holds the tabs in a fixed order with a stable tab ID, the current URL, title,
@@ -53,6 +62,7 @@ when the tab is closed.
 - **Tab sleep:** inactive tabs can be put to sleep after a configurable time. The webview is
   destroyed while the tab ID, URL and title are kept, and a new webview is created when the tab
   is activated. Active, pinned and audio-playing tabs are never put to sleep.
+- **Groups:** web and internal tabs (settings, history, market …) can join groups the same way (context menu, dragging a tab onto a grouped tab or a group header, command `tab.groupInternal` collects all internal pages in a "JTech" group). Membership is saved with the session. Auto-grouping by domain only covers web tabs.
 - **Session restore:** open tabs (including internal pages and the pinned state) are saved and
   restored on the next start, if enabled.
 

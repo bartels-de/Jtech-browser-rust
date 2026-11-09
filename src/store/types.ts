@@ -46,6 +46,10 @@ export interface Settings {
   language: LangSetting;
   /** Developer tools (F12 / "Inspect") for web pages and the UI; default off */
   devTools?: boolean;
+  /** Split view: share of the left/top pane (0.15–0.85) */
+  splitRatio?: number;
+  /** Split view: panes on top of each other instead of side by side */
+  splitVertical?: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -66,6 +70,15 @@ export const DEFAULT_SETTINGS: Settings = {
   updateIntervalHours: 24,
   language: "system",
 };
+
+/** Split view: gap between the two native webviews (px); must match SPLIT_GAP in lib.rs */
+export const SPLIT_GAP = 6;
+export const SPLIT_MIN = 0.15;
+export const SPLIT_MAX = 0.85;
+export const clampSplitRatio = (r: unknown) =>
+  typeof r === "number" && Number.isFinite(r) ? Math.min(SPLIT_MAX, Math.max(SPLIT_MIN, r)) : 0.5;
+/** Split view: a = left/top, b = right/bottom (tab ids) */
+export interface SplitPair { a: string; b: string; }
 
 export interface Bookmark { id: string; url: string; title: string; createdAt: number; }
 export interface HistoryEntry { id: string; url: string; title: string; visitedAt: number; }

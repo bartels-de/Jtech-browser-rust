@@ -8,7 +8,7 @@ import { normalizeEffects, type EffectsSettings } from "../lib/fx/effects";
 import { applyTheme, normalizeTheme, type ThemeSpec } from "../lib/theme";
 import { load, save } from "./storage";
 import { I18nProvider, localizeBackend, normalizeLangSetting, setLang, systemLang, t as tr, type Lang } from "../i18n";
-import { DEFAULT_SETTINGS, GROUP_COLORS, clampSidebarWidth, type Bookmark, type DownloadItem, type HistoryEntry, type NavError, type PopoverId, type Settings, type TabGroup, type UiTab } from "./types";
+import { DEFAULT_SETTINGS, GROUP_COLORS, clampSidebarWidth, clampSplitRatio, type SplitPair, type Bookmark, type DownloadItem, type HistoryEntry, type NavError, type PopoverId, type Settings, type TabGroup, type UiTab } from "./types";
 
 /** Runde 3: Zoomstufen wie in Chromium. */
 export const ZOOM_STEPS = [0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5];
@@ -131,6 +131,26 @@ export interface Store {
   groupTabsByDomain(): void;
   updateGroup(id: string, p: Partial<TabGroup>): void;
   removeGroup(id: string, closeTabs?: boolean): void;
+  /** Put all internal tabs (settings, history, …) into one group */
+  groupInternalTabs(): void;
+  /** Split view: pair of tabs (kept while another tab is active; shown when one of them is active) */
+  split: SplitPair | null;
+  /** Split view is currently on screen (active tab is part of the pair) */
+  splitActive: boolean;
+  /** Live ratio (also during divider drag) and orientation */
+  splitRatio: number;
+  splitVertical: boolean;
+  /** Divider drag in progress (native webviews hidden) */
+  splitDragging: boolean;
+  setSplitDragging(v: boolean): void;
+  /** Open split view: active tab + `withId` (default: last used other tab, else a new tab) */
+  openSplit(withId?: string): Promise<void>;
+  closeSplit(): void;
+  toggleSplit(): void;
+  swapSplit(): void;
+  toggleSplitOrientation(): void;
+  /** live = only update the preview; otherwise persist */
+  setSplitRatio(r: number, live?: boolean): void;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -157,7 +177,8 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
       autoUpdateCheck: typeof s.autoUpdateCheck === "boolean" ? s.autoUpdateCheck : true,
       devTools: s.devTools === true,
       updateIntervalHours: [0, 6, 12, 24, 72].includes(s.updateIntervalHours) ? s.updateIntervalHours : 24,
-      sidebarWidth: clampSidebarWidth(s.sidebarWidth), language: normalizeLangSetting(s.language) };
+      sidebarWidth: clampSidebarWidth(s.sidebarWidth), language: normalizeLangSetting(s.language),
+      splitRatio: clampSplitRatio(s.splitRatio), splitVertical: s.splitVertical === true };
   });
   // Developer tools setting -> backend (applies to open tabs and new ones)
   useEffect(() => { call("set_devtools", { enabled: settings.devTools === true }, m => console.warn(m)); }, [settings.devTools]);
@@ -209,6 +230,11 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   const [paletteMode, setPaletteMode] = useState<"all" | "commands">("all");
   const [groups, setGroups] = useState<TabGroup[]>(() => normalizeGroups(load<unknown>("groups", [])));
   const [tabGroup, setTabGroupMap] = useState<Record<string, string>>({});
+  const [split, setSplit] = useState<SplitPair | null>(null);
+  const splitRef = useRef<SplitPair | null>(null);
+  splitRef.current = split;
+  const [splitLive, setSplitLive] = useState<number | null>(null);
+  const [splitDragging, setSplitDragging] = useState(false);
   const restoreDone = useRef(false);
   const lastActive = useRef<Record<string, number>>({});
 
@@ -356,6 +382,13 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
         case "shortcut":
           if (ev.key) shortcutRef.current(ev.key);
           break;
+        case "focus": {
+          // Split view: clicking into a pane focuses it (toolbar/address bar follow the active tab).
+          const sp = splitRef.current;
+          const cur = tabsRef.current.find(t => t.active);
+          if (sp && (id === sp.a || id === sp.b) && cur && cur.id !== id && (cur.id === sp.a || cur.id === sp.b)) call("switch_tab", { id });
+          break;
+        }
         case "zoom-changed": {
           const z = ev.zoom;
           if (!validZoom(z)) break;
@@ -392,6 +425,8 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     // Runde 3: schlafende Tabs bekommen beim Aufwecken eine neue Webview (Zoom 1)
     const asleep = rustTabs.filter(t => t.sleeping).map(t => t.id);
     if (asleep.some(i => i in tabZoomRef.current)) setTabZoom(m => { const n = { ...m }; asleep.forEach(i => delete n[i]); return n; });
+    // Closing one pane ends split view
+    setSplit(sp => (sp && (!ids.has(sp.a) || !ids.has(sp.b)) && restoreDone.current ? null : sp));
     if (rustTabs.length === 0 || !restoreDone.current) return;
     setTabGroupMap(m => (Object.keys(m).every(k => ids.has(k)) ? m : Object.fromEntries(Object.entries(m).filter(([k]) => ids.has(k)))));
   }, [rustTabs]);
@@ -432,7 +467,10 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   // ---- Content-Sichtbarkeit: native Webview liegt UEBER React ----
   // While the sidebar is resized the native webview is hidden so the drag keeps receiving pointer events.
   const [sidebarResizing, setSidebarResizing] = useState(false);
-  const contentVisible = !!activeTab && !activeTab.internal && !activeTab.sleeping && popover === null && !sidebarResizing;
+  const splitActive = !!split && !!activeTab && (activeTab.id === split.a || activeTab.id === split.b)
+    && rustTabs.some(t => t.id === split.a) && rustTabs.some(t => t.id === split.b);
+  // Split view: Rust shows each pane by its own flag (set_layout); here only overlays hide everything.
+  const contentVisible = !!activeTab && (splitActive || (!activeTab.internal && !activeTab.sleeping)) && popover === null && !sidebarResizing && !splitDragging;
   useEffect(() => { call("set_content_visible", { visible: contentVisible }, onError); }, [contentVisible, activeTab?.id, rustTabs.length, onError]);
 
   // ---- Adblock-Schalter an Rust ----
@@ -613,7 +651,8 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     if (activeId) lastActive.current[activeId] = now;
     prevActive.current = activeId;
   }, [activeId]);
-  const canSleep = (t: UiTab) => !t.active && !t.pinned && !t.sleeping && !t.playingAudio && isWebUrl(t.url);
+  const canSleep = (t: UiTab) => !t.active && !t.pinned && !t.sleeping && !t.playingAudio && isWebUrl(t.url)
+    && !(splitRef.current && (splitRef.current.a === t.id || splitRef.current.b === t.id));
   const sleepTab = useCallback((id: string) => { call("sleep_tab", { id }, onError); }, [onError]);
   const sleepInactiveTabs = useCallback(() => {
     const list = uiTabsRef.current.filter(canSleep);
@@ -691,6 +730,53 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const groupInternalTabs = useCallback(() => {
+    const list = uiTabsRef.current.filter(t => t.internal && !t.pinned);
+    if (!list.length) { setStatus(tr("st.noInternalTabs")); return; }
+    const name = tr("st.internalGroup");
+    setGroups(gs => {
+      let g = gs.find(x => x.name === name);
+      const out = g ? gs : [...gs, (g = { id: uid(), name, color: GROUP_COLORS[gs.length % GROUP_COLORS.length], collapsed: false })];
+      const gid = g.id;
+      setTabGroupMap(m => { const n = { ...m }; list.forEach(t => { n[t.id] = gid; }); return n; });
+      return out;
+    });
+  }, []);
+
+  // ---- Split view ----
+  const splitRatio = splitLive ?? clampSplitRatio(settings.splitRatio);
+  const splitVertical = settings.splitVertical === true;
+  const openSplit = useCallback(async (withId?: string) => {
+    setPopover(null);
+    const cur = tabsRef.current.find(t => t.active);
+    if (!cur) return;
+    let other = withId && withId !== cur.id && tabsRef.current.some(t => t.id === withId) ? withId : undefined;
+    if (!other) {
+      // last used other tab
+      other = tabsRef.current.filter(t => t.id !== cur.id).sort((x, y) => (lastActive.current[y.id] ?? 0) - (lastActive.current[x.id] ?? 0))[0]?.id;
+    }
+    if (!other) {
+      other = await newTab();
+      if (!other) return;
+    }
+    setSplit({ a: cur.id, b: other });
+    // Focus the newly added pane
+    call("switch_tab", { id: other }, onError);
+  }, [newTab, onError]);
+  const closeSplit = useCallback(() => setSplit(null), []);
+  const toggleSplit = useCallback(() => {
+    if (splitRef.current && uiTabsRef.current.some(t => t.active && (t.id === splitRef.current!.a || t.id === splitRef.current!.b))) setSplit(null);
+    else void openSplit();
+  }, [openSplit]);
+  const swapSplit = useCallback(() => setSplit(sp => (sp ? { a: sp.b, b: sp.a } : sp)), []);
+  const toggleSplitOrientation = useCallback(() => setSettings(s => ({ ...s, splitVertical: !s.splitVertical })), []);
+  const setSplitRatio = useCallback((r: number, live = false) => {
+    const v = clampSplitRatio(r);
+    if (live) { setSplitLive(v); return; }
+    setSplitLive(null);
+    setSettings(s => ({ ...s, splitRatio: Math.round(v * 1000) / 1000 }));
+  }, []);
+
   const updateSettings = useCallback((p: Partial<Settings>) => setSettings(s => ({
     ...s, ...p,
     bangs: normalizeBangs(p.bangs ?? s.bangs),
@@ -698,6 +784,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     effects: p.effects ? normalizeEffects(p.effects) : s.effects,
     sidebarWidth: clampSidebarWidth(p.sidebarWidth ?? s.sidebarWidth),
     language: normalizeLangSetting(p.language ?? s.language),
+    splitRatio: clampSplitRatio(p.splitRatio ?? s.splitRatio),
   })), []);
   const updateEffects = useCallback((p: Partial<EffectsSettings>) => setSettings(s => ({ ...s, effects: normalizeEffects({ ...s.effects, ...p }) })), []);
 
@@ -758,7 +845,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     restored.current = true;
     // Runde 5: auch interne Tabs (jtech://settings …) werden gespeichert/wiederhergestellt.
     const saved = settings.restoreSession
-      ? load("session", [] as { url: string; pinned: boolean; group?: string }[]).filter(x => x && typeof x.url === "string" && (isWebUrl(x.url) || !!parseInternal(x.url)))
+      ? load("session", [] as { url: string; pinned: boolean; group?: string; split?: "a" | "b" }[]).filter(x => x && typeof x.url === "string" && (isWebUrl(x.url) || !!parseInternal(x.url)))
       : [];
     if (!saved.length) { restoreDone.current = true; return; }
     const openSaved = async (url: string): Promise<string | undefined> => {
@@ -783,14 +870,19 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
       const map: Record<string, string> = {};
       saved.forEach((s, i) => { const id = ids[i]; if (id && typeof s.group === "string") map[id] = s.group; });
       setTabGroupMap(map);
+      // Split view pair
+      const ia = saved.findIndex(s => s.split === "a"), ib = saved.findIndex(s => s.split === "b");
+      const sa = ia >= 0 ? ids[ia] : undefined, sb = ib >= 0 ? ids[ib] : undefined;
+      if (sa && sb && sa !== sb) setSplit({ a: sa, b: sb });
       restoreDone.current = true;
     })();
   }, [rustTabs, onError]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!restored.current) return;
     const sessUrl = (t: UiTab) => (t.internal && t.internal !== "newtab" && !isWebUrl(t.url) ? internalUrl(t.internal) : isWebUrl(t.url) ? t.url : null);
-    save("session", tabs.filter(t => sessUrl(t)).sort((a, b) => Number(b.pinned) - Number(a.pinned)).map(t => ({ url: sessUrl(t)!, pinned: t.pinned, ...(t.groupId ? { group: t.groupId } : {}) })));
-  }, [tabs]);
+    save("session", tabs.filter(t => sessUrl(t)).sort((a, b) => Number(b.pinned) - Number(a.pinned)).map(t => ({ url: sessUrl(t)!, pinned: t.pinned, ...(t.groupId ? { group: t.groupId } : {}),
+      ...(split?.a === t.id ? { split: "a" } : split?.b === t.id ? { split: "b" } : {}) })));
+  }, [tabs, split]);
 
   const store: Store = {
     tabs: [...tabs.filter(t => t.pinned), ...tabs.filter(t => !t.pinned)],
@@ -803,7 +895,8 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     downloads, downloadAction, openDownload, removeDownload, clearDownloads,
     zoomBySite, zoomStep, resetSiteZoom, find, openFind, closeFind, findRun, print,
     sleepTab, sleepInactiveTabs, runShortcut: (k: string) => shortcutRef.current(k),
-    paletteMode, openPalette, groups, createGroup, setTabGroup, updateGroup, removeGroup, groupTabsByDomain,
+    paletteMode, openPalette, groups, createGroup, setTabGroup, updateGroup, removeGroup, groupTabsByDomain, groupInternalTabs,
+    split, splitActive, splitRatio, splitVertical, splitDragging, setSplitDragging, openSplit, closeSplit, toggleSplit, swapSplit, toggleSplitOrientation, setSplitRatio,
     settingsSection, setSettingsSection, updateEffects, runCommand, bindings, keysFor, keyHint, setShortcut,
   };
   storeRef.current = store;

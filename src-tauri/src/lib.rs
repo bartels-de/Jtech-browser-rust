@@ -128,6 +128,37 @@ struct TabManager {
     content_visible: bool,
     /// Vollbild: HTML5-Element-Vollbild der Seite und/oder Browser-Vollbild (F11).
     fullscreen: Option<FullscreenState>,
+    /// Geteilte Ansicht: zwei Tabs nebeneinander (von der UI per set_layout gemeldet, validiert).
+    split: Option<SplitState>,
+}
+
+/// Geteilte Ansicht. `a` = links/oben, `b` = rechts/unten. Sichtbarkeit je Bereich meldet die UI
+/// (interne jtech://-Seiten rendert React im Bereich, deren Webview bleibt versteckt).
+#[derive(Clone, Debug, PartialEq)]
+pub struct SplitState { pub a: String, pub b: String, pub ratio: f64, pub vertical: bool, pub show_a: bool, pub show_b: bool }
+
+/// Payload von set_layout (optional). Zahlen werden in Rust begrenzt.
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SplitPayload { a: String, b: String, ratio: f64, vertical: bool, show_a: bool, show_b: bool }
+
+/// Breite des Spalts zwischen den beiden Webviews (logische px). Muss zu SPLIT_GAP in der UI passen.
+pub const SPLIT_GAP: f64 = 6.0;
+pub const SPLIT_MIN: f64 = 0.15;
+pub const SPLIT_MAX: f64 = 0.85;
+
+/// Zwei Rechtecke fuer die geteilte Ansicht; der Spalt (Trenngriff der UI) liegt ausserhalb beider.
+pub fn split_bounds(c: Bounds, ratio: f64, vertical: bool) -> (Bounds, Bounds) {
+    let r = if ratio.is_finite() { ratio.clamp(SPLIT_MIN, SPLIT_MAX) } else { 0.5 };
+    if vertical {
+        let avail = (c.h - SPLIT_GAP).max(2.0);
+        let ha = (avail * r).round().max(1.0);
+        (Bounds { x: c.x, y: c.y, w: c.w, h: ha }, Bounds { x: c.x, y: c.y + ha + SPLIT_GAP, w: c.w, h: (avail - ha).max(1.0) })
+    } else {
+        let avail = (c.w - SPLIT_GAP).max(2.0);
+        let wa = (avail * r).round().max(1.0);
+        (Bounds { x: c.x, y: c.y, w: wa, h: c.h }, Bounds { x: c.x + wa + SPLIT_GAP, y: c.y, w: (avail - wa).max(1.0), h: c.h })
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -146,7 +177,7 @@ struct FullscreenEvent { tab_id: Option<String>, fullscreen: bool, page: bool, b
 
 impl TabManager {
     fn new() -> Self {
-        Self { window: None, sleeping: HashMap::new(), ui: None, tabs: HashMap::new(), order: Vec::new(), active: None, counter: 0, top_height: DEFAULT_TOP_HEIGHT, sidebar_width: DEFAULT_SIDEBAR_WIDTH, content_visible: true, fullscreen: None }
+        Self { window: None, sleeping: HashMap::new(), ui: None, tabs: HashMap::new(), order: Vec::new(), active: None, counter: 0, top_height: DEFAULT_TOP_HEIGHT, sidebar_width: DEFAULT_SIDEBAR_WIDTH, content_visible: true, fullscreen: None, split: None }
     }
 }
 
@@ -244,11 +275,15 @@ fn logical_window_size(window: &tauri::Window) -> Result<(f64, f64), String> {
 
 /// Setzt Bounds und Sichtbarkeit aller Webviews. Lock nur fuer den Snapshot.
 fn apply_layout(app: &AppHandle) {
-    let (window, ui, tabs, active, top_h, sb_w, visible, fs) = {
+    let (window, ui, tabs, active, top_h, sb_w, visible, fs, split) = {
         let state = app.state::<Mutex<TabManager>>();
         let m = lock(&state);
         let tabs: Vec<(String, tauri::Webview)> = m.order.iter().filter_map(|id| m.tabs.get(id).map(|t| (id.clone(), t.webview.clone()))).collect();
-        (m.window.clone(), m.ui.clone(), tabs, m.active.clone(), m.top_height, m.sidebar_width, m.content_visible, m.fullscreen.is_some())
+        // Geteilte Ansicht nur, solange der aktive Tab einer der beiden ist.
+        let split = m.split.clone().filter(|s| m.active.as_deref().is_some_and(|a| a == s.a || a == s.b));
+        // Vollbild: nur der Vollbild-Tab (Seite) bzw. der fokussierte Bereich fuellt den Bildschirm.
+        let fs: Option<String> = m.fullscreen.as_ref().map(|f| f.page_tab.clone().or_else(|| m.active.clone()).unwrap_or_default());
+        (m.window.clone(), m.ui.clone(), tabs, m.active.clone(), m.top_height, m.sidebar_width, m.content_visible, fs, split)
     };
     let Some(window) = window else { return };
     let (w, h) = match logical_window_size(&window) { Ok(v) => v, Err(e) => { report_error(app, "", "layout", e); return; } };
@@ -257,11 +292,21 @@ fn apply_layout(app: &AppHandle) {
         if let Err(e) = ui.set_size(LogicalSize::new(w, h)) { report_error(app, "ui", "ui.set_size", e); }
     }
     // Vollbild: Content-Webview ueber den ganzen Client-Bereich (logische Pixel wie sonst auch).
-    let b = if fs { Bounds { x: 0.0, y: 0.0, w: w.max(1.0), h: h.max(1.0) } } else { content_bounds(w, h, top_h, sb_w) };
+    let full = Bounds { x: 0.0, y: 0.0, w: w.max(1.0), h: h.max(1.0) };
+    let content = content_bounds(w, h, top_h, sb_w);
+    let panes = split.as_ref().filter(|_| fs.is_none()).map(|s| (s, split_bounds(content, s.ratio, s.vertical)));
     for (id, cw) in &tabs {
+        let (b, is_active) = if let Some(fs_id) = &fs {
+            (full, visible && fs_id == id)
+        } else if let Some((s, (ra, rb))) = &panes {
+            if id == &s.a { (*ra, visible && s.show_a) }
+            else if id == &s.b { (*rb, visible && s.show_b) }
+            else { (content, false) }
+        } else {
+            (content, visible && active.as_deref() == Some(id.as_str()))
+        };
         if let Err(e) = cw.set_position(LogicalPosition::new(b.x, b.y)) { report_error(app, id, "set_position", e); }
         if let Err(e) = cw.set_size(LogicalSize::new(b.w, b.h)) { report_error(app, id, "set_size", e); }
-        let is_active = visible && active.as_deref() == Some(id.as_str());
         let r = if is_active { cw.show() } else { cw.hide() };
         if let Err(e) = r { report_error(app, id, if is_active { "show" } else { "hide" }, e); }
         if is_active {
@@ -319,9 +364,17 @@ fn page_fullscreen_changed(app: &AppHandle, tab_id: &str, on: bool) {
     let (is_active, is_fs_tab) = {
         let state = app.state::<Mutex<TabManager>>();
         let m = lock(&state);
-        (m.active.as_deref() == Some(tab_id), m.fullscreen.as_ref().and_then(|f| f.page_tab.as_deref()) == Some(tab_id))
+        let in_split = m.split.as_ref().is_some_and(|s| (s.a == tab_id || s.b == tab_id) && m.active.as_deref().is_some_and(|a| a == s.a || a == s.b));
+        (m.active.as_deref() == Some(tab_id) || in_split, m.fullscreen.as_ref().and_then(|f| f.page_tab.as_deref()) == Some(tab_id))
     };
-    if on && is_active { update_fullscreen(app, Some(Some(tab_id.to_string())), None); }
+    if on && is_active {
+        // Geteilte Ansicht: der Bereich, der Vollbild anfordert, wird fokussiert.
+        {
+            let state = app.state::<Mutex<TabManager>>();
+            let mut m = lock(&state);
+            if m.active.as_deref() != Some(tab_id) { m.active = Some(tab_id.to_string()); }
+        }
+        emit_tabs_changed(app); update_fullscreen(app, Some(Some(tab_id.to_string())), None); }
     else if !on && is_fs_tab { update_fullscreen(app, Some(None), None); }
 }
 
@@ -590,6 +643,8 @@ fn close_tab(app: AppHandle, id: String) -> Result<(), String> {
         if removed.is_none() && !slept { return Err(format!("Tab {id} nicht gefunden")); }
         let pos = m.order.iter().position(|t| t == &id);
         if let Some(p) = pos { m.order.remove(p); }
+        // Schliessen eines Bereichs beendet die geteilte Ansicht.
+        if m.split.as_ref().is_some_and(|s| s.a == id || s.b == id) { m.split = None; }
         if m.active.as_deref() == Some(id.as_str()) {
             let next = pos.and_then(|p| m.order.get(p.min(m.order.len().saturating_sub(1))).cloned());
             m.active = next.or_else(|| m.order.last().cloned());
@@ -615,6 +670,7 @@ fn sleep_tab(app: AppHandle, id: String) -> Result<(), String> {
         let state = app.state::<Mutex<TabManager>>();
         let mut m = lock(&state);
         if m.active.as_deref() == Some(id.as_str()) { return Err("aktiver Tab wird nicht schlafen gelegt".into()); }
+        if m.split.as_ref().is_some_and(|s| s.a == id || s.b == id) { return Err("Tab in geteilter Ansicht wird nicht schlafen gelegt".into()); }
         let playing = m.tabs.get(&id).map(|t| t.playing_audio.load(Ordering::Relaxed)).ok_or_else(|| format!("Tab {id} nicht gefunden"))?;
         if playing { return Err(format!("Tab {id} spielt Audio")); }
         let Some(t) = m.tabs.remove(&id) else { return Err(format!("Tab {id} nicht gefunden")); };
@@ -1053,19 +1109,33 @@ fn set_adblock_enabled(enabled: bool) { ADBLOCK_ENABLED.store(enabled, Ordering:
 
 /// React meldet seine echte Layout-Hoehe (Toolbar) und Sidebar-Breite in CSS-/logischen Pixeln.
 #[tauri::command]
-fn set_layout(app: AppHandle, top_height: f64, sidebar_width: Option<f64>) -> Result<(), String> {
+fn set_layout(app: AppHandle, top_height: f64, sidebar_width: Option<f64>, split: Option<SplitPayload>) -> Result<(), String> {
     if !top_height.is_finite() || top_height < 0.0 { return Err(format!("ungueltige Hoehe {top_height}")); }
-    let changed = {
+    let split = match split {
+        None => None,
+        Some(p) => {
+            if !valid_tab_id(&p.a) || !valid_tab_id(&p.b) || p.a == p.b { return Err("geteilte Ansicht: ungueltige Tab-IDs".into()); }
+            if !p.ratio.is_finite() { return Err("geteilte Ansicht: ungueltiges Verhaeltnis".into()); }
+            Some(SplitState { a: p.a, b: p.b, ratio: p.ratio.clamp(SPLIT_MIN, SPLIT_MAX), vertical: p.vertical, show_a: p.show_a, show_b: p.show_b })
+        }
+    };
+    let (changed, woke) = {
         let state = app.state::<Mutex<TabManager>>();
         let mut m = lock(&state);
         let th = top_height.clamp(24.0, 600.0).ceil();
         let sw = sidebar_width.filter(|v| v.is_finite()).map(|v| v.clamp(0.0, 800.0)).unwrap_or(m.sidebar_width);
-        let changed = th != m.top_height || sw != m.sidebar_width;
+        // Unbekannte Tabs (z. B. gerade geschlossen) -> geteilte Ansicht verwerfen.
+        let split = split.filter(|s| [&s.a, &s.b].iter().all(|i| m.order.contains(i)));
+        let woke: Vec<String> = split.iter().flat_map(|s| [s.a.clone(), s.b.clone()]).filter(|i| m.sleeping.contains_key(i)).collect();
+        let changed = th != m.top_height || sw != m.sidebar_width || split != m.split;
         m.top_height = th;
         m.sidebar_width = sw;
-        changed
+        m.split = split;
+        (changed, woke)
     };
     if changed { apply_layout(&app); }
+    // Schlafender Tab in der geteilten Ansicht -> aufwecken.
+    for id in woke { schedule_wake(&app, id); }
     Ok(())
 }
 
@@ -1465,6 +1535,22 @@ unsafe fn attach_handlers(pwv: &tauri::webview::PlatformWebview, app: &AppHandle
         push("AcceleratorKeyPressed", tok);
     }
 
+    // Geteilte Ansicht: Klick/Fokus in eine Seite -> UI fokussiert diesen Bereich.
+    {
+        let (app, id) = (app.clone(), tab_id.to_string());
+        let ctl: SYS::ICoreWebView2Controller = controller.cast().map_err(|e| format!("cast Controller: {e}"))?;
+        let h = webview2_com::FocusChangedEventHandler::create(Box::new(move |_s, _a| {
+            emit_tab(&app, TabEvent { tab_id: id.clone(), kind: "focus".into(), ..Default::default() });
+            Ok(())
+        }));
+        let h: SYS::ICoreWebView2FocusChangedEventHandler = h.cast().map_err(|e| format!("cast FocusChanged: {e}"))?;
+        let mut tok = 0i64;
+        match unsafe { ctl.add_GotFocus(&h, &mut tok) } {
+            Ok(()) => push("GotFocus", tok),
+            Err(e) => tracing::warn!(tab = tab_id, "add_GotFocus: {e}"),
+        }
+    }
+
     // Runde 4: Website-Berechtigungen (eigene Abfrage-Leiste) + vorgemerktes Loeschen beim Start.
     match unsafe { privacy::attach_permissions(&core, app, tab_id) } {
         Ok(tok) => push("PermissionRequested", tok),
@@ -1581,6 +1667,10 @@ unsafe fn detach_handlers(pwv: &tauri::webview::PlatformWebview, tab_id: &str, t
                 },
                 "ZoomFactorChanged" => match pwv.controller().cast::<SYS::ICoreWebView2Controller>() {
                     Ok(c) => c.remove_ZoomFactorChanged(tok),
+                    Err(e) => Err(e),
+                },
+                "GotFocus" => match pwv.controller().cast::<SYS::ICoreWebView2Controller>() {
+                    Ok(c) => c.remove_GotFocus(tok),
                     Err(e) => Err(e),
                 },
                 "DownloadStarting" => core.cast::<SYS::ICoreWebView2_4>().and_then(|c| c.remove_DownloadStarting(tok)),
@@ -1804,6 +1894,16 @@ mod tests {
     fn bounds_subtract_toolbar_and_sidebar() {
         assert_eq!(content_bounds(1200.0, 800.0, 72.0, 220.0), Bounds { x: 220.0, y: 72.0, w: 980.0, h: 728.0 });
         assert_eq!(content_bounds(100.0, 50.0, 72.0, 220.0).w, 1.0);
+    }
+
+    #[test]
+    fn split_rects_leave_gap() {
+        let c = Bounds { x: 250.0, y: 80.0, w: 1006.0, h: 600.0 };
+        let (a, b) = split_bounds(c, 0.5, false);
+        assert_eq!(a, Bounds { x: 250.0, y: 80.0, w: 500.0, h: 600.0 });
+        assert_eq!(b.x, 756.0); assert_eq!(b.w, 500.0);
+        let (a, b) = split_bounds(c, 0.99, true);
+        assert!(a.h <= 594.0 * SPLIT_MAX + 1.0 && b.y == a.y + a.h + SPLIT_GAP);
     }
 
     #[test]

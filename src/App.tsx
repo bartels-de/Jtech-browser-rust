@@ -5,6 +5,7 @@ import { Sidebar } from "./components/Sidebar";
 import { Toolbar } from "./components/Toolbar";
 import { BookmarksBar } from "./components/BookmarksBar";
 import { ContentArea } from "./components/ContentArea";
+import { SplitBar } from "./components/SplitView";
 import { useShortcuts } from "./components/useShortcuts";
 import { FindBar } from "./components/FindBar";
 import { CommandPalette } from "./components/CommandPalette";
@@ -29,6 +30,12 @@ function Shell() {
   // Vollbild: keine set_layout-Meldungen (versteckte Chrome wuerde 0-Masse melden); danach frisch melden.
   const fsRef = useRef(b.fullscreen);
   fsRef.current = b.fullscreen;
+  // Split view payload for set_layout (Rust validates ids and clamps the ratio)
+  const paneShown = (id: string) => { const t = b.tabs.find(x => x.id === id); return !!t && !t.internal && !t.sleeping; };
+  const split = b.splitActive && b.split ? { a: b.split.a, b: b.split.b, ratio: b.splitRatio, vertical: b.splitVertical, showA: paneShown(b.split.a), showB: paneShown(b.split.b) } : null;
+  const splitRef = useRef(split);
+  splitRef.current = split;
+  const splitSig = JSON.stringify(split);
 
   useEffect(() => {
     const report = () => {
@@ -36,7 +43,7 @@ function Shell() {
       if (!s || !h || fsRef.current) return;
       const sidebarWidth = Math.ceil(s.getBoundingClientRect().width);
       const topHeight = Math.ceil(h.getBoundingClientRect().bottom);
-      call("set_layout", { topHeight, sidebarWidth }, b.setStatus);
+      call("set_layout", { topHeight, sidebarWidth, split: splitRef.current }, b.setStatus);
     };
     report();
     // Sidebar drag: rAF-throttled and final reports
@@ -47,6 +54,7 @@ function Shell() {
     return () => { ro.disconnect(); window.removeEventListener("jtech:layout", report); };
   }, [b.setStatus]);
   useEffect(() => { if (!b.fullscreen) window.dispatchEvent(new Event("jtech:layout")); }, [b.fullscreen]);
+  useEffect(() => { window.dispatchEvent(new Event("jtech:layout")); }, [splitSig]);
 
   const err = b.navError && b.navError.tabId === b.activeTab?.id && !b.activePage ? b.navError : null;
 
@@ -57,6 +65,7 @@ function Shell() {
       <div className="main-col">
         <div className="header" ref={headRef}>
           <Toolbar />
+          <SplitBar />
           <BookmarksBar />
           <FindBar />
           <PermissionBar />
