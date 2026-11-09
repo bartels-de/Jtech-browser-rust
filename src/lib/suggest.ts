@@ -6,7 +6,7 @@ import { t as tr } from "../i18n";
 import { BUILTIN_BANGS, INTERNAL_PAGES, internalTitle, hostOf, internalUrl, type Bang } from "./urls";
 import type { Bookmark, HistoryEntry, UiTab } from "../store/types";
 
-export type SuggestKind = "go" | "bang" | "page" | "bookmark" | "history" | "tab" | "command";
+export type SuggestKind = "go" | "bang" | "page" | "bookmark" | "history" | "tab" | "command" | "search";
 export interface Suggestion {
   key: string;
   kind: SuggestKind;
@@ -81,4 +81,24 @@ export function addressSuggestions(text: string, d: { history: HistoryEntry[]; b
     out.push({ key: "h:" + h.url, kind: "history", title: h.title || h.url, hint: h.url, value: h.url });
   }
   return out.slice(0, 9);
+}
+
+/** Input that looks like an address (URL, host.tld, IP, internal page) is never sent to the search engine. */
+export function looksLikeUrl(input: string): boolean {
+  const q = input.trim().toLowerCase();
+  if (!q) return false;
+  if (/^[a-z][a-z0-9+.-]*:\/\//.test(q) || /^(www\.|localhost|jtech:|about:|file:)/.test(q)) return true;
+  if (/\s/.test(q)) return false;
+  const host = q.split(/[/?#]/)[0].replace(/:\d+$/, "");
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return true;
+  return /^[^.]+(\.[^.]+)*\.[a-z]{2,}$/.test(host);
+}
+
+/** Live suggestions from the search engine appended after the local ones (duplicates of local entries removed). */
+export function withRemote(local: Suggestion[], remote: string[], query: string): Suggestion[] {
+  const q = norm(query.trim());
+  const have = new Set(local.map(s => norm(s.title)));
+  const extra = remote.filter(r => norm(r) !== q && !have.has(norm(r))).slice(0, 6)
+    .map((r, i): Suggestion => ({ key: "s:" + i + ":" + r, kind: "search", title: r, value: r }));
+  return [...local, ...extra];
 }

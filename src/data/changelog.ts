@@ -13,6 +13,35 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.1.12", date: null,
+    notes: {
+      de: [
+        "Hub-Menü: ein Einstieg für Lesezeichen, Verlauf, Downloads, Bibliothek, Market, Erweiterungen, Audio, Leistung, Themes, Datenschutz, Änderungen und Einstellungen – mit Filterfeld.",
+        "Einstellungen dort, wo du sie brauchst: Rechtsklick auf die Startseite, auf freie Fläche der Seitenleiste oder auf die Symbolleiste.",
+        "Schnellaktionen in der Adressleiste: Bild-im-Bild auf Videoseiten, Stummschalten bei Ton, Zahl blockierter Elemente und Zoom zurücksetzen.",
+        "Rückgängig statt Nachfragen: Tabs schließen, Gruppen, Lesezeichen, Verlaufseinträge, Design, Voreinstellungen und Zurücksetzen lassen sich per Hinweis rückgängig machen.",
+        "Neue Tabs öffnen neben dem aktuellen; beim Schließen geht es zurück zum Ursprungstab (abschaltbar).",
+        "Einstellungen im einfachen Modus mit den wichtigsten Optionen – „Alle Einstellungen anzeigen“ zeigt den Rest.",
+        "Symbolleiste per Drag & Drop anpassen.",
+        "Voreinstellungen „Minimal“, „Standard“, „Power-User“ und „Streaming“ mit Vorschau.",
+        "Animierte Übergänge beim Tabwechsel (abschaltbar, folgt „Animationen reduzieren“).",
+        "Live-Suchvorschläge der Suchmaschine beim Tippen – abschaltbar für mehr Datenschutz.",
+      ],
+      en: [
+        "Hub menu: one entry point for bookmarks, history, downloads, library, market, extensions, audio, performance, themes, privacy, changelog and settings – with a filter field.",
+        "Settings where you need them: right-click the start page, empty sidebar space or the toolbar.",
+        "Address bar quick actions: picture-in-picture on video sites, mute while audio plays, blocked-items count and zoom reset.",
+        "Undo instead of confirmations: closing tabs, groups, bookmarks, history entries, theme changes, presets and resets can be undone from a notice.",
+        "New tabs open next to the current one; closing a tab returns to the tab it was opened from (switchable).",
+        "Simple settings mode with the most important options – “Show all settings” reveals the rest.",
+        "Customize the toolbar by drag & drop.",
+        "Presets “Minimal”, “Standard”, “Power user” and “Streaming” with a preview.",
+        "Animated tab switch transitions (switchable, follows “reduce motion”).",
+        "Live search suggestions from the search engine while typing – can be turned off for more privacy.",
+      ],
+    },
+  },
+  {
     version: "0.1.11", date: "2026-11-09",
     notes: {
       de: [

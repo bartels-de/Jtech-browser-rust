@@ -57,7 +57,7 @@ export function ShortcutEditor({ query }: { query: string }) {
     <>
       <div className="setting">
         <div><strong>{t("sc.title")}</strong><small>{t("sc.desc")}</small></div>
-        <button className="btn ghost" disabled={!changed} onClick={() => { if (confirm(t("sc.resetAllConfirm"))) b.updateSettings({ shortcuts: {} }); }}>{t("ps.resetAll")}</button>
+        <button className="btn ghost" disabled={!changed} onClick={() => b.updateSettingsUndoable({ shortcuts: {} }, t("undo.shortcutsReset"))}>{t("ps.resetAll")}</button>
       </div>
       {conflict && (
         <div className="banner info sc-conflict" role="alert">

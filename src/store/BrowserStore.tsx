@@ -8,7 +8,7 @@ import { normalizeEffects, type EffectsSettings } from "../lib/fx/effects";
 import { applyTheme, normalizeTheme, type ThemeSpec } from "../lib/theme";
 import { load, save } from "./storage";
 import { I18nProvider, localizeBackend, normalizeLangSetting, setLang, systemLang, t as tr, type Lang } from "../i18n";
-import { DEFAULT_SETTINGS, GROUP_COLORS, clampSidebarWidth, clampSplitRatio, type SplitPair, type Bookmark, type DownloadItem, type HistoryEntry, type NavError, type PopoverId, type Settings, type TabGroup, type UiTab } from "./types";
+import { DEFAULT_SETTINGS, GROUP_COLORS, clampSidebarWidth, clampSplitRatio, normalizeToolbar, presetSettings, type PresetId, type SplitPair, type Bookmark, type DownloadItem, type HistoryEntry, type NavError, type PopoverId, type Settings, type TabGroup, type UiTab } from "./types";
 
 /** Runde 3: Zoomstufen wie in Chromium. */
 export const ZOOM_STEPS = [0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5];
@@ -32,6 +32,8 @@ function normalizeGroups(raw: unknown): TabGroup[] {
     collapsed: !!g.collapsed,
   }));
 }
+/** Toast with an optional "Undo" action (replaces confirmations for reversible actions). */
+export interface Toast { id: number; msg: string; undo?: () => void; }
 export interface FindState { open: boolean; query: string; count: number; found: boolean; tick: number; }
 
 const HISTORY_LIMIT = 5000;
@@ -60,7 +62,7 @@ export interface Store {
   fullscreen: boolean;
   setSidebarResizing(v: boolean): void;
   newTab(input?: string): Promise<string | undefined>;
-  closeTab(id: string): void;
+  closeTab(id: string, silent?: boolean): void;
   closeOtherTabs(id: string): void;
   switchTab(id: string): void;
   cycleTab(dir: 1 | -1): void;
@@ -157,6 +159,13 @@ export interface Store {
   /** Recently closed web tabs (newest first) */
   closedTabs: string[];
   reopenClosedTab(): void;
+  /** Toast / undo */
+  toast: Toast | null;
+  showToast(msg: string, undo?: () => void): void;
+  dismissToast(): void;
+  /** Apply settings and offer "Undo" (restores the previous values of the changed keys) */
+  updateSettingsUndoable(p: Partial<Settings>, msg: string): void;
+  applyPreset(id: PresetId): void;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -176,6 +185,17 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   const [totalBlocked, setTotalBlocked] = useState(0);
   const [navError, setNavError] = useState<NavError | null>(null);
   const [status, setStatus] = useState("");
+  const [toast, setToast] = useState<Toast | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const showToast = useCallback((msg: string, undo?: () => void) => {
+    clearTimeout(toastTimer.current);
+    const id = Date.now();
+    setToast({ id, msg, undo });
+    toastTimer.current = setTimeout(() => setToast(x => (x?.id === id ? null : x)), undo ? 7000 : 3500);
+  }, []);
+  const dismissToast = useCallback(() => { clearTimeout(toastTimer.current); setToast(null); }, []);
+  /** Tab opener (new tab id -> tab that was active when it was opened) */
+  const openerRef = useRef<Record<string, string>>({});
   const [fullscreen, setFullscreen] = useState(false);
   const [settings, setSettings] = useState<Settings>(() => {
     const s = load("settings", DEFAULT_SETTINGS);
@@ -185,8 +205,10 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
       devTools: s.devTools === true,
       updateIntervalHours: [0, 6, 12, 24, 72].includes(s.updateIntervalHours) ? s.updateIntervalHours : 24,
       sidebarWidth: clampSidebarWidth(s.sidebarWidth), language: normalizeLangSetting(s.language),
-      splitRatio: clampSplitRatio(s.splitRatio), splitVertical: s.splitVertical === true };
+      splitRatio: clampSplitRatio(s.splitRatio), splitVertical: s.splitVertical === true, toolbar: normalizeToolbar(s.toolbar) };
   });
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
   // Developer tools setting -> backend (applies to open tabs and new ones)
   useEffect(() => { call("set_devtools", { enabled: settings.devTools === true }, m => console.warn(m)); }, [settings.devTools]);
   // ---- i18n: language from settings ("system" follows navigator.language, also when it changes) ----
@@ -507,7 +529,24 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     setPopover(null);
     const target = resolveInput(input ?? settings.startPage, settings.searchEngine, settings.bangs) ?? { kind: "internal" as const, page: "newtab" as InternalPage };
     const url = target.kind === "web" ? target.url : "about:blank";
+    const opener = tabsRef.current.find(t => t.active)?.id;
     const id = await call<string>("new_tab", { url }, onError);
+    if (id && opener) {
+      openerRef.current[id] = opener;
+      if (settingsRef.current.newTabNextToCurrent !== false) {
+        // Rust appends the tab; move it right after the tab it was opened from.
+        const list = await call<RustTab[]>("list_tabs");
+        if (list) {
+          const ids = list.map(t => t.id).filter(x => x !== id);
+          const at = ids.indexOf(opener);
+          if (at >= 0 && at < ids.length - 1) {
+            ids.splice(at + 1, 0, id);
+            setRustTabs(list.map(t => t).sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)));
+            call("reorder_tabs", { order: ids }, m => console.warn(m));
+          }
+        }
+      }
+    }
     if (id && target.kind === "internal" && target.page !== "newtab") setPage(id, target.page);
     if (target.kind === "internal" && target.page === "newtab") setFocusTick(x => x + 1);
     return id;
@@ -555,16 +594,33 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   openPageRef.current = openPage;
 
   const [closedTabs, setClosedTabs] = useState<string[]>([]);
-  const closeTab = useCallback((id: string) => {
+  /** URL to reopen a tab with (web URL or jtech:// page), null for an empty new tab */
+  const reopenUrl = (id: string): string | null => {
+    const ct = tabsRef.current.find(t => t.id === id);
+    if (!ct) return null;
+    const pg = internalRef.current[id];
+    if (pg && pg !== "newtab") return internalUrl(pg);
+    return isWebUrl(ct.url) ? ct.url : null;
+  };
+  const reopenRef = useRef<(urls: (string | null)[]) => void>(() => {});
+  const closeTab = useCallback((id: string, silent = false) => {
     const ct = tabsRef.current.find(t => t.id === id);
     if (ct && isWebUrl(ct.url) && !internalRef.current[id]) { const u = ct.url; setClosedTabs(l => [u, ...l.filter(x => x !== u)].slice(0, 25)); }
+    const url = reopenUrl(id);
+    const opener = openerRef.current[id];
+    delete openerRef.current[id];
+    const back = !!ct?.active && !!opener && settingsRef.current.returnToOpener !== false && tabsRef.current.some(t => t.id === opener);
     setInternal(m => { const n = { ...m }; delete n[id]; return n; });
-    call("close_tab", { id }, onError);
-  }, [onError]);
+    call("close_tab", { id }, onError).then(() => { if (back) call("switch_tab", { id: opener }); });
+    if (!silent && url) showToast(tr("undo.tabClosed"), () => reopenRef.current([url]));
+  }, [onError, showToast]);
 
   const closeOtherTabs = useCallback((id: string) => {
-    tabsRef.current.filter(t => t.id !== id && !pinned.includes(t.id)).forEach(t => call("close_tab", { id: t.id }, onError));
-  }, [pinned, onError]);
+    const list = tabsRef.current.filter(t => t.id !== id && !pinned.includes(t.id));
+    const urls = list.map(t => reopenUrl(t.id));
+    list.forEach(t => { setInternal(m => { const n = { ...m }; delete n[t.id]; return n; }); call("close_tab", { id: t.id }, onError); });
+    if (list.length) showToast(tr("undo.tabsClosed", { count: list.length }), () => reopenRef.current(urls));
+  }, [pinned, onError, showToast]);
 
   const switchTab = useCallback((id: string) => { setPopover(null); call("switch_tab", { id }, onError); }, [onError]);
   switchTabRef.current = switchTab;
@@ -712,10 +768,17 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   })), []);
   const removeGroup = useCallback((id: string, closeTabs = false) => {
     const members = Object.entries(tabGroup).filter(([, g]) => g === id).map(([t]) => t);
+    const group = groups.find(g => g.id === id);
+    const urls = closeTabs ? members.map(reopenUrl) : [];
     if (closeTabs) members.forEach(t => call("close_tab", { id: t }, onError));
     setTabGroupMap(m => Object.fromEntries(Object.entries(m).filter(([, g]) => g !== id)));
     setGroups(gs => gs.filter(g => g.id !== id));
-  }, [tabGroup, onError]);
+    if (group) showToast(closeTabs ? tr("undo.groupClosed", { name: group.name }) : tr("undo.groupDissolved", { name: group.name }), () => {
+      if (closeTabs) { reopenRef.current(urls); return; }
+      setGroups(gs => (gs.some(g => g.id === id) ? gs : [...gs, group]));
+      setTabGroupMap(m => { const n = { ...m }; members.forEach(t => { if (tabsRef.current.some(x => x.id === t)) n[t] = id; }); return n; });
+    });
+  }, [tabGroup, groups, onError, showToast]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const groupTabsByDomain = useCallback(() => {
     const tabs = uiTabsRef.current.filter(t => isWebUrl(t.url) && !t.internal && !t.sleeping);
@@ -789,7 +852,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     setSettings(s => ({ ...s, splitRatio: Math.round(v * 1000) / 1000 }));
   }, []);
 
-  const updateSettings = useCallback((p: Partial<Settings>) => setSettings(s => ({
+  const applySettings = useCallback((p: Partial<Settings>) => setSettings(s => ({
     ...s, ...p,
     bangs: normalizeBangs(p.bangs ?? s.bangs),
     shortcuts: p.shortcuts ? normalizeShortcuts(p.shortcuts) : s.shortcuts,
@@ -797,7 +860,22 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     sidebarWidth: clampSidebarWidth(p.sidebarWidth ?? s.sidebarWidth),
     language: normalizeLangSetting(p.language ?? s.language),
     splitRatio: clampSplitRatio(p.splitRatio ?? s.splitRatio),
+    toolbar: p.toolbar ? normalizeToolbar(p.toolbar) : s.toolbar,
   })), []);
+  const updateSettingsUndoable = useCallback((p: Partial<Settings>, msg: string) => {
+    const cur = settingsRef.current;
+    const prev = Object.fromEntries(Object.keys(p).map(k => [k, cur[k as keyof Settings]])) as Partial<Settings>;
+    applySettings(p);
+    showToast(msg, () => applySettings(prev));
+  }, [applySettings, showToast]);
+  const updateSettings = useCallback((p: Partial<Settings>) => {
+    // Theme change: offer undo instead of asking first
+    if (p.theme !== undefined && p.theme !== settingsRef.current.theme && Object.keys(p).length === 1) { updateSettingsUndoable(p, tr("undo.theme")); return; }
+    applySettings(p);
+  }, [applySettings, updateSettingsUndoable]);
+  const applyPreset = useCallback((id: PresetId) => {
+    updateSettingsUndoable(presetSettings(id, settingsRef.current), tr("undo.preset", { name: tr(`preset.${id}` as "preset.minimal") }));
+  }, [updateSettingsUndoable]);
   const updateEffects = useCallback((p: Partial<EffectsSettings>) => setSettings(s => ({ ...s, effects: normalizeEffects({ ...s.effects, ...p }) })), []);
 
   // ---- Runde 5: Tastenkuerzel ----
@@ -818,7 +896,15 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     setRustTabs(ts => ts.map(t => t.id === id ? { ...t, muted } : t));
     call("set_tab_muted", { id, muted }, onError);
   }, [onError]);
-  const setCustomTheme = useCallback((t: ThemeSpec | null) => setCustomThemeState(t ? normalizeTheme(t) : null), []);
+  const customThemeRef = useRef(customTheme);
+  customThemeRef.current = customTheme;
+  const setCustomTheme = useCallback((t: ThemeSpec | null) => {
+    const prev = customThemeRef.current;
+    const next = t ? normalizeTheme(t) : null;
+    setCustomThemeState(next);
+    // Switching to another theme (not live edits of the same one) can be undone
+    if ((prev?.id ?? null) !== (next?.id ?? null)) showToast(tr("undo.theme"), () => setCustomThemeState(prev));
+  }, [showToast]);
   const saveTheme = useCallback((t: ThemeSpec) => {
     const n = normalizeTheme(t); if (!n) return;
     setSavedThemes(list => [n, ...list.filter(x => x.id !== n.id)].slice(0, 50));
@@ -831,8 +917,20 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     setBookmarks(b => b.some(x => x.url === url) ? b : [...b, { id: uid(), url, title: title || url, createdAt: Date.now() }]);
   }, []);
   const updateBookmark = useCallback((id: string, p: Partial<Bookmark>) => setBookmarks(b => b.map(x => x.id === id ? { ...x, ...p } : x)), []);
-  const removeBookmark = useCallback((id: string) => setBookmarks(b => b.filter(x => x.id !== id)), []);
-  const removeHistory = useCallback((id: string) => setHistory(h => h.filter(x => x.id !== id)), []);
+  const removeBookmark = useCallback((id: string) => setBookmarks(b => {
+    const i = b.findIndex(x => x.id === id);
+    if (i < 0) return b;
+    const item = b[i];
+    showToast(tr("undo.bookmark", { name: item.title.slice(0, 40) }), () => setBookmarks(l => (l.some(x => x.id === id || x.url === item.url) ? l : [...l.slice(0, i), item, ...l.slice(i)])));
+    return b.filter(x => x.id !== id);
+  }), [showToast]);
+  const removeHistory = useCallback((id: string) => setHistory(h => {
+    const i = h.findIndex(x => x.id === id);
+    if (i < 0) return h;
+    const item = h[i];
+    showToast(tr("undo.history"), () => setHistory(l => (l.some(x => x.id === id) ? l : [...l.slice(0, i), item, ...l.slice(i)])));
+    return h.filter(x => x.id !== id);
+  }), [showToast]);
   const clearHistory = useCallback(() => { setHistory([]); lastHistoryByTab.current = {}; }, []);
 
   // ---- Etappe CD / Runde 5: Kuerzel (UI-Webview und Rust AcceleratorKeyPressed) -> Befehl ----
@@ -910,9 +1008,11 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     paletteMode, openPalette, groups, createGroup, setTabGroup, updateGroup, removeGroup, groupTabsByDomain, groupInternalTabs,
     split, splitActive, splitRatio, splitVertical, splitDragging, setSplitDragging, openSplit, closeSplit, toggleSplit, swapSplit, toggleSplitOrientation, setSplitRatio,
     overlay, setOverlay, closedTabs,
+    toast, showToast, dismissToast, updateSettingsUndoable, applyPreset,
     reopenClosedTab: () => { const [u, ...rest] = closedTabs; if (u) { setClosedTabs(rest); newTab(u); } else setStatus(tr("st.noClosedTab")); },
     settingsSection, setSettingsSection, updateEffects, runCommand, bindings, keysFor, keyHint, setShortcut,
   };
   storeRef.current = store;
+  reopenRef.current = (urls) => { for (const u of urls) void newTab(u ?? undefined); };
   return <I18nProvider lang={lang}><Ctx.Provider value={store}>{children}</Ctx.Provider></I18nProvider>;
 }

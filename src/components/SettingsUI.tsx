@@ -7,6 +7,8 @@ import { matches } from "../lib/suggest";
  * Bei aktiver Suche (SearchCtx) werden nicht passende Zeilen ausgeblendet und Treffer markiert.
  */
 export const SearchCtx = createContext<{ q: string; all: boolean }>({ q: "", all: true });
+/** Simple/expert mode: rows marked `advanced` are only shown in expert mode (or while searching). */
+export const ExpertCtx = createContext(true);
 
 /** Markiert Vorkommen des Suchbegriffs im Text. */
 export function Hl({ text }: { text: string }) {
@@ -28,7 +30,10 @@ export function Hl({ text }: { text: string }) {
   return <>{out}</>;
 }
 
-export function Group({ title, desc, children, id, actions }: { title?: string; desc?: ReactNode; children: ReactNode; id?: string; actions?: ReactNode }) {
+export function Group({ title, desc, children, id, actions, advanced }: { title?: string; desc?: ReactNode; children: ReactNode; id?: string; actions?: ReactNode; advanced?: boolean }) {
+  const { q } = useContext(SearchCtx);
+  const expert = useContext(ExpertCtx);
+  if (advanced && !expert && !q) return null;
   return (
     <section className="card s-group" id={id}>
       {(title || actions) && (
@@ -42,10 +47,12 @@ export function Group({ title, desc, children, id, actions }: { title?: string; 
   );
 }
 
-export function Row({ title, desc, keywords = "", col, children, htmlFor }: {
-  title: string; desc?: ReactNode; keywords?: string; col?: boolean; children?: ReactNode; htmlFor?: string;
+export function Row({ title, desc, keywords = "", col, children, htmlFor, advanced }: {
+  title: string; desc?: ReactNode; keywords?: string; col?: boolean; children?: ReactNode; htmlFor?: string; advanced?: boolean;
 }) {
   const { q, all } = useContext(SearchCtx);
+  const expert = useContext(ExpertCtx);
+  if (advanced && !expert && !q) return null;
   if (q && !all && !matches(q, title, typeof desc === "string" ? desc : "", keywords)) return null;
   const Label = htmlFor ? "label" : "div";
   return (

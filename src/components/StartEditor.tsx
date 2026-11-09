@@ -121,7 +121,7 @@ export function StartEditor() {
       <Row title={t("set.startRecent")}><Switch label={t("set.startRecent")} checked={b.settings.startShowRecent !== false} onChange={v => b.updateSettings({ startShowRecent: v })} /></Row>
       <Row title={t("se.trackers")}><Switch label={t("se.trackers")} checked={sp.trackerStats} onChange={v => set({ trackerStats: v })} /></Row>
       <Row title={t("se.hints")}><Switch label={t("se.hints")} checked={sp.shortcutHints} onChange={v => set({ shortcutHints: v })} /></Row>
-      <div className="row-end"><button className="btn ghost sm" onClick={() => { b.updateSettings({ start: DEFAULT_START }); setImage(""); }}>{t("se.reset")}</button></div>
+      <div className="row-end"><button className="btn ghost sm" onClick={() => { b.updateSettingsUndoable({ start: DEFAULT_START }, t("undo.startReset")); setImage(""); }}>{t("se.reset")}</button></div>
     </div>
   );
 }

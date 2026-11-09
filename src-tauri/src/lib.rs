@@ -26,6 +26,7 @@ mod extensions;
 // Page bridge (radial menu, peek, media session) and the peek panel webview.
 mod pagebridge;
 mod peek;
+mod suggest;
 
 thread_local! { static ENGINE: RefCell<Option<Engine>> = RefCell::new(None); }
 static BLOCKED: AtomicU64 = AtomicU64::new(0);
@@ -1949,7 +1950,7 @@ pub fn run() {
             privacy::resolve_permission, privacy::list_permissions, privacy::set_permission,
             uifx::set_shortcuts, uifx::set_page_fx,
             extensions::ext_list, extensions::ext_diagnostics, extensions::ext_toggle, extensions::ext_site_toggle, extensions::market_fetch, prepare_update_exit, get_performance_stats, pip_active,
-            set_tab_memory_target, suspend_tab, media_control, pagebridge::set_bridge_options, peek::peek_open, peek::peek_bounds, peek::peek_close])
+            set_tab_memory_target, suspend_tab, media_control, pagebridge::set_bridge_options, peek::peek_open, peek::peek_bounds, peek::peek_close, suggest::search_suggest])
         .setup(|app| {
             // Runde 4: SQLite-Persistenz, Statistik, Filterlisten (Cache + Hintergrund-Update).
             let data_dir = app.path().app_data_dir().unwrap_or_else(|_| std::env::temp_dir().join("jtech-browser"));

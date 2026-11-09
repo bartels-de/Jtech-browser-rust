@@ -61,9 +61,9 @@ export function Popover({ open, onClose, children, className = "", style, at, la
   return <div ref={ref} className={`popover glass ${className}`} style={placed} role={at ? "menu" : "dialog"} aria-label={label} onKeyDown={onKey}>{children}</div>;
 }
 
-export function MenuItem({ icon, label, hint, onClick, danger }: { icon?: ReactNode; label: string; hint?: string; onClick(): void; danger?: boolean }) {
+export function MenuItem({ icon, label, hint, onClick, danger, disabled }: { icon?: ReactNode; label: string; hint?: string; onClick(): void; danger?: boolean; disabled?: boolean }) {
   return (
-    <button className={`menu-item${danger ? " danger" : ""}`} role="menuitem" onClick={onClick}>
+    <button className={`menu-item${danger ? " danger" : ""}`} role="menuitem" onClick={onClick} disabled={disabled}>
       <span className="menu-icon">{icon}</span>
       <span className="menu-label">{label}</span>
       {hint && <kbd className="menu-hint">{hint}</kbd>}

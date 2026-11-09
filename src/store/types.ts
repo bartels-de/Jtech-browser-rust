@@ -62,6 +62,65 @@ export interface Settings {
   peekEnabled?: boolean;
   /** Changelog: last app version whose "what's new" was shown */
   lastSeenVersion?: string;
+  /** New tabs open right after the current tab instead of at the end (default true) */
+  newTabNextToCurrent?: boolean;
+  /** Closing a tab returns to the tab it was opened from (default true) */
+  returnToOpener?: boolean;
+  /** Animated tab switch transitions (default true; prefers-reduced-motion always wins) */
+  tabAnimations?: boolean;
+  /** Live search suggestions from the search engine while typing (default true) */
+  liveSuggest?: boolean;
+  /** Settings page: show all options (expert) instead of the most important ones */
+  settingsExpert?: boolean;
+  /** Toolbar buttons in order (normalized by normalizeToolbar) */
+  toolbar?: ToolbarItem[];
+}
+
+// ---------- Toolbar layout ----------
+export type ToolbarItem = "back" | "forward" | "reload" | "home" | "split" | "radial" | "audio" | "extensions" | "bookmarks" | "shield" | "downloads" | "hub";
+/** Buttons left of the address bar vs. right of it */
+export const TOOLBAR_LEFT: ToolbarItem[] = ["back", "forward", "reload", "home"];
+export const TOOLBAR_ITEMS: ToolbarItem[] = ["back", "forward", "reload", "home", "split", "radial", "audio", "extensions", "bookmarks", "shield", "downloads", "hub"];
+export const DEFAULT_TOOLBAR: ToolbarItem[] = ["back", "forward", "reload", "home", "shield", "downloads", "hub"];
+/** Keeps known ids once each; the hub button can never be removed (it is the only way back into everything). */
+export function normalizeToolbar(raw: unknown): ToolbarItem[] {
+  if (!Array.isArray(raw)) return DEFAULT_TOOLBAR;
+  const out: ToolbarItem[] = [];
+  for (const x of raw) if (TOOLBAR_ITEMS.includes(x as ToolbarItem) && !out.includes(x as ToolbarItem)) out.push(x as ToolbarItem);
+  if (!out.includes("hub")) out.push("hub");
+  return out;
+}
+
+// ---------- Presets ----------
+export type PresetId = "minimal" | "standard" | "power" | "streaming";
+export const PRESET_IDS: PresetId[] = ["minimal", "standard", "power", "streaming"];
+/** A coherent set of settings; applied with updateSettings (undo restores the previous values). */
+export function presetSettings(id: PresetId, cur: Settings): Partial<Settings> {
+  const start = normalizeStart(cur.start);
+  const limits = normalizeLimits(cur.limits);
+  switch (id) {
+    case "minimal": return {
+      toolbar: ["back", "reload", "hub"], sidebarExpanded: false, showBookmarksBar: false, tabAnimations: false,
+      start: { ...start, greeting: false, quickLinks: false, trackerStats: false, shortcutHints: false, density: "compact" }, startShowRecent: false,
+      limits: { ...limits, enabled: true, lowMemoryBackground: true, suspendAfterMin: 10 },
+    };
+    case "standard": return {
+      toolbar: DEFAULT_TOOLBAR, sidebarExpanded: true, showBookmarksBar: true, bookmarksBarOnlyNewTab: false, tabAnimations: true,
+      start: { ...start, greeting: true, quickLinks: true, trackerStats: true, shortcutHints: true, density: "comfortable" }, startShowRecent: true,
+      limits: { ...limits, enabled: false },
+    };
+    case "power": return {
+      toolbar: ["back", "forward", "reload", "home", "split", "radial", "bookmarks", "extensions", "shield", "downloads", "hub"], sidebarExpanded: true, showBookmarksBar: true, bookmarksBarOnlyNewTab: false,
+      tabAnimations: true, settingsExpert: true,
+      start: { ...start, quickLinks: true, rows: Math.max(2, start.rows), trackerStats: true, shortcutHints: true, density: "compact" }, startShowRecent: true,
+      limits: { ...limits, enabled: true, lowMemoryBackground: true, suspendAfterMin: 15 },
+    };
+    case "streaming": return {
+      toolbar: ["back", "reload", "audio", "shield", "hub"], sidebarExpanded: false, showBookmarksBar: true, bookmarksBarOnlyNewTab: true, tabAnimations: true,
+      start: { ...start, quickLinks: true, greeting: false, density: "spacious" }, startShowRecent: true,
+      limits: { ...limits, enabled: true, lowMemoryBackground: true, suspendAfterMin: 30 }, tabSleepMinutes: 60,
+    };
+  }
 }
 
 // ---------- Radial menu ----------
@@ -235,4 +294,4 @@ export interface DownloadItem {
 
 export interface NavError { tabId: string; url: string; message: string; }
 
-export type PopoverId = "menu" | "downloads" | "shield" | "bookmark" | "tabmenu" | "palette" | "suggest" | "groupmenu" | null;
+export type PopoverId = "menu" | "toolbar" | "sidebarmenu" | "downloads" | "shield" | "bookmark" | "tabmenu" | "palette" | "suggest" | "groupmenu" | null;

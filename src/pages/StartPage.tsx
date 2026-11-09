@@ -54,7 +54,7 @@ export function StartPage() {
     : sp.background === "fx" ? { background: "transparent" } : {};
 
   return (
-    <div className={`page start-page sp-${sp.density} sp-align-${sp.align} sp-icons-${sp.iconStyle}${sp.background !== "none" ? " sp-has-bg" : ""}${editing ? " sp-editing" : ""}`} style={bgStyle}>
+    <div onContextMenu={e => { if ((e.target as HTMLElement).closest("input, textarea, a, .start-panel")) return; e.preventDefault(); setEditing(true); }} className={`page start-page sp-${sp.density} sp-align-${sp.align} sp-icons-${sp.iconStyle}${sp.background !== "none" ? " sp-has-bg" : ""}${editing ? " sp-editing" : ""}`} style={bgStyle}>
       {sp.background === "none" && <div className="start-glow" aria-hidden />}
       <button className="btn ghost sm start-customize" onClick={() => setEditing(v => !v)} aria-expanded={editing}>
         <IconPalette size={14} /> {tt("sp.customize")}

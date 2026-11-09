@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { listen } from "@tauri-apps/api/event";
 import { useBrowser } from "../store/BrowserStore";
 import { BUILTIN_BANGS, SEARCH_ENGINES, normalizeBangs, type SearchEngineId } from "../lib/urls";
-import { SIDEBAR_DEFAULT_WIDTH, type ThemeSetting } from "../store/types";
+import { PRESET_IDS, SIDEBAR_DEFAULT_WIDTH, presetSettings, type PresetId, type ThemeSetting } from "../store/types";
 import { PermissionSettings } from "../components/PermissionSettings";
 import { ShortcutEditor } from "../components/ShortcutEditor";
 import { DownloadList } from "../components/DownloadList";
@@ -13,7 +13,7 @@ import { COMMANDS } from "../lib/commands";
 import { checkForUpdate, downloadUpdate, fmtBytes, installAndRestart, useUpdater } from "../lib/updater";
 import { BACKGROUNDS } from "../lib/fx/effects";
 import { themeName } from "../lib/theme";
-import { Disclosure, Group, Row, SearchCtx, Switch } from "../components/SettingsUI";
+import { Disclosure, ExpertCtx, Group, Row, SearchCtx, Switch } from "../components/SettingsUI";
 import { IconDownload, IconGlobe, IconInfo, IconKeyboard, IconSearch, IconSettings, IconShield, IconSidebar, IconPalette, IconLock, JTechLogo, IconHome, IconCommand, IconGauge } from "../components/Icons";
 import { StartEditor } from "../components/StartEditor";
 import { LimitSettingsSection, RadialSettings } from "../components/FeatureSettings";
@@ -67,6 +67,10 @@ export function SettingsPage() {
             onKeyDown={e => { if (e.key === "Escape") setQ(""); }} aria-label={t("set.search")} />
           {q && <button className="icon-btn sm" title={t("set.clearSearch")} aria-label={t("set.clearSearch")} onClick={() => { setQ(""); searchRef.current?.focus(); }}>×</button>}
         </label>
+        <label className="expert-toggle">
+          <input type="checkbox" role="switch" className="switch" checked={b.settings.settingsExpert === true} onChange={e => b.updateSettings({ settingsExpert: e.target.checked })} />
+          <span>{t("set.expert")}</span>
+        </label>
         <nav>
           {SECTIONS.map(s => {
             const hit = !q.trim() || matches(q, s.title, s.keywords);
@@ -79,7 +83,9 @@ export function SettingsPage() {
           })}
         </nav>
       </aside>
+      <ExpertCtx.Provider value={b.settings.settingsExpert === true}>
       <div className="settings-body">
+        {!q.trim() && b.settings.settingsExpert !== true && <p className="settings-simple-note muted small">{t("set.simpleNote")} <button className="link-btn" onClick={() => b.updateSettings({ settingsExpert: true })}>{t("set.expert")}</button></p>}
         {shown.length === 0 && <div className="empty-state"><h2>{t("set.nothing")}</h2><p>{t("set.noMatch", { q })}</p></div>}
         {shown.map(s => (
           <SearchCtx.Provider key={s.id} value={{ q: q.trim(), all: !q.trim() || matches(q, s.title) }}>
@@ -91,7 +97,49 @@ export function SettingsPage() {
           </SearchCtx.Provider>
         ))}
       </div>
+      </ExpertCtx.Provider>
     </div>
+  );
+}
+
+/** One-click presets with a preview of what changes; applying them can be undone from the toast. */
+function Presets() {
+  const b = useBrowser();
+  useT();
+  const [pick, setPick] = useState<PresetId | null>(null);
+  const preview = (id: PresetId) => {
+    const p = presetSettings(id, b.settings);
+    const out: string[] = [];
+    if (p.toolbar) out.push(t("preset.pv.toolbar", { n: p.toolbar.length }));
+    if (p.sidebarExpanded !== undefined) out.push(p.sidebarExpanded ? t("preset.pv.sidebarFull") : t("preset.pv.sidebarCompact"));
+    if (p.showBookmarksBar !== undefined) out.push(!p.showBookmarksBar ? t("preset.pv.bmOff") : p.bookmarksBarOnlyNewTab ? t("preset.pv.bmNewtab") : t("preset.pv.bmOn"));
+    if (p.tabAnimations !== undefined) out.push(p.tabAnimations ? t("preset.pv.animOn") : t("preset.pv.animOff"));
+    if (p.start) out.push(p.start.quickLinks ? t("preset.pv.startFull") : t("preset.pv.startMin"));
+    if (p.limits) out.push(p.limits.enabled ? t("preset.pv.limitsOn", { min: p.limits.suspendAfterMin }) : t("preset.pv.limitsOff"));
+    if (p.settingsExpert) out.push(t("preset.pv.expert"));
+    if (p.tabSleepMinutes) out.push(t("preset.pv.sleep", { count: p.tabSleepMinutes }));
+    return out;
+  };
+  return (
+    <Group title={t("preset.title")} desc={t("preset.desc")}>
+      <div className="preset-grid">
+        {PRESET_IDS.map(id => (
+          <button key={id} className={`preset-card${pick === id ? " on" : ""}`} onClick={() => setPick(id)} aria-pressed={pick === id}>
+            <strong>{t(`preset.${id}` as TKey)}</strong><small>{t(`preset.${id}.desc` as TKey)}</small>
+          </button>
+        ))}
+      </div>
+      {pick && (
+        <div className="preset-preview">
+          <strong>{t("preset.changes")}</strong>
+          <ul>{preview(pick).map(x => <li key={x}>{x}</li>)}</ul>
+          <div className="row-end">
+            <button className="btn ghost" onClick={() => setPick(null)}>{t("c.cancel")}</button>
+            <button className="btn primary" onClick={() => { b.applyPreset(pick); setPick(null); }}>{t("preset.apply")}</button>
+          </div>
+        </div>
+      )}
+    </Group>
   );
 }
 
@@ -123,6 +171,7 @@ function General() {
   const sysName = LANGS.find(l => l.id === systemLang())?.name ?? "English";
   const langOpts: [LangSetting, string][] = [["system", t("c.system")], ...LANGS.map(l => [l.id, l.name] as [LangSetting, string])];
   return <>
+    <Presets />
     <Group title={t("set.lang.group")}>
       <Row title={t("set.lang.title")} desc={t("set.lang.desc", { sys: sysName })} keywords="Sprache Language Deutsch English System">
         <div className="segmented" role="radiogroup" aria-label={t("set.lang.title")}>
@@ -144,7 +193,7 @@ function General() {
           <button className="btn" disabled={!ok} onClick={() => b.updateSettings({ startPage: startUrl.trim() })}>{t("c.apply")}</button>
         </div>
       </Row>
-      <Row title={t("set.startRecent")} desc={t("set.startRecentDesc")} keywords="Recent Verlauf">
+      <Row title={t("set.startRecent")} desc={t("set.startRecentDesc")} keywords="Recent Verlauf" advanced>
         <Switch label={t("set.startRecent")} checked={s.startShowRecent !== false} onChange={v => b.updateSettings({ startShowRecent: v })} />
       </Row>
       <Row title={t("set.restore")} desc={t("set.restoreDesc")} keywords="session">
@@ -174,9 +223,12 @@ function Appearance() {
       <Row title={t("set.sidebarTitles")} desc={t("set.sidebarTitlesDesc")} keywords="sidebar">
         <Switch label={t("set.sidebarTitles")} checked={s.sidebarExpanded} onChange={v => b.updateSettings({ sidebarExpanded: v })} />
       </Row>
-      <Row title={t("set.sidebarWidth")} desc={t("set.sidebarWidthDesc", { px: s.sidebarWidth })} keywords="sidebar">
+      <Row title={t("tbc.title")} desc={t("tbc.desc")} keywords="toolbar symbolleiste buttons">
+        <button className="btn" onClick={() => b.setPopover("toolbar")}>{t("tbc.open")}</button>
+      </Row>
+      <Row title={t("set.sidebarWidth")} desc={t("set.sidebarWidthDesc", { px: s.sidebarWidth })} keywords="sidebar" advanced>
         <button className="btn" disabled={s.sidebarWidth === SIDEBAR_DEFAULT_WIDTH && s.sidebarExpanded}
-          onClick={() => b.updateSettings({ sidebarWidth: SIDEBAR_DEFAULT_WIDTH, sidebarExpanded: true })}>{t("c.reset")}</button>
+          onClick={() => b.updateSettingsUndoable({ sidebarWidth: SIDEBAR_DEFAULT_WIDTH, sidebarExpanded: true }, t("undo.sidebarReset"))}>{t("c.reset")}</button>
       </Row>
       <Row title={t("set.bmBar")} desc={t("set.bmBarDesc")} keywords="bookmarks">
         <div className="segmented" role="radiogroup" aria-label={t("set.bmBar")}>
@@ -189,10 +241,13 @@ function Appearance() {
       </Row>
     </Group>
     <Group title={t("set.effects")}>
+      <Row title={t("set.tabAnim")} desc={t("set.tabAnimDesc")} keywords="animation transition übergang motion">
+        <Switch label={t("set.tabAnim")} checked={s.tabAnimations !== false} onChange={v => b.updateSettings({ tabAnimations: v })} />
+      </Row>
       <Row title={t("set.animBg")} desc={e.bgEnabled ? t("set.animBgOn", { name: BACKGROUNDS.find(x => x.id === e.background)?.name ?? "" }) : t("set.animBgOff")} keywords="animation">
         <Switch label={t("set.animBg")} checked={e.bgEnabled} onChange={v => b.updateEffects({ bgEnabled: v })} />
       </Row>
-      <Row title={t("set.cursorWeb")} desc={e.inPages ? t("set.cursorWebOn") : t("set.cursorWebOff")} keywords="cursor script">
+      <Row title={t("set.cursorWeb")} desc={e.inPages ? t("set.cursorWebOn") : t("set.cursorWebOff")} keywords="cursor script" advanced>
         <Switch label={t("set.cursorWeb")} checked={e.inPages} onChange={v => b.updateEffects({ inPages: v })} />
       </Row>
     </Group>
@@ -211,6 +266,9 @@ function SearchSec() {
         <select value={s.searchEngine} aria-label={t("set.engine")} onChange={e => b.updateSettings({ searchEngine: e.target.value as SearchEngineId })}>
           {Object.entries(SEARCH_ENGINES).map(([id, x]) => <option key={id} value={id}>{x.name}</option>)}
         </select>
+      </Row>
+      <Row title={t("set.liveSuggest")} desc={<>{t("set.liveSuggestDesc")} <strong>{t("sug.privacyNote")}</strong>{s.searchEngine === "startpage" ? <> {t("set.liveSuggestStartpage")}</> : null}</>} keywords="suggestions vorschläge autocomplete datenschutz privacy">
+        <Switch label={t("set.liveSuggest")} checked={s.liveSuggest !== false} onChange={v => b.updateSettings({ liveSuggest: v })} />
       </Row>
     </Group>
     <Group title="Bangs" desc={<>{t("set.bangsDesc1")} <kbd>!yt lofi</kbd>. {t("set.bangsDesc2", { list: BUILTIN_BANGS.map(x => "!" + x.trigger).join(", ") })}</>}>
@@ -236,13 +294,21 @@ function TabsSec() {
   const zoom = Object.entries(b.zoomBySite).sort(([a], [c]) => a.localeCompare(c));
   const k = (id: string, f: string) => b.keyHint(id) ?? formatCombo(f);
   return <>
+    <Group title={t("set.tabOpen")}>
+      <Row title={t("set.newTabNext")} desc={t("set.newTabNextDesc")} keywords="new tab position neben">
+        <Switch label={t("set.newTabNext")} checked={s.newTabNextToCurrent !== false} onChange={v => b.updateSettings({ newTabNextToCurrent: v })} />
+      </Row>
+      <Row title={t("set.returnOpener")} desc={t("set.returnOpenerDesc")} keywords="opener close schließen zurück">
+        <Switch label={t("set.returnOpener")} checked={s.returnToOpener !== false} onChange={v => b.updateSettings({ returnToOpener: v })} />
+      </Row>
+    </Group>
     <Group title={t("set.saveMem")} desc={t("set.saveMemDesc")}>
       <Row title={t("set.autoSleep")} keywords="sleep">
         <select value={s.tabSleepMinutes} aria-label={t("set.autoSleepAria")} onChange={e => b.updateSettings({ tabSleepMinutes: Number(e.target.value) })}>
           {[0, 5, 10, 15, 30, 60, 120, 240].map(m => <option key={m} value={m}>{m === 0 ? t("set.never") : t("set.afterMin", { count: m })}</option>)}
         </select>
       </Row>
-      <Row title={t("set.sleepNowTitle")} keywords="sleep">
+      <Row title={t("set.sleepNowTitle")} keywords="sleep" advanced>
         <button className="btn" onClick={b.sleepInactiveTabs}>{t("set.sleepNow")}</button>
       </Row>
     </Group>
@@ -250,7 +316,7 @@ function TabsSec() {
       <Row title={t("set.autoGroup")} desc={t("set.autoGroupDesc")} keywords="domain">
         <Switch label={t("set.autoGroup")} checked={s.autoGroupByDomain} onChange={v => b.updateSettings({ autoGroupByDomain: v })} />
       </Row>
-      <Row title={t("set.groupNowTitle")} desc={t("set.groupNowDesc")} keywords="domain">
+      <Row title={t("set.groupNowTitle")} desc={t("set.groupNowDesc")} keywords="domain" advanced>
         <button className="btn" onClick={b.groupTabsByDomain}>{t("set.groupNow")}</button>
       </Row>
     </Group>
@@ -313,7 +379,7 @@ function AdblockSec() {
       <Row title={t("ab.block")} desc={t("ab.blockDesc")} keywords="shield">
         <Switch label={t("ab.block")} checked={b.settings.adblock} onChange={v => b.updateSettings({ adblock: v })} />
       </Row>
-      <Row title={t("ab.cosmetic")} desc={t("ab.cosmeticDesc")} keywords="cosmetic">
+      <Row title={t("ab.cosmetic")} desc={t("ab.cosmeticDesc")} keywords="cosmetic" advanced>
         <Switch label={t("ab.cosmetic")} disabled={!fs} checked={fs?.cosmetic ?? true} onChange={v => fs && call("filter_set_options", { updateDays: fs.updateDays, cosmetic: v }, b.setStatus)} />
       </Row>
       <Row title={t("ab.exceptions")} desc={t("ab.exceptionsDesc")} col keywords="allowlist">
@@ -330,7 +396,7 @@ function AdblockSec() {
           <Switch label={l.name} checked={l.enabled} onChange={v => call("filter_set_list", { id: l.id, enabled: v }, b.setStatus)} />
         </Row>
       ))}
-      <Row title={t("fs.autoUpdate")} desc={t("fs.autoUpdateDesc")} keywords="interval">
+      <Row title={t("fs.autoUpdate")} desc={t("fs.autoUpdateDesc")} keywords="interval" advanced>
         <select value={fs?.updateDays ?? 4} disabled={!fs} aria-label={t("fs.intervalAria")} onChange={e => fs && call("filter_set_options", { updateDays: Number(e.target.value), cosmetic: fs.cosmetic }, b.setStatus)}>
           {[1, 2, 4, 7, 14, 30].map(d => <option key={d} value={d}>{t("fs.everyDays", { count: d })}</option>)}
         </select>
@@ -403,7 +469,7 @@ function About() {
       <Row title={t("ab.autoCheck")} desc={t("ab.autoCheckDesc")} keywords="auto-update">
         <Switch label={t("ab.autoCheck")} checked={s.autoUpdateCheck} onChange={x => b.updateSettings({ autoUpdateCheck: x })} />
       </Row>
-      <Row title={t("ab.extra")} desc={t("ab.extraDesc")} keywords="interval update">
+      <Row title={t("ab.extra")} desc={t("ab.extraDesc")} keywords="interval update" advanced>
         <select value={s.updateIntervalHours} disabled={!s.autoUpdateCheck} onChange={e => b.updateSettings({ updateIntervalHours: Number(e.target.value) })} aria-label={t("ab.intervalAria")}>
           <option value={0}>{t("ab.onlyStart")}</option>
           <option value={6}>{t("ab.every6")}</option>
@@ -413,8 +479,8 @@ function About() {
         </select>
       </Row>
     </Group>
-    <Group title={t("ab.adv")} desc={t("ab.advDesc")}>
-      <Row title={t("ab.devtools")} desc={t("ab.devtoolsDesc")} keywords="devtools developer f12 inspect console entwicklertools untersuchen konsole">
+    <Group title={t("ab.adv")} desc={t("ab.advDesc")} advanced>
+      <Row title={t("ab.devtools")} desc={t("ab.devtoolsDesc")} keywords="devtools developer f12 inspect console entwicklertools untersuchen konsole" advanced>
         <Switch label={t("ab.devtools")} checked={s.devTools === true} onChange={x => b.updateSettings({ devTools: x })} />
       </Row>
     </Group>

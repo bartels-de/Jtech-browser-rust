@@ -123,6 +123,23 @@ small, audited script (`src-tauri/src/pagebridge.rs`, `BRIDGE_TEMPLATE`):
 - The radial/peek triggers can be switched off in the settings (`set_bridge_options`); Rust then
   ignores the messages and the script stops preventing Shift+click.
 
+### Live search suggestions
+
+`search_suggest` (`src-tauri/src/suggest.rs`) fetches suggestions for the address bar with the existing
+`reqwest` client, so the UI webview needs no CORS exception. The engine id comes from a fixed allowlist
+(Startpage has no suggest API and uses DuckDuckGo); the query is trimmed, limited to 200 characters,
+must not contain control characters, bangs or anything that looks like a URL/IP. The response is limited
+to 64 KB and parsed as the OpenSearch format `["q", [...]]` (max. 8 entries). The UI debounces input by
+150 ms, drops stale answers and only asks while the setting `liveSuggest` is on. There is no private mode.
+
+### Tab switch transitions
+
+Native webviews cannot be animated or overlaid with CSS. A transition therefore only animates UI parts
+(address bar text, active sidebar tab, internal `jtech://` pages) for at most 180 ms; web content
+switches instantly. A snapshot crossfade (`ICoreWebView2::CapturePreview`) was not used: it would hide the
+page for the duration of an asynchronous capture and needs extra COM stream plumbing. Disabled in split
+view, full screen, with `tabAnimations = false` and with `prefers-reduced-motion`.
+
 ### Peek panel
 
 `src-tauri/src/peek.rs` creates a second native webview over the content area. It has no page

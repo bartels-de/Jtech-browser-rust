@@ -1,6 +1,6 @@
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { useBrowser } from "../store/BrowserStore";
-import { GROUP_COLORS, SIDEBAR_COMPACT_WIDTH, SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH, type TabGroup, type UiTab } from "../store/types";
+import { GROUP_COLORS, SIDEBAR_DEFAULT_WIDTH, SIDEBAR_COMPACT_WIDTH, SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH, type TabGroup, type UiTab } from "../store/types";
 import { Favicon } from "./Favicon";
 import { IconClose, IconDownload, IconPin, IconPlus, IconSidebar, IconStar, IconHistory, IconSettings, IconShield, IconVolume, IconMute, IconChevronDown, IconChevronRight, IconPalette, IconMusic, IconGauge, IconMoon, IconCopy, JTechLogo, IconLibrary, IconPuzzle, IconStore, IconSplit } from "./Icons";
 import { throttleStore } from "../lib/bridge";
@@ -51,6 +51,16 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
   const closeGmenu = useCallback(() => { setGmenu(null); b.setPopover(null); }, [b]);
 
   const closeMenu = useCallback(() => { setMenu(null); b.setPopover(null); }, [b]);
+  /** Right-click on empty sidebar space: sidebar options right where they apply */
+  const [smenu, setSmenu] = useState<{ x: number; y: number } | null>(null);
+  const closeSmenu = useCallback(() => { setSmenu(null); b.setPopover(null); }, [b]);
+  const onSidebarContext = (e: React.MouseEvent) => {
+    const el = e.target as HTMLElement;
+    if (el.closest("[role=tab], button, input, a, .group-head, .popover, .context-menu")) return;
+    e.preventDefault();
+    setSmenu({ x: e.clientX, y: e.clientY });
+    b.setPopover("sidebarmenu");
+  };
 
   // ---- Resize via drag handle on the right edge ----
   /** Live width during a drag (null = use settings) */
@@ -207,7 +217,7 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
 
   return (
     <aside ref={ref} className={`sidebar${expanded ? " expanded" : " compact"}${dragWidth ? " resizing" : ""}`}
-      style={expanded ? { width } : undefined}>
+      style={expanded ? { width } : undefined} onContextMenu={onSidebarContext}>
       <div className="sidebar-resize" role="separator" aria-orientation="vertical" aria-label={t("sb.resize")}
         title={t("sb.resizeTitle")}
         onPointerDown={onResizeDown} onPointerMove={onResizeMove} onPointerUp={onResizeEnd} onPointerCancel={onResizeEnd}
@@ -288,6 +298,25 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
           <div className="menu-sep" />
           <MenuItem icon={<IconClose size={15} />} label={t("sb.closeOthers")} onClick={() => { b.closeOtherTabs(menu.tab.id); closeMenu(); }} />
           <MenuItem icon={<IconClose size={15} />} label={t("sb.closeTab")} hint={b.keyHint("tab.close")} danger onClick={() => { b.closeTab(menu.tab.id); closeMenu(); }} />
+        </>}
+      </Popover>
+
+      <Popover open={!!smenu && b.popover === "sidebarmenu"} onClose={closeSmenu} className="context-menu sb-options" at={smenu ?? undefined} label={t("sbo.title")}>
+        {smenu && <>
+          <div className="menu-title">{t("sbo.title")}</div>
+          <label className="switch-row"><span>{t("set.sidebarTitles")}</span>
+            <input type="checkbox" className="switch" checked={b.settings.sidebarExpanded} onChange={e => b.updateSettings({ sidebarExpanded: e.target.checked })} /></label>
+          <label className="switch-row"><span>{t("set.autoGroup")}</span>
+            <input type="checkbox" className="switch" checked={b.settings.autoGroupByDomain} onChange={e => b.updateSettings({ autoGroupByDomain: e.target.checked })} /></label>
+          <label className="switch-row"><span>{t("set.newTabNext")}</span>
+            <input type="checkbox" className="switch" checked={b.settings.newTabNextToCurrent !== false} onChange={e => b.updateSettings({ newTabNextToCurrent: e.target.checked })} /></label>
+          <label className="switch-row"><span>{t("set.returnOpener")}</span>
+            <input type="checkbox" className="switch" checked={b.settings.returnToOpener !== false} onChange={e => b.updateSettings({ returnToOpener: e.target.checked })} /></label>
+          <div className="menu-sep" />
+          <MenuItem icon={<IconSidebar size={15} />} label={t("sbo.resetWidth")} disabled={b.settings.sidebarWidth === SIDEBAR_DEFAULT_WIDTH} onClick={() => { b.updateSettingsUndoable({ sidebarWidth: SIDEBAR_DEFAULT_WIDTH, sidebarExpanded: true }, t("undo.sidebarReset")); closeSmenu(); }} />
+          <MenuItem icon={<IconPlus size={15} />} label={t("set.groupNow")} onClick={() => { b.groupTabsByDomain(); closeSmenu(); }} />
+          <MenuItem icon={<IconMoon size={15} />} label={t("cmd.tab.sleepInactive")} onClick={() => { b.sleepInactiveTabs(); closeSmenu(); }} />
+          <MenuItem icon={<IconSettings size={15} />} label={t("sbo.more")} onClick={() => { closeSmenu(); b.openPage("settings", { section: "tabs" }); }} />
         </>}
       </Popover>
 

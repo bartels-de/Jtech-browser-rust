@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BrowserProvider, useBrowser } from "./store/BrowserStore";
 import { call } from "./lib/ipc";
 import { Sidebar } from "./components/Sidebar";
@@ -60,10 +60,26 @@ function Shell() {
   useEffect(() => { if (!b.fullscreen) window.dispatchEvent(new Event("jtech:layout")); }, [b.fullscreen]);
   useEffect(() => { window.dispatchEvent(new Event("jtech:layout")); }, [splitSig]);
 
+  // Tab switch transition: only UI parts animate (address bar, sidebar indicator, internal pages).
+  // Native page webviews cannot be animated with CSS and lie above the UI, so web content switches instantly.
+  const [switching, setSwitching] = useState(false);
+  const prevTab = useRef<string | null>(null);
+  const animOn = b.settings.tabAnimations !== false && !b.fullscreen && !b.splitActive;
+  const curTab = b.activeTab?.id ?? null;
+  useEffect(() => {
+    const prev = prevTab.current;
+    prevTab.current = curTab;
+    if (!animOn || !prev || !curTab || prev === curTab) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    setSwitching(true);
+    const h = setTimeout(() => setSwitching(false), 180);
+    return () => clearTimeout(h);
+  }, [curTab, animOn]);
+
   const err = b.navError && b.navError.tabId === b.activeTab?.id && !b.activePage ? b.navError : null;
 
   return (
-    <div className={b.fullscreen ? "shell is-fullscreen" : "shell"}>
+    <div className={`shell${b.fullscreen ? " is-fullscreen" : ""}${animOn ? " anim-on" : ""}${switching ? " tab-switching" : ""}`}>
       <FxLayer />
       <Sidebar ref={sideRef} />
       <div className="main-col">
@@ -88,6 +104,13 @@ function Shell() {
           )}
           {b.status && !err && (
             <button type="button" className="banner info" onClick={() => b.setStatus("")} title={t("app.clickToHide")} role="status">{b.status}</button>
+          )}
+          {b.toast && (
+            <div className="banner toast" role="status" aria-live="polite" key={b.toast.id}>
+              <span>{b.toast.msg}</span>
+              {b.toast.undo && <button className="btn sm" onClick={() => { const u = b.toast?.undo; b.dismissToast(); u?.(); }}>{t("undo.undo")}</button>}
+              <button className="icon-btn sm" aria-label={t("c.close")} title={t("c.close")} onClick={b.dismissToast}>×</button>
+            </div>
           )}
         </div>
         <ContentArea />

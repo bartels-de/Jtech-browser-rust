@@ -3,6 +3,19 @@
 All notable changes to JTech Browser. The in-app page `jtech://changelog` shows the same notes
 (localized, from `src/data/changelog.ts`).
 
+## [Unreleased]
+
+- Hub menu: one entry point for bookmarks, history, downloads, library, market, extensions, audio, performance, themes, privacy, changelog and settings, with a filter field.
+- Settings where you need them: right-click the start page to customize it, right-click empty sidebar space for sidebar options, right-click the toolbar to customize it.
+- Address bar quick actions: picture-in-picture on video sites, mute when the tab plays audio, blocked-items count (when the shield button is hidden) and zoom reset.
+- Undo instead of confirmations: closing tabs, closing or ungrouping a group, removing a bookmark or history entry, changing the theme, applying a preset and resetting the toolbar, sidebar, start page or shortcuts show a notice with "Undo". Clearing cookies or the whole history still asks first.
+- New tabs open next to the current tab, and closing a tab returns to the tab it was opened from (both switchable).
+- Settings: simple mode shows the most important options; "Show all settings" reveals everything.
+- Customizable toolbar: add, remove and reorder buttons by drag & drop (back, forward, reload, home, split view, radial menu, audio hub, extensions, bookmarks, shield, downloads, hub).
+- Presets "Minimal", "Standard", "Power user" and "Streaming" with a preview of what changes.
+- Tab switch animations for the address bar, sidebar and internal pages (switchable, follows "reduce motion"). Web pages switch instantly.
+- Live search suggestions from Google, DuckDuckGo, Bing or Brave while typing (Startpage uses DuckDuckGo), switchable in Settings › Search. Addresses are never sent.
+
 ## [0.1.11]
 
 - Radial menu: hold the middle mouse button or press Alt+Q – 4 to 8 freely assignable commands with icons.
