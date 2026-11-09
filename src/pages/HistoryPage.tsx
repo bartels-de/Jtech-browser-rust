@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { useBrowser } from "../store/BrowserStore";
 import { Favicon } from "../components/Favicon";
-import { IconSearch, IconTrash } from "../components/Icons";
+import { IconHistory, IconSearch, IconTrash } from "../components/Icons";
+import { PageShell } from "../components/PageShell";
+import { EmptyState } from "../components/EmptyState";
 import { fmtDate, fmtTime, t, useT } from "../i18n";
 import { hostOf } from "../lib/urls";
 
@@ -28,20 +30,18 @@ export function HistoryPage() {
     return out;
   }, [b.history, q, lang]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <div className="page doc-page">
-      <header className="page-head page-head-sticky row">
-        <div><h1>{t("page.history")}</h1><p className="muted">{t("hist.entries", { count: b.history.length })}</p></div>
-        <div className="row gap">
-          <label className="search-field"><IconSearch size={15} /><input value={q} onChange={e => setQ(e.target.value)} placeholder={t("hist.search")} aria-label={t("hist.search")} autoFocus /></label>
-          <button className="btn danger" disabled={!b.history.length} onClick={() => confirm(t("hist.clearConfirm")) && b.clearHistory()}>{t("hist.clear")}</button>
-        </div>
-      </header>
-      {groups.length === 0 && <div className="empty-state card">{q
-        ? <><h2>{t("c.noResults")}</h2><p>{t("hist.noMatch", { q })}</p><button className="btn" onClick={() => setQ("")}>{t("c.clearSearch")}</button></>
-        : <><h2>{t("hist.emptyTitle")}</h2><p>{t("hist.emptyText")}</p></>}</div>}
+    <PageShell title={t("page.history")} subtitle={t("hist.entries", { count: b.history.length })} sticky
+      actions={<>
+        <label className="search-field"><IconSearch size={15} /><input value={q} onChange={e => setQ(e.target.value)} placeholder={t("hist.search")} aria-label={t("hist.search")} autoFocus /></label>
+        <button className="btn ghost danger" disabled={!b.history.length} onClick={() => confirm(t("hist.clearConfirm")) && b.clearHistory()}>{t("hist.clear")}</button>
+      </>}>
+      {groups.length === 0 && (q
+        ? <EmptyState card icon={<IconSearch size={20} />} title={t("c.noResults")} text={t("hist.noMatch", { q })} action={<button className="btn" onClick={() => setQ("")}>{t("c.clearSearch")}</button>} />
+        : <EmptyState card icon={<IconHistory size={20} />} title={t("hist.emptyTitle")} text={t("hist.emptyText")} />)}
       {groups.map(g => (
-        <section key={g.day} className="card list-card">
-          <h2 className="list-day">{g.day}</h2>
+        <section key={g.day} className="list-group" aria-label={g.day}>
+          <h2 className="group-label">{g.day}</h2>
+          <div className="card list-card">
           {g.items.map(h => (
             <div key={h.id} className="list-row" onClick={() => b.navigate(h.url)}>
               <span className="time">{fmtTime(h.visitedAt)}</span>
@@ -51,8 +51,9 @@ export function HistoryPage() {
               <button className="icon-btn sm" title={t("hist.removeEntry")} aria-label={t("hist.removeEntry")} onClick={e => { e.stopPropagation(); b.removeHistory(h.id); }}><IconTrash size={14} /></button>
             </div>
           ))}
+          </div>
         </section>
       ))}
-    </div>
+    </PageShell>
   );
 }

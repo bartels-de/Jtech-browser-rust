@@ -21,7 +21,7 @@ export function SplitBar() {
     <button type="button" className={`split-pane-label${tab.active ? " focused" : ""}`} aria-pressed={tab.active}
       style={b.splitVertical ? undefined : { flex: `0 0 calc((100% - ${SPLIT_GAP}px) * ${side === "a" ? b.splitRatio : 1 - b.splitRatio})` }}
       title={tab.active ? t("split.focused") : t("split.focus")} onClick={() => { if (!tab.active) b.switchTab(tab.id); }}>
-      <Favicon url={tab.url} internal={!!tab.internal} size={14} />
+      <Favicon url={tab.url} internal={tab.internal} size={14} />
       <span className="split-pane-title">{tab.title || t("c.newTab")}</span>
       {b.splitVertical && <span className="split-pane-pos">{side === "a" ? t("split.top") : t("split.bottom")}</span>}
     </button>

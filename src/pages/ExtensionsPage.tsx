@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useBrowser } from "../store/BrowserStore";
 import { ExtIcon } from "../components/ExtIcon";
-import { IconInfo, IconStore, IconWarn } from "../components/Icons";
+import { IconInfo, IconPuzzle, IconStore, IconWarn } from "../components/Icons";
+import { PageShell } from "../components/PageShell";
+import { EmptyState } from "../components/EmptyState";
 import { Switch } from "../components/SettingsUI";
 import { extDiagnostics, type ExtDiagnostics, extList, extMatchesHost, extOffOn, extSiteToggle, extToggle } from "../lib/extensions";
 import { siteOf, type ExtInfo } from "../lib/ipc";
@@ -52,16 +54,13 @@ export function ExtensionsPage() {
   };
 
   return (
-    <div className="page doc-page ext-page">
-      <header className="page-head row">
-        <div><h1>{t("page.extensions")}</h1><p className="muted">{t("ext.lead")}</p></div>
-        <button className="btn" onClick={() => b.openPage("market")}><IconStore size={15} /> {t("ext.toMarket")}</button>
-      </header>
+    <PageShell className="ext-page" title={t("page.extensions")} subtitle={t("ext.lead")}
+      actions={<button className="btn" onClick={() => b.openPage("market")}><IconStore size={15} /> {t("ext.toMarket")}</button>}>
 
       <div className="kpi-row">
         <div className="kpi"><span className="kpi-num">{list ? fmtNum(shown.length) : <span className="skeleton skel-num" aria-label={t("c.loading")} />}</span><span className="kpi-label">{t("ext.active")}</span></div>
-        <div className="kpi"><span className="kpi-num">{fmtNum(list?.length ?? 0)}</span><span className="kpi-label">{t("ext.source.bundled")}</span></div>
-        <div className="kpi"><span className="kpi-num">{fmtNum(totalBlocked)}</span><span className="kpi-label">{t("ext.blockedTotal")}</span></div>
+        <div className="kpi"><span className="kpi-num">{list ? fmtNum(list.length) : <span className="skeleton skel-num" aria-label={t("c.loading")} />}</span><span className="kpi-label">{t("ext.source.bundled")}</span></div>
+        <div className="kpi"><span className="kpi-num">{list ? fmtNum(totalBlocked) : <span className="skeleton skel-num" aria-label={t("c.loading")} />}</span><span className="kpi-label">{t("ext.blockedTotal")}</span></div>
       </div>
 
       {sites.length > 1 && (
@@ -73,10 +72,8 @@ export function ExtensionsPage() {
       )}
 
       {list && shown.length === 0 && (
-        <div className="empty-state card">
-          <h2>{t("ext.empty")}</h2><p>{t("ext.emptyText")}</p>
-          <button className="btn primary" onClick={() => b.openPage("market")}>{t("ext.toMarket")}</button>
-        </div>
+        <EmptyState card icon={<IconPuzzle size={20} />} title={t("ext.empty")} text={t("ext.emptyText")}
+          action={<button className="btn primary" onClick={() => b.openPage("market")}>{t("ext.toMarket")}</button>} />
       )}
 
       {shown.map(e => {
@@ -139,6 +136,6 @@ export function ExtensionsPage() {
         </details>
       )}
       <p className="market-note small"><IconInfo size={14} /> <span>{t("ext.reloadHint")} {t("ext.uninstallHint")}</span></p>
-    </div>
+    </PageShell>
   );
 }

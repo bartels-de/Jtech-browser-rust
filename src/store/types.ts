@@ -3,10 +3,10 @@ import { DEFAULT_EFFECTS, type EffectsSettings } from "../lib/fx/effects";
 import type { LangSetting } from "../i18n";
 
 /** Sidebar width limits (px); compact matches --sidebar-compact */
-export const SIDEBAR_COMPACT_WIDTH = 64;
+export const SIDEBAR_COMPACT_WIDTH = 56;
 export const SIDEBAR_MIN_WIDTH = 160;
 export const SIDEBAR_MAX_WIDTH = 420;
-export const SIDEBAR_DEFAULT_WIDTH = 250;
+export const SIDEBAR_DEFAULT_WIDTH = 248;
 export const clampSidebarWidth = (w: unknown) =>
   typeof w === "number" && Number.isFinite(w) ? Math.round(Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, w))) : SIDEBAR_DEFAULT_WIDTH;
 
@@ -83,7 +83,7 @@ export type ToolbarItem = "back" | "forward" | "reload" | "home" | "split" | "ra
 /** Buttons left of the address bar vs. right of it */
 export const TOOLBAR_LEFT: ToolbarItem[] = ["back", "forward", "reload", "home"];
 export const TOOLBAR_ITEMS: ToolbarItem[] = ["back", "forward", "reload", "home", "split", "radial", "audio", "extensions", "bookmarks", "shield", "downloads", "hub"];
-export const DEFAULT_TOOLBAR: ToolbarItem[] = ["back", "forward", "reload", "home", "shield", "downloads", "hub"];
+export const DEFAULT_TOOLBAR: ToolbarItem[] = ["back", "forward", "reload", "shield", "downloads", "hub"];
 /** Keeps known ids once each; the hub button can never be removed (it is the only way back into everything). */
 export function normalizeToolbar(raw: unknown): ToolbarItem[] {
   if (!Array.isArray(raw)) return DEFAULT_TOOLBAR;
@@ -107,7 +107,7 @@ export function presetSettings(id: PresetId, cur: Settings): Partial<Settings> {
       limits: { ...limits, enabled: true, lowMemoryBackground: true, suspendAfterMin: 10 },
     };
     case "standard": return {
-      toolbar: DEFAULT_TOOLBAR, sidebarExpanded: true, showBookmarksBar: true, bookmarksBarOnlyNewTab: false, tabAnimations: true,
+      toolbar: DEFAULT_TOOLBAR, sidebarExpanded: true, showBookmarksBar: true, bookmarksBarOnlyNewTab: true, tabAnimations: true,
       start: { ...start, greeting: true, quickLinks: true, trackerStats: true, shortcutHints: true, density: "comfortable" }, startShowRecent: true,
       limits: { ...limits, enabled: false },
     };
@@ -228,9 +228,10 @@ export const DEFAULT_SETTINGS: Settings = {
   sidebarExpanded: true,
   sidebarWidth: SIDEBAR_DEFAULT_WIDTH,
   showBookmarksBar: true,
+  bookmarksBarOnlyNewTab: true,
   bangs: [],
   tabSleepMinutes: 30,
-  autoGroupByDomain: true,
+  autoGroupByDomain: false,
   shortcuts: {},
   effects: DEFAULT_EFFECTS,
   restoreSession: true,

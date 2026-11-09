@@ -78,6 +78,9 @@ export function resolveInput(input: string, engine: SearchEngineId, bangs: Bang[
   return { kind: "web", url: SEARCH_ENGINES[engine].url + encodeURIComponent(s) };
 }
 
+/** Host used for domain groups: without a leading "www." */
+export const groupHost = (url: string): string => hostOf(url).replace(/^www\./i, "");
+
 export function hostOf(url: string): string {
   try { return new URL(url).host; } catch { return ""; }
 }

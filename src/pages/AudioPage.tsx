@@ -6,7 +6,9 @@ import { mediaStore } from "../lib/bridge";
 import { siteOf } from "../lib/ipc";
 import { MediaButtons, mediaControl } from "../components/MediaControls";
 import { Group } from "../components/SettingsUI";
-import { IconTrash } from "../components/Icons";
+import { IconMusic, IconTrash } from "../components/Icons";
+import { PageShell } from "../components/PageShell";
+import { EmptyState } from "../components/EmptyState";
 
 /**
  * Audio hub (jtech://audio). WebView2 reports "playing audio" and mutes per tab (ICoreWebView2_8).
@@ -29,10 +31,13 @@ export function AudioPage() {
     setSite("");
   };
   return (
-    <div className="page doc-page audio-page">
-      <header className="page-head"><h1>{t("page.audio")}</h1><p className="muted">{t("au.lead")}</p></header>
+    <PageShell className="audio-page" title={t("page.audio")} subtitle={t("au.lead")}
+      actions={audible.length > 1 ? <>
+        <button className="btn" onClick={() => audible.forEach(x => !x.muted && b.setTabMuted(x.id, true))}>{t("au.muteAll")}</button>
+        <button className="btn ghost" onClick={() => audible.forEach(x => x.muted && b.setTabMuted(x.id, false))}>{t("au.unmuteAll")}</button>
+      </> : undefined}>
       <section className="card list-card">
-        {audible.length === 0 && <div className="empty-state"><h2>{t("au.emptyTitle")}</h2><p>{t("au.emptyText")}</p></div>}
+        {audible.length === 0 && <EmptyState icon={<IconMusic size={20} />} title={t("au.emptyTitle")} text={t("au.emptyText")} />}
         {audible.map(x => {
           const m = media[x.id];
           const host = siteOf(x.url);
@@ -59,18 +64,12 @@ export function AudioPage() {
           );
         })}
       </section>
-      {audible.length > 1 && (
-        <div className="row-end">
-          <button className="btn" onClick={() => audible.forEach(x => !x.muted && b.setTabMuted(x.id, true))}>{t("au.muteAll")}</button>
-          <button className="btn ghost" onClick={() => audible.forEach(x => x.muted && b.setTabMuted(x.id, false))}>{t("au.unmuteAll")}</button>
-        </div>
-      )}
       <Group title={t("au.sitesTitle")} desc={t("au.sitesDesc")}>
         <form className="inline-form" onSubmit={e => { e.preventDefault(); addSite(site); }}>
           <input value={site} onChange={e => setSite(e.target.value)} placeholder="example.com" spellCheck={false} aria-label={t("au.sitesTitle")} />
           <button className="btn">{t("c.add")}</button>
         </form>
-        {list.length === 0 ? <p className="muted small">{t("au.sitesEmpty")}</p> : (
+        {list.length === 0 ? <EmptyState compact title={t("au.sitesEmpty")} /> : (
           <div className="chips">
             {list.map(s => (
               <span key={s} className="chip chip-static">{s}
@@ -80,7 +79,7 @@ export function AudioPage() {
           </div>
         )}
       </Group>
-      <p className="muted small">{t("au.note")}</p>
-    </div>
+      <p className="muted small page-note">{t("au.note")}</p>
+    </PageShell>
   );
 }

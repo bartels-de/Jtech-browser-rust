@@ -1,0 +1,77 @@
+/* Design Studio: theme editor, effects, theme gallery */
+
+/* ---- Port: Design-Studio / Audio-Hub ---- */
+.theme-name { font-size: var(--fs-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.color-field { display: flex; gap: 6px; align-items: center; }
+.color-field input[type="color"] { width: 34px; height: 28px; padding: 0; border: 1px solid var(--border); border-radius: var(--r-xs); background: none; }
+.color-field input.mono { width: 90px; }
+.theme-preview { display: flex; gap: 8px; align-items: center; padding: 12px; margin: 8px 0; border: 1px dashed var(--border-strong); border-radius: var(--r-md); background: var(--surface-0); }
+.theme-json { width: 100%; min-height: 110px; margin-top: 8px; padding: 8px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-0); color: var(--text); font-size: var(--fs-sm); resize: vertical; }
+
+/* Animierter Hintergrund: Canvas hinter allen Flaechen; Flaechen werden teiltransparent */
+/* z-index -1 ohne eigenen Stapelkontext an .shell: liegt ueber dem body-Hintergrund, aber unter allen Flaechen;
+   Popover/Kontextmenues behalten ihre bisherige Stapelung. */
+.fx-layer { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+:root.fx-bg body { background: var(--bg); }
+
+/* kein backdrop-filter hier: wuerde Stapelkontext/Bezugsrahmen fuer die fixed-Kontextmenues aendern */
+:root.fx-bg .content, :root.fx-bg .start-page { background: color-mix(in srgb, var(--surface-1) calc(var(--fx-surface, 78%) - 25%), transparent); }
+:root.fx-bg .card { background: color-mix(in srgb, var(--surface-0) var(--fx-surface, 78%), transparent); backdrop-filter: blur(calc(var(--glass-blur, 18px) * 0.6)); }
+:root.fx-bg .content-placeholder { background: transparent; }
+
+/* Design-Studio: Effekte */
+.bg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin: 6px 0 10px; }
+.bg-grid.disabled { opacity: 0.55; }
+.bg-card { display: flex; flex-direction: column; gap: 6px; padding: 6px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-1); color: var(--text); cursor: pointer; text-align: left; }
+.bg-card:hover { border-color: var(--accent-ring); }
+.bg-card.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-ring); }
+.bg-thumb { position: relative; display: block; height: 72px; border-radius: var(--r-sm); overflow: hidden; background: var(--bg); }
+.cursor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; margin-bottom: 8px; }
+.cursor-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-1); color: var(--text); cursor: pointer; }
+.cursor-card:hover { border-color: var(--accent-ring); }
+.cursor-card.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-ring); }
+.cursor-thumb { display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--r-sm); background: var(--surface-3); font-size: var(--fs-xl); color: var(--text-2); }
+.share { display: inline-flex; align-items: center; gap: 8px; }
+.share .bar { width: 90px; }
+
+/* Design-Studio-Karten: gemeinsame Zustaende */
+.bg-card, .cursor-card { transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
+
+/* Transparente Flaechen bei animiertem Hintergrund beibehalten */
+:root.fx-bg .sidebar, :root.fx-bg .header { background: color-mix(in srgb, var(--surface-0) var(--fx-surface, 78%), transparent); }
+:root.fx-bg .tile:not(:hover) { background: transparent; }
+
+/* Design-Studio */
+.studio-jump { display: flex; flex-wrap: wrap; gap: 6px; position: sticky; top: 0; z-index: 2; margin: -8px calc(var(--sp-2) * -1) var(--sp-4); padding: var(--sp-2); background: color-mix(in srgb, var(--surface-1) 88%, transparent); backdrop-filter: blur(8px); border-radius: var(--r-md); }
+.color-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--sp-2); padding: var(--sp-3) 0; border-top: 1px solid var(--border); }
+.color-swatch { display: flex; align-items: center; gap: 10px; padding: 8px; border: 1px solid var(--border); border-radius: var(--r-md); cursor: pointer; }
+.color-swatch:hover { background: var(--hover); }
+.color-swatch input[type="color"] { flex: none; width: 34px; height: 34px; padding: 0; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: none; cursor: pointer; }
+.color-swatch span { display: flex; flex-direction: column; min-width: 0; }
+.color-swatch strong { font-weight: 500; font-size: var(--fs-sm); }
+.color-swatch input.mono { width: 80px; padding: 0; border: 0; background: transparent; color: var(--text-2); outline: none; }
+.color-swatch input.mono:focus { color: var(--text); }
+.theme-gallery { display: flex; flex-direction: column; gap: 12px; }
+.theme-mini { display: flex; height: 96px; overflow: hidden; border: 1px solid rgba(127,127,127,.25); }
+.tm-side { width: 26%; display: flex; flex-direction: column; gap: 5px; padding: 8px 6px; }
+.tm-side i { display: block; height: 8px; }
+.tm-main { flex: 1; display: flex; flex-direction: column; gap: 7px; padding: 8px; }
+.tm-bar { height: 14px; display: flex; align-items: center; padding: 0 6px; }
+.tm-bar b { display: block; width: 50%; height: 3px; border-radius: var(--r-2xs); opacity: .6; }
+.tm-card { flex: 1; display: flex; flex-direction: column; gap: 5px; padding: 7px; }
+.tm-card b { display: block; width: 80%; height: 4px; border-radius: var(--r-2xs); opacity: .85; }
+.tm-btns { margin-top: auto; display: flex; gap: 5px; }
+.tm-btns em { display: block; width: 24px; height: 9px; }
+
+/* Theme gallery (Design Studio, Market › Themes) */
+.tg-filter { align-self: flex-start; flex-wrap: wrap; }
+.tg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.tg-grid.compact { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.tg-card { border-radius: var(--r-lg); border: 1px solid var(--border); background: var(--surface-1); overflow: hidden; transition: border-color var(--dur-fast), transform var(--dur-fast) var(--ease-out); }
+.tg-card:hover { transform: translateY(-2px); border-color: var(--border-strong); }
+.tg-card.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-ring); }
+.tg-preview { position: relative; display: block; width: 100%; padding: 10px; background: none; border: 0; cursor: pointer; }
+.tg-on { position: absolute; right: 16px; top: 16px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); }
+.tg-foot { display: flex; align-items: center; gap: 4px; padding: 0 8px 8px 12px; }
+.tg-name { flex: 1; min-width: 0; display: flex; flex-direction: column; font-weight: 600; font-size: var(--fs-md); }
+.tg-name small { font-weight: 400; font-size: var(--fs-xs); }

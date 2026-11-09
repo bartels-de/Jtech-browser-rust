@@ -1,27 +1,21 @@
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { useBrowser } from "../store/BrowserStore";
 import { GROUP_COLORS, SIDEBAR_DEFAULT_WIDTH, SIDEBAR_COMPACT_WIDTH, SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH, type TabGroup, type UiTab } from "../store/types";
-import { Favicon } from "./Favicon";
-import { IconClose, IconDownload, IconPin, IconPlus, IconSidebar, IconStar, IconHistory, IconSettings, IconShield, IconVolume, IconMute, IconChevronDown, IconChevronRight, IconPalette, IconMusic, IconGauge, IconMoon, IconCopy, JTechLogo, IconLibrary, IconPuzzle, IconStore, IconSplit } from "./Icons";
+import { Favicon, PageIcon } from "./Favicon";
+import { IconClose, IconPin, IconPlus, IconSidebar, IconStar, IconSettings, IconVolume, IconMute, IconChevronDown, IconChevronRight, IconGauge, IconMoon, IconCopy, JTechLogo, IconLibrary, IconSplit } from "./Icons";
 import { throttleStore } from "../lib/bridge";
 import { MiniPlayer } from "./MediaControls";
 import { internalTitle, type InternalPage } from "../lib/urls";
 import { t as tr, useT } from "../i18n";
 import { MenuItem, Popover } from "./Popover";
 
-/** Library menu entries; labels come from internalTitle (localized). */
-const FOOT: [InternalPage, string, (p: { size?: number }) => React.ReactElement][] = [
-  ["bookmarks", "open.bookmarks", IconStar],
-  ["history", "open.history", IconHistory],
-  ["downloads", "open.downloads", IconDownload],
-  ["privacy", "open.privacy", IconShield],
-  ["market", "open.market", IconStore],
-  ["extensions", "open.extensions", IconPuzzle],
-  ["themes", "open.themes", IconPalette],
-  ["audio", "open.audio", IconMusic],
-  ["performance", "open.performance", IconGauge],
-  ["settings", "open.settings", IconSettings],
+/** Library menu in three groups (collections, media and system, customisation); labels come from internalTitle. */
+const LIBRARY: InternalPage[][] = [
+  ["bookmarks", "history", "downloads"],
+  ["audio", "performance"],
+  ["extensions", "market", "themes", "privacy"],
 ];
+const LIBRARY_PAGES = LIBRARY.flat();
 
 export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
   const b = useBrowser();
@@ -42,7 +36,7 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
     document.addEventListener("keydown", key);
     const down = (e: MouseEvent) => {
       const t = e.target as Element | null;
-      if (t && typeof t.closest === "function" && t.closest(".sidebar-foot")) return;
+      if (t && typeof t.closest === "function" && t.closest(".foot-menu, .foot-lib")) return;
       setFootMenu(false);
     };
     const t = setTimeout(() => document.addEventListener("mousedown", down), 0);
@@ -148,8 +142,7 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
       aria-selected={t.active}
     >
       <span className="tab-icon">
-        {t.loading ? <span className="spinner" aria-label={tr("sb.loading")} /> : <Favicon url={t.url} internal={!!t.internal} />}
-        {t.blocked > 0 && (!expanded || tile) && <span className="tab-badge" />}
+        {t.loading ? <span className="spinner" aria-label={tr("sb.loading")} /> : <Favicon url={t.url} internal={t.internal} />}
       </span>
       {expanded && !tile && <span className="tab-title">{t.title || tr("c.newTab")}</span>}
       {expanded && !tile && !t.sleeping && !t.active && (throttle[t.id]?.suspended || throttle[t.id]?.low) && (
@@ -247,33 +240,40 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
         {renderNormal()}
       </div>
 
-      <MiniPlayer expanded={expanded} />
-      {/* Runde 5: kompaktes Menue statt 5 einzelner Icons */}
-      <nav className="sidebar-foot" aria-label={t("sb.pages")}>
-        <button className={`foot-icon${FOOT.some(([p]) => b.activeTab?.internal === p && p !== "downloads" && p !== "settings") ? " on" : ""}${footMenu ? " open" : ""}`}
-          title={t("sb.libraryTitle")} aria-label={t("sb.library")}
-          aria-haspopup="menu" aria-expanded={footMenu}
-          onClick={e => { e.stopPropagation(); setFootMenu(v => !v); }}>
-          <IconLibrary />
-        </button>
-        <button className={`foot-icon${b.activeTab?.internal === "downloads" ? " on" : ""}`} aria-label={t("page.downloads")}
-          title={`${t("page.downloads")}${b.keyHint("open.downloads") ? ` (${b.keyHint("open.downloads")})` : ""}`}
-          onClick={() => b.openPage("downloads")}><IconDownload />{running > 0 && <span className="count-badge">{running}</span>}</button>
-        <button className={`foot-icon${b.activeTab?.internal === "settings" ? " on" : ""}`} aria-label={t("page.settings")}
-          title={`${t("page.settings")}${b.keyHint("open.settings") ? ` (${b.keyHint("open.settings")})` : ""}`}
-          onClick={() => b.openPage("settings")}><IconSettings /></button>
+      {/* Bottom: mini player (only with media) above one footer row; the library menu opens above both */}
+      <div className="sidebar-bottom">
         {footMenu && (
-          <div className="popover glass foot-menu" role="menu">
-            {FOOT.map(([page, cmd, Icon]) => (
-              <button key={page} role="menuitem" className={`menu-item${b.activeTab?.internal === page ? " on" : ""}`}
-                onClick={() => { b.openPage(page); setFootMenu(false); }}>
-                <span className="menu-icon"><Icon size={15} /></span><span className="menu-label">{internalTitle(page)}</span>
-                {b.keyHint(cmd) && <kbd className="menu-hint">{b.keyHint(cmd)}</kbd>}
-              </button>
+          <div className="popover glass foot-menu" role="menu" aria-label={t("sb.library")}>
+            {LIBRARY.map((group, gi) => (
+              <div key={gi} className="foot-menu-group" role="group">
+                {gi > 0 && <div className="menu-sep" role="separator" />}
+                {group.map(page => (
+                  <button key={page} role="menuitem" className={`menu-item${b.activeTab?.internal === page ? " on" : ""}`}
+                    onClick={() => { b.openPage(page); setFootMenu(false); }}>
+                    <span className="menu-icon"><PageIcon page={page} size={15} /></span><span className="menu-label">{internalTitle(page)}</span>
+                    {page === "downloads" && running > 0 && <span className="menu-count">{running}</span>}
+                    {b.keyHint("open." + page) && <kbd className="menu-hint">{b.keyHint("open." + page)}</kbd>}
+                  </button>
+                ))}
+              </div>
             ))}
           </div>
         )}
-      </nav>
+        <MiniPlayer expanded={expanded} />
+        <nav className="sidebar-foot" aria-label={t("sb.pages")}>
+          <button className={`foot-lib${LIBRARY_PAGES.some(p => b.activeTab?.internal === p) ? " on" : ""}${footMenu ? " open" : ""}`}
+            title={t("sb.libraryTitle")} aria-label={t("sb.library")}
+            aria-haspopup="menu" aria-expanded={footMenu}
+            onClick={e => { e.stopPropagation(); setFootMenu(v => !v); }}>
+            <IconLibrary size={16} />{expanded && <span className="foot-label">{t("sb.library")}</span>}
+            {running > 0 && <span className="count-badge">{running}</span>}
+          </button>
+          {expanded && <span className="foot-drag" aria-hidden />}
+          <button className={`foot-icon${b.activeTab?.internal === "settings" ? " on" : ""}`} aria-label={t("page.settings")}
+            title={`${t("page.settings")}${b.keyHint("open.settings") ? ` (${b.keyHint("open.settings")})` : ""}`}
+            onClick={() => b.openPage("settings")}><IconSettings size={16} /></button>
+        </nav>
+      </div>
 
       <Popover open={!!menu} onClose={closeMenu} className="context-menu" at={menu ? { x: menu.x, y: menu.y } : undefined} label={t("sb.tabOptions")}>
         {menu && <>

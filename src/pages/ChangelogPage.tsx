@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { PageShell } from "../components/PageShell";
 import { getVersion } from "@tauri-apps/api/app";
 import { CHANGELOG, cmpVersion } from "../data/changelog";
 import { useT } from "../i18n";
@@ -9,8 +10,7 @@ export function ChangelogPage() {
   const [current, setCurrent] = useState<string>("");
   useEffect(() => { getVersion().then(setCurrent).catch(() => {}); }, []);
   return (
-    <div className="page doc-page changelog-page">
-      <header className="page-head"><h1>{t("page.changelog")}</h1><p className="muted">{t("cl.lead")}</p></header>
+    <PageShell className="changelog-page" title={t("page.changelog")} subtitle={t("cl.lead")}>
       {CHANGELOG.map(e => {
         const isCur = current && cmpVersion(e.version, current) === 0;
         const upcoming = current ? cmpVersion(e.version, current) > 0 : !e.date;
@@ -26,6 +26,6 @@ export function ChangelogPage() {
           </section>
         );
       })}
-    </div>
+    </PageShell>
   );
 }

@@ -3,6 +3,8 @@ import { useBrowser } from "../store/BrowserStore";
 import { ExtIcon } from "../components/ExtIcon";
 import { IconBack, IconInfo, IconPuzzle, IconReload, IconStore, IconWarn } from "../components/Icons";
 import { Group } from "../components/SettingsUI";
+import { PageShell } from "../components/PageShell";
+import { EmptyState } from "../components/EmptyState";
 import { ThemeGallery } from "../components/ThemeGallery";
 import { TWITCH_ID, explainPermission, extList, extToggle, marketFetch, matchHost } from "../lib/extensions";
 import type { ExtInfo, MarketEntry, MarketResult } from "../lib/ipc";
@@ -67,18 +69,11 @@ export function MarketPage() {
   if (cur) return <MarketDetail it={cur} busy={busy === cur.entry.id} onBack={() => setSel(null)} onToggle={v => toggle(cur, v)} />;
 
   return (
-    <div className="page doc-page market-page">
-      <section className="market-hero card">
-        <span className="market-hero-icon"><IconStore size={30} /></span>
-        <div className="market-hero-text">
-          <h1>{t("page.market")}</h1>
-          <p className="muted">{t("mk.hero")}</p>
-        </div>
-        <div className="row gap">
-          <button className="btn ghost" onClick={() => b.openPage("extensions")}><IconPuzzle size={15} /> {t("page.extensions")}</button>
-          <button className="btn" disabled={loading} onClick={load} title={t("mk.refresh")}><IconReload size={15} /> {t("mk.refresh")}</button>
-        </div>
-      </section>
+    <PageShell className="market-page" title={t("page.market")} subtitle={t("mk.hero")}
+      actions={<>
+        <button className="btn ghost" onClick={() => b.openPage("extensions")}><IconPuzzle size={15} /> {t("page.extensions")}</button>
+        <button className="btn" disabled={loading} onClick={load} title={t("mk.refresh")}><IconReload size={15} /> {t("mk.refresh")}</button>
+      </>}>
 
       <div className="segmented market-tabs" role="tablist" aria-label={t("page.market")}>
         <button role="tab" aria-selected={tab === "extensions"} className={tab === "extensions" ? "on" : ""} onClick={() => setTab("extensions")}>{t("mk.tabExt")}</button>
@@ -86,7 +81,7 @@ export function MarketPage() {
       </div>
       {tab === "themes" ? <><p className="muted small">{t("mk.themesLead")}</p><ThemeGallery /></> : <>
       <p className="market-note small"><IconInfo size={14} /> <span>{t("mk.honest")}</span></p>
-      {error && !loading && <div className="banner warn" role="status"><IconWarn size={15} /><span>{t("mk.offline", { detail: error })}</span></div>}
+      {error && !loading && <div className="banner warn" role="status" title={error}><IconWarn size={15} /><span>{t("mk.offline")}</span></div>}
 
       <div className="market-meta muted small">
         <span>{t("mk.count", { count: items.length })}</span>
@@ -94,7 +89,7 @@ export function MarketPage() {
       </div>
 
       {loading && !items.length && <div className="market-grid" role="status" aria-label={t("mk.loading")}>{[0, 1, 2].map(i => <span key={i} className="skeleton market-skel" />)}</div>}
-      {!loading && !items.length && <div className="empty-state card"><h2>{t("mk.empty")}</h2></div>}
+      {!loading && !items.length && <EmptyState card icon={<IconStore size={20} />} title={t("mk.empty")} text={error ? t("mk.emptyOffline") : undefined} />}
 
       <div className="market-grid">
         {items.map(it => {
@@ -123,7 +118,7 @@ export function MarketPage() {
         })}
       </div>
       </>}
-    </div>
+    </PageShell>
   );
 }
 

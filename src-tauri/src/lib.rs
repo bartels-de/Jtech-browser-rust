@@ -39,7 +39,7 @@ static ADBLOCK_ENABLED: AtomicBool = AtomicBool::new(true);
 
 pub const START_URL: &str = "about:blank"; // Etappe G: UI zeigt darueber die Startseite jtech://newtab
 pub const DEFAULT_TOP_HEIGHT: f64 = 72.0;
-pub const DEFAULT_SIDEBAR_WIDTH: f64 = 250.0;
+pub const DEFAULT_SIDEBAR_WIDTH: f64 = 248.0;
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]

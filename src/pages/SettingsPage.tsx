@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { EmptyState } from "../components/EmptyState";
 import { listen } from "@tauri-apps/api/event";
 import { useBrowser } from "../store/BrowserStore";
 import { BUILTIN_BANGS, SEARCH_ENGINES, normalizeBangs, type SearchEngineId } from "../lib/urls";
@@ -67,7 +68,7 @@ export function SettingsPage() {
             onKeyDown={e => { if (e.key === "Escape") setQ(""); }} aria-label={t("set.search")} />
           {q && <button className="icon-btn sm" title={t("set.clearSearch")} aria-label={t("set.clearSearch")} onClick={() => { setQ(""); searchRef.current?.focus(); }}>×</button>}
         </label>
-        <label className="expert-toggle">
+        <label className="expert-toggle" title={b.settings.settingsExpert === true ? undefined : t("set.simpleNote")}>
           <input type="checkbox" role="switch" className="switch" checked={b.settings.settingsExpert === true} onChange={e => b.updateSettings({ settingsExpert: e.target.checked })} />
           <span>{t("set.expert")}</span>
         </label>
@@ -85,8 +86,7 @@ export function SettingsPage() {
       </aside>
       <ExpertCtx.Provider value={b.settings.settingsExpert === true}>
       <div className="settings-body">
-        {!q.trim() && b.settings.settingsExpert !== true && <p className="settings-simple-note muted small">{t("set.simpleNote")} <button className="link-btn" onClick={() => b.updateSettings({ settingsExpert: true })}>{t("set.expert")}</button></p>}
-        {shown.length === 0 && <div className="empty-state"><h2>{t("set.nothing")}</h2><p>{t("set.noMatch", { q })}</p></div>}
+        {shown.length === 0 && <EmptyState card icon={<IconSearch size={20} />} title={t("set.nothing")} text={t("set.noMatch", { q })} />}
         {shown.map(s => (
           <SearchCtx.Provider key={s.id} value={{ q: q.trim(), all: !q.trim() || matches(q, s.title) }}>
             <section className="settings-section" aria-labelledby={`sec-${s.id}`}>

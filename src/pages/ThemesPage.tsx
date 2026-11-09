@@ -1,4 +1,5 @@
 import { ThemeGallery } from "../components/ThemeGallery";
+import { PageShell } from "../components/PageShell";
 import { isBuiltinTheme } from "../lib/themeGallery";
 import { useEffect, useId, useRef, useState } from "react";
 import { Group, Row, Switch } from "../components/SettingsUI";
@@ -39,8 +40,7 @@ export function ThemesPage() {
   const [withFx, setWithFx] = useState(true);
 
   return (
-    <div className="page doc-page">
-      <header className="page-head"><h1>{t("page.themes")}</h1><p className="muted">{t("th.lead")}</p></header>
+    <PageShell title={t("page.themes")} subtitle={t("th.lead")}>
       <nav className="studio-jump" aria-label={t("th.jump")}>
         {([["st-presets", "th.j.presets"], ["st-edit", "th.j.edit"], ["st-bg", "th.j.bg"], ["st-cursor", "th.j.cursor"], ["st-trail", "th.j.trail"], ["st-io", "th.j.io"], ["st-css", "th.j.css"]] as [string, TKey][]).map(([id, l]) =>
           <button key={id} className="chip-btn" onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })}>{t(l)}</button>)}
@@ -108,7 +108,7 @@ export function ThemesPage() {
 
       <CustomCssEditor value={cur.customCss} onSave={css => patch({ customCss: css })} />
 
-    </div>
+    </PageShell>
   );
 }
 

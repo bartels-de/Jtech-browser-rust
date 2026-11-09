@@ -1,0 +1,17 @@
+/* Overlays: radial menu, peek panel, toasts, what's new */
+
+/* ===== Round 7: radial menu, peek, audio hub, start page, theme gallery, changelog ===== */
+.radial-backdrop { position: fixed; inset: 0; z-index: 900; background: color-mix(in srgb, var(--bg) 35%, transparent); outline: none; animation: rad-fade var(--dur-fast) var(--ease-out); }
+.radial { position: absolute; border-radius: 50%; background: var(--glass); border: 1px solid var(--glass-border); box-shadow: var(--shadow-pop); backdrop-filter: blur(18px); animation: rad-pop var(--dur) var(--ease-out); }
+.radial-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 104px; text-align: center; font-size: var(--fs-xs); color: var(--text-2); line-height: 1.25; pointer-events: none; }
+.radial-slot { position: absolute; width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); cursor: pointer; transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast); }
+.radial-slot.on { background: var(--accent); color: var(--accent-ink); transform: scale(1.12); box-shadow: 0 0 0 4px var(--accent-ring); }
+.radial-slot.off { opacity: .45; }
+.radial-slot.mini { width: 28px; height: 28px; cursor: default; }
+.radial-preview { position: relative; width: 120px; height: 120px; margin: 0 auto 12px; border-radius: 50%; background: var(--surface-1); border: 1px solid var(--border); }
+.peek-backdrop { position: fixed; inset: 0; z-index: 800; background: color-mix(in srgb, var(--bg) 70%, transparent); backdrop-filter: blur(2px); }
+.peek-frame { position: absolute; border-radius: var(--r-lg) var(--r-lg) var(--r-2xs) var(--r-2xs); background: var(--surface-2); border: 1px solid var(--border-strong); box-shadow: var(--shadow-pop); overflow: hidden; }
+.peek-head { height: 46px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 14px; border-bottom: 1px solid var(--border); }
+.peek-titles { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.peek-titles strong, .peek-titles small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.peek-titles small { color: var(--text-3); font-size: var(--fs-xs); }

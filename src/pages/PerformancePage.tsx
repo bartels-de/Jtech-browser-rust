@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { PageShell } from "../components/PageShell";
 import { useBrowser } from "../store/BrowserStore";
 import { fmtBytes as fmtB, useT } from "../i18n";
 import { call } from "../lib/ipc";
@@ -12,7 +13,7 @@ const fmtBytes = (n: number) => fmtB(n, n >= 1024 ** 3 ? 2 : 1);
 
 export function PerformancePage() {
   const b = useBrowser();
-  const { t, fmtPct } = useT();
+  const { t, fmtPct, fmtNum } = useT();
   const [stats, setStats] = useState<PerfStats | null>(null);
   const [auto, setAuto] = useState(true);
   const [cpuPct, setCpuPct] = useState<Record<number, number>>({});
@@ -59,24 +60,18 @@ export function PerformancePage() {
 
   const maxHist = Math.max(...history, 1);
   return (
-    <div className="page doc-page perf-page">
-      <header className="page-head row">
-        <div>
-          <h1>{t("page.performance")}</h1>
-          <p className="muted">{t("pf.lead")}{auto ? t("pf.every2") : ""}</p>
-        </div>
-        <div className="row gap">
-          <label className="switch-row small"><span>{t("pf.live")}</span>
-            <input type="checkbox" className="switch" aria-label={t("pf.auto")} checked={auto} onChange={e => setAuto(e.target.checked)} /></label>
-          <button className="btn" onClick={refresh}>{t("c.updateNow")}</button>
-        </div>
-      </header>
+    <PageShell className="perf-page" title={t("page.performance")} subtitle={<>{t("pf.lead")}{auto ? t("pf.every2") : ""}</>}
+      actions={<>
+        <label className="switch-row small"><span>{t("pf.live")}</span>
+          <input type="checkbox" className="switch" aria-label={t("pf.auto")} checked={auto} onChange={e => setAuto(e.target.checked)} /></label>
+        <button className="btn" onClick={refresh}>{t("c.updateNow")}</button>
+      </>}>
 
       <div className="kpi-row">
         <div className="kpi"><span className="kpi-num">{stats ? fmtBytes(stats.totalMemoryBytes) : <span className="skeleton skel-num" aria-label={t("c.loading")} />}</span><span className="kpi-label">{t("pf.memTotal")}</span></div>
-        <div className="kpi"><span className="kpi-num">{fmtPct(totalCpu, 1)}</span><span className="kpi-label">{t("pf.cpuSum")}</span></div>
-        <div className="kpi"><span className="kpi-num">{stats?.processes.length ?? 0}</span><span className="kpi-label">{t("pf.procs")}</span></div>
-        <div className="kpi"><span className="kpi-num">{stats?.tabCount ?? 0}</span><span className="kpi-label">{t("pf.tabsSleeping", { n: sleeping })}</span></div>
+        <div className="kpi"><span className="kpi-num">{stats ? fmtPct(totalCpu, 1) : <span className="skeleton skel-num" aria-label={t("c.loading")} />}</span><span className="kpi-label">{t("pf.cpuSum")}</span></div>
+        <div className="kpi"><span className="kpi-num">{stats ? fmtNum(stats.processes.length) : <span className="skeleton skel-num" aria-label={t("c.loading")} />}</span><span className="kpi-label">{t("pf.procs")}</span></div>
+        <div className="kpi"><span className="kpi-num">{stats ? fmtNum(stats.tabCount) : <span className="skeleton skel-num" aria-label={t("c.loading")} />}</span><span className="kpi-label">{stats ? t("pf.tabsSleeping", { n: sleeping }) : t("pf.tabs")}</span></div>
       </div>
 
       {heavy.length > 0 && (
@@ -94,12 +89,14 @@ export function PerformancePage() {
         <div className="spark" role="img" aria-label={t("pf.memHistoryAria", { count: history.length })}>
           {history.map((v, i) => <span key={i} title={fmtBytes(v)} style={{ height: `${Math.max(4, (v / maxHist) * 100)}%` }} />)}
         </div>
-        <small className="muted">{t("pf.lastN", { count: history.length })}{top ? t("pf.biggest", { name: top.name, size: fmtBytes(top.memoryBytes) }) : ""}</small>
+        {history.length > 0
+          ? <small className="muted">{t("pf.lastN", { count: history.length })}{top ? t("pf.biggest", { name: top.name, size: fmtBytes(top.memoryBytes) }) : ""}</small>
+          : <span className="skeleton skel-line" aria-hidden="true" />}
       </section>
 
       <section className="card">
         <h2>{t("pf.byMem")}</h2>
-        <table className="data-table">
+        {stats && <table className="data-table">
           <thead><tr><th>{t("pf.colName")}</th><th className="num-col">PID</th><th className="num-col">{t("pf.colMem")}</th><th>{t("pf.colShare")}</th><th className="num-col">CPU</th></tr></thead>
           <tbody>
             {(stats?.processes ?? []).map(p => {
@@ -115,7 +112,7 @@ export function PerformancePage() {
               );
             })}
           </tbody>
-        </table>
+        </table>}
         {!stats && <div className="skel-rows" role="status" aria-label={t("pf.dataLoading")}>{[0, 1, 2, 3].map(i => <span key={i} className="skeleton skel-row" />)}</div>}
       </section>
 
@@ -144,6 +141,6 @@ export function PerformancePage() {
           <li>{t("pf.tip3")}</li>
         </ul>
       </section>
-    </div>
+    </PageShell>
   );
 }

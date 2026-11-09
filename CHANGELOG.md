@@ -14,6 +14,16 @@ All notable changes to JTech Browser. The in-app page `jtech://changelog` shows 
   - Input fields keep cut, copy, paste, undo, redo, select all and spell check suggestions.
 - The menu also works in the Peek window (without "Open in Peek") and in split-view panes; labels follow the UI language.
 - New setting (Settings › Radial menu & peek) to switch back to the standard WebView2 menu.
+- Reworked browser layout: one 44 px top band for sidebar head and toolbar, a centred address bar (32 px, max. 720 px) and a calmer sidebar (36 px tab rows, 56 px compact width).
+  - Internal pages show their own icon in the sidebar and address bar; the address bar reads "JTech · Settings" instead of `jtech://settings` until it is focused.
+  - Sidebar footer: one row with a "Library" button (bookmarks, history, downloads | audio hub, performance | extensions, market, Design Studio, privacy) and settings. The library menu no longer covers the mini player.
+  - Mini player as a single row (artwork, title, play, mute); the title is no longer shown twice.
+  - Hub menu: eight tiles with short labels, then the actions, then Performance, Market and Changelog under "More". The zoom row only appears on web pages.
+  - The blocked-request dot on tabs is gone (the count stays on the shield button).
+- All internal pages share one layout: title and subtitle left, actions right on one line, 880 px content width, consistent sections, list rows and empty states. "Clear history" is a quiet button now.
+- Loading and error states: every value on the Performance page shows a placeholder while loading instead of zeros; the Market shows a readable message when it is offline. Settings keep only the "Show all settings" switch.
+- Dropdowns look the same everywhere.
+- New defaults for new installations: grouping tabs by domain is off (when on, a domain only becomes a group from its second tab and "www." is ignored), the bookmarks bar only shows on the start page, and the toolbar no longer contains the Home button (still available in "Customize toolbar"). Existing settings are kept.
 
 ## [0.1.12]
 

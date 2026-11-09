@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useBrowser } from "../store/BrowserStore";
 import { Favicon } from "../components/Favicon";
-import { IconEdit, IconSearch, IconTrash } from "../components/Icons";
+import { IconEdit, IconSearch, IconTrash, IconBookmarks } from "../components/Icons";
+import { PageShell } from "../components/PageShell";
+import { EmptyState } from "../components/EmptyState";
 import { useT } from "../i18n";
 import { isWebUrl } from "../lib/urls";
 
@@ -15,11 +17,8 @@ export function BookmarksPage() {
   const list = b.bookmarks.filter(x => !ql || x.title.toLowerCase().includes(ql) || x.url.toLowerCase().includes(ql));
   const addUrl = /^https?:\/\//.test(nu.url) ? nu.url : nu.url ? `https://${nu.url}` : "";
   return (
-    <div className="page doc-page">
-      <header className="page-head page-head-sticky row">
-        <div><h1>{t("page.bookmarks")}</h1><p className="muted">{t("bm.saved", { count: b.bookmarks.length })}</p></div>
-        <label className="search-field"><IconSearch size={15} /><input value={q} onChange={e => setQ(e.target.value)} placeholder={t("bm.search")} aria-label={t("bm.search")} /></label>
-      </header>
+    <PageShell title={t("page.bookmarks")} subtitle={t("bm.saved", { count: b.bookmarks.length })} sticky
+      actions={<label className="search-field"><IconSearch size={15} /><input value={q} onChange={e => setQ(e.target.value)} placeholder={t("bm.search")} aria-label={t("bm.search")} /></label>}>
       <section className="card">
         <h2>{t("bm.new")}</h2>
         <form className="inline-form" onSubmit={e => { e.preventDefault(); if (isWebUrl(addUrl)) { b.addBookmark(addUrl, nu.title); setNu({ title: "", url: "" }); } }}>
@@ -29,9 +28,9 @@ export function BookmarksPage() {
         </form>
       </section>
       <section className="card list-card">
-        {list.length === 0 && <div className="empty-state">{q
-          ? <><h2>{t("c.noResults")}</h2><p>{t("bm.noMatch", { q })}</p><button className="btn" onClick={() => setQ("")}>{t("c.clearSearch")}</button></>
-          : <><h2>{t("bm.emptyTitle")}</h2><p>{t("bm.emptyText", { keys: b.keyHint("page.bookmark") ?? "" })}</p></>}</div>}
+        {list.length === 0 && (q
+          ? <EmptyState icon={<IconSearch size={20} />} title={t("c.noResults")} text={t("bm.noMatch", { q })} action={<button className="btn" onClick={() => setQ("")}>{t("c.clearSearch")}</button>} />
+          : <EmptyState icon={<IconBookmarks size={20} />} title={t("bm.emptyTitle")} text={t("bm.emptyText", { keys: b.keyHint("page.bookmark") ?? "" })} />)}
         {list.map(bm => edit?.id === bm.id ? (
           <form key={bm.id} className="list-row editing" onSubmit={e => { e.preventDefault(); b.updateBookmark(bm.id, { title: edit.title, url: edit.url }); setEdit(null); }}>
             <Favicon url={bm.url} />
@@ -50,6 +49,6 @@ export function BookmarksPage() {
           </div>
         ))}
       </section>
-    </div>
+    </PageShell>
   );
 }

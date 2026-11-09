@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useBrowser } from "../store/BrowserStore";
-import { SEARCH_ENGINES, hostOf, internalUrl, isWebUrl, securityOf } from "../lib/urls";
-import { IconBack, IconBookmarks, IconDownload, IconForward, IconHistory, IconHome, IconLock, IconMenu, IconPlus, IconReload, IconSettings, IconShield, IconStar, IconStop, IconWarn, IconGlobe, IconSearch, IconPalette, IconMusic, IconGauge, IconPrint, IconMoon, IconCommand, IconKeyboard, IconPuzzle, IconStore, IconSplit, IconVolume, IconMute, IconLayers, IconInfo, IconClose, IconLibrary, JTechLogo } from "./Icons";
+import { SEARCH_ENGINES, hostOf, internalTitle, internalUrl, isWebUrl, securityOf } from "../lib/urls";
+import { PageIcon } from "./Favicon";
+import { IconBack, IconBookmarks, IconDownload, IconForward, IconHistory, IconHome, IconLock, IconMenu, IconPlus, IconReload, IconSettings, IconShield, IconStar, IconStop, IconWarn, IconGlobe, IconSearch, IconPalette, IconMusic, IconGauge, IconPrint, IconMoon, IconCommand, IconKeyboard, IconPuzzle, IconStore, IconSplit, IconVolume, IconMute, IconLayers, IconInfo, IconClose, JTechLogo } from "./Icons";
 import { MenuItem, Popover } from "./Popover";
 import { DownloadList } from "./DownloadList";
 import { addressSuggestions, looksLikeUrl, matches, withRemote, type Suggestion } from "../lib/suggest";
@@ -88,6 +89,8 @@ export function Toolbar() {
     if (rest === "/") rest = "";
     return { host: host.replace(/^www\./, ""), rest };
   }, [editing, tab, page]);
+  /** Internal pages read as "JTech · Settings" until the field is focused (then the jtech:// address is editable) */
+  const pageChip = !editing && !!page && page !== "newtab";
   const bookmark = tab && !page ? b.isBookmarked(tab.url) : undefined;
   const canBookmark = !!tab && !page;
   const close = () => b.setPopover(null);
@@ -138,16 +141,21 @@ export function Toolbar() {
           sec === "secure" ? t("tb.secure") :
           sec === "insecure" ? t("tb.insecure") :
           sec === "internal" ? t("tb.internal") : t("c.address")}>
-          {sec === "secure" ? <IconLock size={14} /> : sec === "insecure" ? <><IconWarn size={14} /><span className="sec-label">{t("tb.notSecure")}</span></> : sec === "internal" ? <JTechLogo size={15} /> : <IconGlobe size={14} />}
+          {sec === "secure" ? <IconLock size={14} /> : sec === "insecure" ? <><IconWarn size={14} /><span className="sec-label">{t("tb.notSecure")}</span></> : sec === "internal" ? (page ? <PageIcon page={page} size={15} /> : <JTechLogo size={15} />) : <IconGlobe size={14} />}
         </span>
         {pretty && (
           <span className="omni-display" aria-hidden onMouseDown={e => { e.preventDefault(); inputRef.current?.focus(); }}>
             <span className="omni-host">{pretty.host}</span><span className="omni-rest">{pretty.rest}</span>
           </span>
         )}
+        {pageChip && page && (
+          <span className="omni-display omni-page" aria-hidden onMouseDown={e => { e.preventDefault(); inputRef.current?.focus(); }}>
+            <span className="omni-brand">JTech</span><span className="omni-dot">·</span><span className="omni-host">{internalTitle(page)}</span>
+          </span>
+        )}
         <input
           ref={inputRef}
-          className={pretty ? "is-pretty" : undefined}
+          className={pretty || pageChip ? "is-pretty" : undefined}
           value={text}
           spellCheck={false}
           placeholder={t("tb.placeholder")}
@@ -250,19 +258,23 @@ function Hub() {
   const tab = b.activeTab, page = b.activePage;
   const close = () => b.setPopover(null);
   const audio = b.tabs.some(x => x.playingAudio);
-  const tiles: { id: string; icon: ReactNode; label: string; hint?: string; run(): void; kw?: string }[] = [
-    { id: "bookmarks", icon: <IconBookmarks size={18} />, label: t("page.bookmarks"), hint: b.keyHint("open.bookmarks"), run: () => b.openPage("bookmarks") },
-    { id: "history", icon: <IconHistory size={18} />, label: t("page.history"), hint: b.keyHint("open.history"), run: () => b.openPage("history") },
-    { id: "downloads", icon: <IconDownload size={18} />, label: t("page.downloads"), hint: b.keyHint("open.downloads"), run: () => b.openPage("downloads") },
-    { id: "library", icon: <IconLibrary size={18} />, label: t("hub.library"), run: () => b.openPage("bookmarks"), kw: "library bibliothek" },
-    { id: "market", icon: <IconStore size={18} />, label: t("page.market"), run: () => b.openPage("market") },
-    { id: "extensions", icon: <IconPuzzle size={18} />, label: t("page.extensions"), run: () => b.openPage("extensions") },
-    { id: "audio", icon: <IconMusic size={18} />, label: audio ? t("tb.audioPlaying") : t("page.audio"), run: () => b.openPage("audio") },
-    { id: "performance", icon: <IconGauge size={18} />, label: t("page.performance"), run: () => b.openPage("performance") },
-    { id: "themes", icon: <IconPalette size={18} />, label: t("page.themes"), run: () => b.openPage("themes") },
-    { id: "privacy", icon: <IconShield size={18} />, label: t("page.privacy"), run: () => b.openPage("privacy") },
-    { id: "changelog", icon: <IconInfo size={18} />, label: t("page.changelog"), run: () => b.openPage("changelog") },
-    { id: "settings", icon: <IconSettings size={18} />, label: t("page.settings"), hint: b.keyHint("open.settings"), run: () => b.openPage("settings") },
+  const web = !!tab && !page && isWebUrl(tab.url);
+  /** Eight tiles in two rows of four, short single-line labels (full page name in the tooltip and the filter) */
+  const tiles: { id: string; icon: ReactNode; label: string; full: string; hint?: string; run(): void; live?: boolean }[] = [
+    { id: "bookmarks", icon: <IconBookmarks size={18} />, label: t("page.bookmarks"), full: t("page.bookmarks"), hint: b.keyHint("open.bookmarks"), run: () => b.openPage("bookmarks") },
+    { id: "history", icon: <IconHistory size={18} />, label: t("page.history"), full: t("page.history"), hint: b.keyHint("open.history"), run: () => b.openPage("history") },
+    { id: "downloads", icon: <IconDownload size={18} />, label: t("page.downloads"), full: t("page.downloads"), hint: b.keyHint("open.downloads"), run: () => b.openPage("downloads") },
+    { id: "extensions", icon: <IconPuzzle size={18} />, label: t("page.extensions"), full: t("page.extensions"), run: () => b.openPage("extensions") },
+    { id: "themes", icon: <IconPalette size={18} />, label: t("hub.short.themes"), full: t("page.themes"), run: () => b.openPage("themes") },
+    { id: "audio", icon: <IconMusic size={18} />, label: t("hub.short.audio"), full: audio ? t("tb.audioPlaying") : t("page.audio"), run: () => b.openPage("audio"), live: audio },
+    { id: "privacy", icon: <IconShield size={18} />, label: t("page.privacy"), full: t("page.privacy"), run: () => b.openPage("privacy") },
+    { id: "settings", icon: <IconSettings size={18} />, label: t("page.settings"), full: t("page.settings"), hint: b.keyHint("open.settings"), run: () => b.openPage("settings") },
+  ];
+  /** Less frequent pages: plain menu items under "More" */
+  const more: { id: string; icon: ReactNode; label: string; run(): void }[] = [
+    { id: "performance", icon: <IconGauge size={15} />, label: t("page.performance"), run: () => b.openPage("performance") },
+    { id: "market", icon: <IconStore size={15} />, label: t("page.market"), run: () => b.openPage("market") },
+    { id: "changelog", icon: <IconInfo size={15} />, label: t("page.changelog"), run: () => b.openPage("changelog") },
   ];
   const actions: { id: string; icon: ReactNode; label: string; hint?: string; run(): void }[] = [
     { id: "newtab", icon: <IconPlus size={15} />, label: t("c.newTab"), hint: b.keyHint("tab.new"), run: () => b.newTab() },
@@ -275,25 +287,26 @@ function Hub() {
     { id: "toolbar", icon: <IconMenu size={15} />, label: t("tbc.title"), run: () => b.setPopover("toolbar") },
   ];
   const fq = q.trim();
-  const tShown = tiles.filter(x => !fq || matches(fq, x.label, x.id, x.kw ?? ""));
+  const tShown = tiles.filter(x => !fq || matches(fq, x.label, x.id, x.full));
   const aShown = actions.filter(x => !fq || matches(fq, x.label, x.id));
+  const mShown = more.filter(x => !fq || matches(fq, x.label, x.id));
   return (
     <div className="hub">
       <label className="search-field hub-search">
         <IconSearch size={14} />
         <input value={q} onChange={e => setQ(e.target.value)} placeholder={t("hub.search")} aria-label={t("hub.search")} spellCheck={false}
-          onKeyDown={e => { if (e.key === "Enter") { const f = tShown[0] ?? aShown[0]; if (f) f.run(); } }} />
+          onKeyDown={e => { if (e.key === "Enter") { const f = tShown[0] ?? aShown[0] ?? mShown[0]; if (f) f.run(); } }} />
       </label>
       {tShown.length > 0 && (
         <div className="hub-grid">
           {tShown.map(x => (
-            <button key={x.id} className={`hub-tile${tab?.internal === x.id ? " on" : ""}`} onClick={x.run} title={x.hint ? `${x.label} (${x.hint})` : x.label}>
+            <button key={x.id} className={`hub-tile${tab?.internal === x.id ? " on" : ""}${x.live ? " live" : ""}`} onClick={x.run} title={x.hint ? `${x.full} (${x.hint})` : x.full}>
               {x.icon}<span>{x.label}</span>
             </button>
           ))}
         </div>
       )}
-      {!fq && (
+      {!fq && web && (
         <div className="menu-zoom">
           <span className="menu-icon"><IconSearch size={15} /></span><span>{t("tb.zoom")}</span>
           <button className="icon-btn sm" title={t("tb.zoomOutTitle", { keys: b.keyHint("page.zoomOut") ?? "" })} aria-label={t("cmd.page.zoomOut")} disabled={!tab || !!page} onClick={() => b.zoomStep(-1)}>−</button>
@@ -303,7 +316,9 @@ function Hub() {
       )}
       {aShown.length > 0 && <div className="menu-sep" />}
       {aShown.map(x => <MenuItem key={x.id} icon={x.icon} label={x.label} hint={x.hint} onClick={x.run} />)}
-      {tShown.length + aShown.length === 0 && <p className="muted small hub-empty">{t("hub.nothing")}</p>}
+      {mShown.length > 0 && <div className="menu-sep labeled" role="separator"><span>{t("hub.more")}</span></div>}
+      {mShown.map(x => <MenuItem key={x.id} icon={x.icon} label={x.label} onClick={x.run} />)}
+      {tShown.length + aShown.length + mShown.length === 0 && <p className="muted small hub-empty">{t("hub.nothing")}</p>}
     </div>
   );
 }

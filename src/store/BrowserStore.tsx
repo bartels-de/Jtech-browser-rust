@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { call, type DownloadInfo, type RustTab, type TabEvent } from "../lib/ipc";
-import { internalTitle, hostOf, internalUrl, isWebUrl, normalizeBangs, parseInternal, resolveInput, type InternalPage } from "../lib/urls";
+import { internalTitle, hostOf, groupHost, internalUrl, isWebUrl, normalizeBangs, parseInternal, resolveInput, type InternalPage } from "../lib/urls";
 import { COMMAND_BY_ID, bindingMap, effectiveKeys, normalizeShortcuts } from "../lib/commands";
 import { formatCombo, validCombo } from "../lib/keys";
 import { normalizeEffects, type EffectsSettings } from "../lib/fx/effects";
@@ -203,7 +203,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<Settings>(() => {
     const s = load("settings", DEFAULT_SETTINGS);
     return { ...s, shortcuts: normalizeShortcuts(s.shortcuts), effects: normalizeEffects(s.effects), restoreSession: typeof s.restoreSession === "boolean" ? s.restoreSession : true,
-      autoGroupByDomain: typeof s.autoGroupByDomain === "boolean" ? s.autoGroupByDomain : true,
+      autoGroupByDomain: typeof s.autoGroupByDomain === "boolean" ? s.autoGroupByDomain : DEFAULT_SETTINGS.autoGroupByDomain,
       autoUpdateCheck: typeof s.autoUpdateCheck === "boolean" ? s.autoUpdateCheck : true,
       devTools: s.devTools === true,
       updateIntervalHours: [0, 6, 12, 24, 72].includes(s.updateIntervalHours) ? s.updateIntervalHours : 24,
@@ -475,13 +475,16 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     if (!settings.autoGroupByDomain || !restoreDone.current) return;
     const ungrouped = uiTabsRef.current.filter(t => isWebUrl(t.url) && !t.internal && !t.sleeping && !t.groupId);
     if (ungrouped.length === 0) return;
+    // A domain becomes a group only from its second tab; an existing group of that name is always joined.
+    const count = new Map<string, number>();
+    for (const t of ungrouped) { const h = groupHost(t.url); if (h) count.set(h, (count.get(h) ?? 0) + 1); }
     setGroups(gs => {
       const byName = new Map(gs.map(g => [g.name, g.id]));
       const newGroups = [...gs];
       const hostGroup: Record<string, string> = {};
       for (const t of ungrouped) {
-        const h = hostOf(t.url);
-        if (!h) continue;
+        const h = groupHost(t.url);
+        if (!h || (!byName.has(h) && (count.get(h) ?? 0) < 2)) continue;
         if (!byName.has(h)) {
           const g: TabGroup = { id: uid(), name: h, color: GROUP_COLORS[newGroups.length % GROUP_COLORS.length], collapsed: false };
           newGroups.push(g); byName.set(h, g.id);
@@ -490,7 +493,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
       }
       setTabGroupMap(m => {
         const n = { ...m };
-        for (const t of ungrouped) { const h = hostOf(t.url); if (h && hostGroup[t.id]) n[t.id] = hostGroup[t.id]; }
+        for (const t of ungrouped) { if (hostGroup[t.id]) n[t.id] = hostGroup[t.id]; }
         return n;
       });
       return newGroups;
@@ -786,7 +789,9 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
 
   const groupTabsByDomain = useCallback(() => {
     const tabs = uiTabsRef.current.filter(t => isWebUrl(t.url) && !t.internal && !t.sleeping);
-    const hosts = [...new Set(tabs.map(t => hostOf(t.url)).filter(Boolean))];
+    const perHost = new Map<string, number>();
+    for (const t of tabs) { const h = groupHost(t.url); if (h) perHost.set(h, (perHost.get(h) ?? 0) + 1); }
+    const hosts = [...perHost.keys()].filter(h => (perHost.get(h) ?? 0) >= 2);
     setGroups(gs => {
       const byName = new Map(gs.map(g => [g.name, g.id]));
       const newGroups = [...gs];
@@ -802,7 +807,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
       }
       setTabGroupMap(m => {
         const n = { ...m };
-        for (const t of tabs) { const h = hostOf(t.url); if (h && hostGroup[h]) n[t.id] = hostGroup[h]; }
+        for (const t of tabs) { const h = groupHost(t.url); if (h && hostGroup[h]) n[t.id] = hostGroup[h]; }
         return n;
       });
       return newGroups;

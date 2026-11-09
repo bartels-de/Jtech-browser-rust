@@ -28,6 +28,19 @@ DPI changes and whenever tabs change.
 Because a native webview always sits above the React UI, the active page is hidden briefly
 while a menu, popover or dialog overlaps the content area (`set_content_visible`).
 
+### UI layout
+
+- Top band: sidebar head and toolbar share one height (`--toolbar-h`, 44 px). The address bar is 32 px
+  tall and at most 720 px wide, centred between the button groups. The bookmarks bar (`--bookmarks-h`,
+  32 px) is shown on the start page by default. Every height change goes through the measured header
+  height reported with `set_layout`.
+- Sidebar: 248 px by default (`SIDEBAR_DEFAULT_WIDTH`, mirrored by `DEFAULT_SIDEBAR_WIDTH` in `lib.rs`
+  as the value used before the first layout report), 56 px compact (`--sidebar-compact` and
+  `SIDEBAR_COMPACT_WIDTH`). Tab and new-tab rows are 36 px (`--row-h`). The bottom block holds the mini
+  player (only while a tab has media) and one 40 px footer row with the library menu and settings.
+- Internal pages use `PageShell` (title, subtitle, actions, 880 px content width) and `EmptyState`;
+  the settings page keeps its own two-column grid.
+
 ### Full screen
 
 - Each tab subscribes to `ContainsFullScreenElementChanged` (HTML5 `requestFullscreen`, e.g. the YouTube/Twitch fullscreen button). Only the active tab may switch the window; Esc inside the page exits element fullscreen and fires the same event.
@@ -62,7 +75,7 @@ per tab and removed when the tab is closed.
 - **Tab sleep:** inactive tabs can be put to sleep after a configurable time. The webview is
   destroyed while the tab ID, URL and title are kept, and a new webview is created when the tab
   is activated. Active, pinned and audio-playing tabs are never put to sleep.
-- **Groups:** web and internal tabs (settings, history, market …) can join groups the same way (context menu, dragging a tab onto a grouped tab or a group header, command `tab.groupInternal` collects all internal pages in a "JTech" group). Membership is saved with the session. Auto-grouping by domain only covers web tabs.
+- **Groups:** web and internal tabs (settings, history, market …) can join groups the same way (context menu, dragging a tab onto a grouped tab or a group header, command `tab.groupInternal` collects all internal pages in a "JTech" group). Membership is saved with the session. Auto-grouping by domain (off by default) only covers web tabs; a domain becomes a group from its second tab, and a leading `www.` is ignored.
 - **Session restore:** open tabs (including internal pages and the pinned state) are saved and
   restored on the next start, if enabled.
 
@@ -208,7 +221,8 @@ WebView2 cookie manager and `ClearBrowsingData`.
 | `src-tauri/src/uifx.rs` | Custom shortcuts and optional cursor effects on web pages |
 | `src-tauri/src/ctxmenu.rs` | Page context menu (customised native WebView2 menu) |
 | `src/store/` | Browser state (React context) and storage access |
-| `src/components/` | Sidebar, toolbar, popovers, bars, editors |
+| `src/components/` | Sidebar, toolbar, popovers, bars, editors, `PageShell` / `EmptyState` for internal pages |
+| `src/styles/` | `tokens.css` (design tokens; Design Studio themes override these variables) and `app.css`, which imports the topic files in cascade order: `base`, `shell`, `sidebar`, `toolbar`, `menus`, `pages`, `start`, `studio`, `market`, `split`, `overlays` |
 | `src/pages/` | Internal `jtech://` pages |
 | `src/lib/` | IPC wrappers, URL handling, commands and shortcuts, visual effects, updater |
 

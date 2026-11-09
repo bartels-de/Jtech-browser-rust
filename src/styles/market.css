@@ -1,0 +1,40 @@
+/* JTech Market and extensions pages */
+
+/* ---------- JTech Market / Extensions (jtech://market, jtech://extensions) ---------- */
+  background: radial-gradient(120% 140% at 0% 0%, var(--accent-soft), transparent 60%), var(--surface-0); }
+.market-note { display: flex; gap: var(--sp-2); align-items: flex-start; color: var(--text-2); margin: 0 0 var(--sp-4); line-height: 1.5; }
+.market-note svg { flex: none; margin-top: 2px; color: var(--accent); }
+.market-meta { display: flex; gap: var(--sp-4); margin-bottom: var(--sp-3); }
+.market-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--sp-3); }
+.market-card { display: flex; flex-direction: column; gap: var(--sp-3); margin: 0; transition: border-color var(--dur) var(--ease), transform var(--dur) var(--ease); }
+.market-card:hover { border-color: var(--accent-ring); }
+.market-card-main { display: flex; align-items: center; gap: var(--sp-3); padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; font: inherit; }
+.market-card-main:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--r-sm); }
+.market-card-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.market-card-text strong { font: 600 var(--fs-lg) var(--font-display); }
+.market-desc { margin: 0; color: var(--text-2); line-height: 1.5; flex: 1; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.market-card-foot { display: flex; align-items: center; gap: var(--sp-2); }
+.market-skel { height: 170px; border-radius: var(--r-lg); }
+.market-back { margin-bottom: var(--sp-3); }
+.market-detail-head { display: flex; align-items: center; gap: var(--sp-5); flex-wrap: wrap; padding: var(--sp-6); }
+.market-detail-title { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.market-detail-title h1 { margin: 0; font: 650 var(--fs-2xl) var(--font-display); }
+.market-detail-title p { margin: 0; }
+.market-banner { margin: 0 0 var(--sp-4); }
+.market-long { margin: 0; line-height: 1.6; color: var(--text-2); }
+.ext-icon { display: grid; place-items: center; flex: none; border-radius: var(--r-md); background: var(--surface-2); border: 1px solid var(--border); }
+.ext-icon img { display: block; }
+.ext-icon-fallback { display: grid; place-items: center; color: var(--accent); }
+.ext-card { display: flex; flex-direction: column; gap: var(--sp-3); }
+.ext-card.is-off { opacity: 0.7; }
+.ext-card-head { display: flex; align-items: center; gap: var(--sp-3); }
+.ext-card-title { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ext-card-title strong { font: 600 var(--fs-lg) var(--font-display); }
+.ext-desc { margin: 0; color: var(--text-2); line-height: 1.5; }
+.ext-meta { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.ext-blocked { color: var(--accent); font-variant-numeric: tabular-nums; }
+.ext-site { border-top: 1px solid var(--border); padding-top: var(--sp-3); display: grid; gap: var(--sp-2); }
+.ext-site .switch-row small { font-size: var(--fs-sm); }
+.ext-paused { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.ext-site-pick { display: inline-flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.market-tabs { align-self: flex-start; margin: 4px 0 8px; }

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { PageShell } from "../components/PageShell";
+import { EmptyState } from "../components/EmptyState";
 import { listen } from "@tauri-apps/api/event";
 import { useBrowser } from "../store/BrowserStore";
 import { Favicon } from "../components/Favicon";
@@ -12,7 +14,7 @@ const fmtDate = (ms: number) => (ms ? fmtDateTime(ms) : t("c.never"));
 
 function Bars({ items, empty }: { items: Count[]; empty: string }) {
   const max = Math.max(1, ...items.map(i => i.count));
-  if (!items.length) return <div className="empty">{empty}</div>;
+  if (!items.length) return <EmptyState compact title={empty} />;
   return <>{items.map(i => (
     <div key={i.name} className="list-row">
       <span className="row-title mono">{i.name}</span>
@@ -83,12 +85,11 @@ export function PrivacyPage() {
 
   const KINDS = (["cache", "cookies", "storage", "history", "downloads"] as const).map(k => [k, t(`pv.k.${k}` as TKey), t(`pv.k.${k}.h` as TKey)] as const);
   return (
-    <div className="page doc-page">
-      <header className="page-head"><h1>{t("page.privacy")}</h1><p className="muted">{t("pv.lead")}</p></header>
+    <PageShell title={t("page.privacy")} subtitle={t("pv.lead")}>
 
       <section className="card hero-card">
         <span className={`hero-shield${b.settings.adblock ? "" : " off"}`}><IconShield size={30} /></span>
-        <div className="hero-num"><span>{fmt(stats?.lifetimeTotal ?? 0)}</span><small>{t("pv.heroSub", { n: b.totalBlocked })}</small></div>
+        <div className="hero-num"><span>{stats ? fmt(stats.lifetimeTotal) : <span className="skeleton skel-num" aria-label={t("c.loading")} />}</span><small>{t("pv.heroSub", { n: b.totalBlocked })}</small></div>
         <label className="switch-row">
           <span>{b.settings.adblock ? t("pv.on") : t("pv.off")}</span>
           <input type="checkbox" role="switch" aria-label="JTech Shield" className="switch" checked={b.settings.adblock} onChange={e => b.updateSettings({ adblock: e.target.checked })} />
@@ -163,10 +164,10 @@ export function PrivacyPage() {
       <div className="grid-2">
         <section className="card list-card">
           <h2>{t("pv.openTabs")}</h2>
-          {webTabs.length === 0 && <div className="empty">{t("pv.noWeb")}</div>}
+          {webTabs.length === 0 && <EmptyState compact title={t("pv.noWeb")} />}
           {webTabs.map(x => (
             <div key={x.id} className="list-row" onClick={() => b.switchTab(x.id)}>
-              <Favicon url={x.url} internal={!!x.internal} />
+              <Favicon url={x.url} internal={x.internal} />
               <span className="row-title">{x.title}</span>
               <span className="bar"><span style={{ width: `${(x.blocked / maxTab) * 100}%` }} /></span>
               <span className="num">{fmt(x.blocked)}</span>
@@ -215,6 +216,6 @@ export function PrivacyPage() {
           {lists.map(l => t("pv.listInfo", { name: l.name, rules: l.rules, kb: Math.round(l.bytes / 1024) })).join(" · ")}</p>
         <p className="muted small">{t("pv.tech2")}</p>
       </Disclosure>
-    </div>
+    </PageShell>
   );
 }

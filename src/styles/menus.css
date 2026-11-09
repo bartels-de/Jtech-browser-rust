@@ -1,0 +1,66 @@
+/* Menus: popovers, context menus, hub menu, command palette */
+
+/* ---------- Popover / Menues ---------- */
+.pop-menu { width: 260px; padding: 6px; }
+.context-menu { position: fixed; width: 230px; }
+.menu-item:hover { background: var(--hover); }
+.menu-item.danger { color: var(--danger); }
+.menu-icon { width: 16px; display: grid; place-items: center; color: var(--text-2); }
+.menu-label { flex: 1; }
+.pop-head div { display: flex; flex-direction: column; color: var(--text); }
+.pop-head small { color: var(--text-2); }
+.palette-kind.k-tab { color: var(--accent-2); }
+.palette-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.palette-hint { flex: none; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-sm); color: var(--text-3); }
+.menu-zoom span { flex: 1; }
+
+/* Befehlspalette */
+.palette input { height: 44px; padding: 0 14px; border: 0; border-bottom: 1px solid var(--border); background: transparent; outline: none; font-size: var(--fs-lg); color: var(--text); }
+
+/* ---------- Popover & Menues ---------- */
+.popover { position: absolute; z-index: 50; min-width: 240px; padding: 6px; border-radius: var(--r-lg); box-shadow: var(--shadow-pop), var(--hairline-hi); animation: pop var(--dur) var(--ease-out); }
+.pop-right { width: 290px; top: calc(var(--toolbar-h) - 2px); right: var(--sp-2); padding: var(--sp-3); }
+.menu-item { display: flex; align-items: center; width: 100%; border: 0; border-radius: var(--r-sm); background: transparent; text-align: left; cursor: pointer; height: 32px; gap: 10px; padding: 0 8px 0 10px; color: var(--text); font-size: var(--fs-md); transition: background var(--dur-fast) var(--ease); }
+.menu-item:hover, .menu-item:focus-visible { background: var(--hover); }
+.menu-item.on { background: var(--accent-soft); color: var(--accent); }
+.menu-item.on .menu-icon { color: var(--accent); }
+.menu-item.danger .menu-icon { color: var(--danger); }
+.menu-hint { margin-left: auto; }
+.menu-zoom { display: flex; align-items: center; padding: 0 6px 0 10px; gap: 6px; height: 36px; }
+.menu-zoom > span:not(.menu-icon) { flex: 1; }
+.menu-zoom .menu-icon { width: 16px; }
+.menu-sep { height: 1px; background: var(--border); margin: 4px 8px; }
+.pop-head { display: flex; align-items: center; color: var(--accent); gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.pop-head > svg { flex: none; width: 34px; height: 34px; padding: 8px; border-radius: var(--r-md); background: var(--accent-soft); }
+
+/* ---------- Befehlspalette ---------- */
+.palette-backdrop { position: fixed; inset: 0; z-index: 100; display: flex; justify-content: center; align-items: flex-start; animation: fade var(--dur) var(--ease); padding-top: 14vh; background: color-mix(in srgb, var(--bg) 55%, transparent); backdrop-filter: blur(2px); }
+.palette { width: min(640px, calc(100vw - 32px)); max-height: 70vh; display: flex; flex-direction: column; border-radius: var(--r-xl); box-shadow: var(--shadow-pop), 0 0 calc(var(--glow) * 2) var(--accent-ring); padding: 6px; }
+.palette-input { display: flex; align-items: center; gap: 10px; padding: 0 10px 0 14px; border-bottom: 1px solid var(--border); color: var(--text-3); }
+.palette-input input { flex: 1; min-width: 0; height: 48px; padding: 0; border: 0; background: transparent; outline: none; font-size: var(--fs-lg); color: var(--text); }
+.palette-input input:focus-visible { box-shadow: none; }
+.palette-list { overflow-y: auto; padding-top: 6px; padding: 6px 0; }
+.palette-foot { display: flex; flex-wrap: wrap; gap: var(--sp-4); padding: 8px 12px 4px; border-top: 1px solid var(--border); font-size: var(--fs-xs); color: var(--text-3); }
+.palette-foot span { display: inline-flex; align-items: center; gap: 4px; }
+
+/* R4: command palette – quieter kind column */
+.palette-kind { flex: none; color: var(--text-3); font-size: var(--fs-xs); text-transform: none; letter-spacing: 0; font-weight: 500; min-width: 64px; }
+.palette-kind.k-command { color: var(--text-3); }
+.palette-kind.k-search { display: inline-flex; align-items: center; justify-content: center; }
+.pop-hub { width: 352px; }
+.hub { display: flex; flex-direction: column; gap: 6px; }
+.hub-search { width: 100%; }
+.hub-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.hub-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; height: 72px; padding: 8px 4px; border: 0; border-radius: var(--r-md); background: transparent; color: var(--text); font-size: var(--fs-xs); line-height: 1.2; text-align: center; cursor: pointer; }
+.hub-tile:hover, .hub-tile:focus-visible { background: var(--hover); }
+.hub-tile.on { background: var(--accent-soft); color: var(--accent); }
+.hub-tile span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.hub-tile { position: relative; }
+.hub-tile svg { flex: none; }
+.hub-tile.live::after { content: ""; position: absolute; top: 12px; right: calc(50% - 16px); width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--glass-solid, var(--surface-1)); }
+.menu-sep.labeled { height: auto; margin: 6px 0 2px; padding: 8px 10px 4px; background: none; border-top: 1px solid var(--border); font-size: var(--fs-2xs); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-3); }
+.hub-empty { padding: 8px; }
+.pop-toolbar { width: 360px; padding: 12px; }
+.pop-toolbar .row-end { margin-top: 12px; }
+.menu-title { padding: 4px 8px 6px; font-size: var(--fs-xs); font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: .04em; }
+.menu-item:disabled { opacity: .45; cursor: default; }
