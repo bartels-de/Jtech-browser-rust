@@ -3,7 +3,7 @@
 All notable changes to JTech Browser. The in-app page `jtech://changelog` shows the same notes
 (localized, from `src/data/changelog.ts`).
 
-## [Unreleased]
+## [0.1.13]
 
 - Own context menu on web pages: the native WebView2 menu now carries JTech actions.
   - Links: open in new tab, open in background tab, open in Peek, open in split view, copy link address, copy link as Markdown, add link to bookmarks.

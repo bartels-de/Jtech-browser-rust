@@ -13,7 +13,7 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: "0.1.13", date: null,
+    version: "0.1.13", date: "2026-11-09",
     notes: {
       de: [
         "Eigenes Kontextmenü auf Webseiten: Links in neuem Tab, im Hintergrund, in Peek oder in der geteilten Ansicht öffnen, als Markdown kopieren und als Lesezeichen speichern.",
