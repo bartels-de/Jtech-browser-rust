@@ -61,7 +61,8 @@ export interface Store {
   /** Vollbild (Seiten-Element oder F11): UI-Chrome ausblenden, Content deckt das Fenster */
   fullscreen: boolean;
   setSidebarResizing(v: boolean): void;
-  newTab(input?: string): Promise<string | undefined>;
+  /** background = open without switching to it (page context menu) */
+  newTab(input?: string, opts?: { background?: boolean }): Promise<string | undefined>;
   closeTab(id: string, silent?: boolean): void;
   closeOtherTabs(id: string): void;
   switchTab(id: string): void;
@@ -147,6 +148,8 @@ export interface Store {
   setSplitDragging(v: boolean): void;
   /** Open split view: active tab + `withId` (default: last used other tab, else a new tab) */
   openSplit(withId?: string): Promise<void>;
+  /** Page context menu: open `url` (default: start page) next to tab `fromId` (default: active tab) in split view */
+  openInSplit(url?: string, fromId?: string): Promise<void>;
   closeSplit(): void;
   toggleSplit(): void;
   swapSplit(): void;
@@ -525,12 +528,13 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     else if (p) setOrphanPage(p);
   }, []);
 
-  const newTab = useCallback(async (input?: string) => {
+  const newTab = useCallback(async (input?: string, opts?: { background?: boolean }) => {
     setPopover(null);
     const target = resolveInput(input ?? settings.startPage, settings.searchEngine, settings.bangs) ?? { kind: "internal" as const, page: "newtab" as InternalPage };
     const url = target.kind === "web" ? target.url : "about:blank";
     const opener = tabsRef.current.find(t => t.active)?.id;
-    const id = await call<string>("new_tab", { url }, onError);
+    const background = opts?.background === true;
+    const id = await call<string>("new_tab", { url, background }, onError);
     if (id && opener) {
       openerRef.current[id] = opener;
       if (settingsRef.current.newTabNextToCurrent !== false) {
@@ -548,7 +552,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
       }
     }
     if (id && target.kind === "internal" && target.page !== "newtab") setPage(id, target.page);
-    if (target.kind === "internal" && target.page === "newtab") setFocusTick(x => x + 1);
+    if (target.kind === "internal" && target.page === "newtab" && !background) setFocusTick(x => x + 1);
     return id;
   }, [settings.startPage, settings.searchEngine, settings.bangs, onError, setPage]);
 
@@ -838,6 +842,15 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     // Focus the newly added pane
     call("switch_tab", { id: other }, onError);
   }, [newTab, onError]);
+  const openInSplit = useCallback(async (url?: string, fromId?: string) => {
+    setPopover(null);
+    const cur = (fromId ? tabsRef.current.find(t => t.id === fromId) : undefined) ?? tabsRef.current.find(t => t.active);
+    if (!cur) { await newTab(url); return; }
+    const other = await newTab(url, { background: true });
+    if (!other) return;
+    setSplit({ a: cur.id, b: other });
+    call("switch_tab", { id: other }, onError);
+  }, [newTab, onError]);
   const closeSplit = useCallback(() => setSplit(null), []);
   const toggleSplit = useCallback(() => {
     if (splitRef.current && uiTabsRef.current.some(t => t.active && (t.id === splitRef.current!.a || t.id === splitRef.current!.b))) setSplit(null);
@@ -1006,7 +1019,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     zoomBySite, zoomStep, resetSiteZoom, find, openFind, closeFind, findRun, print,
     sleepTab, sleepInactiveTabs, runShortcut: (k: string) => shortcutRef.current(k),
     paletteMode, openPalette, groups, createGroup, setTabGroup, updateGroup, removeGroup, groupTabsByDomain, groupInternalTabs,
-    split, splitActive, splitRatio, splitVertical, splitDragging, setSplitDragging, openSplit, closeSplit, toggleSplit, swapSplit, toggleSplitOrientation, setSplitRatio,
+    split, splitActive, splitRatio, splitVertical, splitDragging, setSplitDragging, openSplit, openInSplit, closeSplit, toggleSplit, swapSplit, toggleSplitOrientation, setSplitRatio,
     overlay, setOverlay, closedTabs,
     toast, showToast, dismissToast, updateSettingsUndoable, applyPreset,
     reopenClosedTab: () => { const [u, ...rest] = closedTabs; if (u) { setClosedTabs(rest); newTab(u); } else setStatus(tr("st.noClosedTab")); },

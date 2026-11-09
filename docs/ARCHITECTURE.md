@@ -54,8 +54,8 @@ never polls for normal operation.
 For every content webview the backend registers WebView2 event handlers through `webview2-com`:
 navigation start/completion, source and title changes, history state (back/forward
 availability), process failures, new-window requests, downloads, permission requests, zoom
-changes, accelerator keys and `DOMContentLoaded`. Event tokens are stored per tab and removed
-when the tab is closed.
+changes, accelerator keys, `DOMContentLoaded` and context menu requests. Event tokens are stored
+per tab and removed when the tab is closed.
 
 - **New windows / popups:** user-initiated `http`/`https` popups open as a new tab; others are
   blocked.
@@ -123,6 +123,30 @@ small, audited script (`src-tauri/src/pagebridge.rs`, `BRIDGE_TEMPLATE`):
 - The radial/peek triggers can be switched off in the settings (`set_bridge_options`); Rust then
   ignores the messages and the script stops preventing Shift+click.
 
+### Page context menu
+
+React cannot draw over a native page webview, so the JTech context menu is the native WebView2 menu,
+customised per request (`src-tauri/src/ctxmenu.rs`, `ICoreWebView2_11::ContextMenuRequested`, WebView2
+Runtime 1.0.1185 or newer). It is registered in `attach_handlers` (new, popup, restored, woken and
+split-view tabs) and on the peek webview; the token is removed with the other tab tokens.
+
+- The target (`ICoreWebView2ContextMenuTarget`: kind, editable, link/source/page URI, link text, selection)
+  is read by WebView2, not reported by page scripts. URLs pass `pagebridge::web_url` (absolute
+  `http(s)`, no credentials); text is stripped of control characters and size-limited.
+- Built-in items stay (navigation, clipboard, spell check, save/copy image, copy link address, save as,
+  print); a small drop list removes clutter (QR code, share, web capture, open link in new window …),
+  "Inspect" only stays with developer tools on. JTech items are created with
+  `ICoreWebView2Environment9::CreateContextMenuItem`; more than seven go into one "JTech" submenu.
+  The item lists per target are a pure function (`plan`, unit-tested).
+- A chosen item copies text with the Win32 clipboard (link as Markdown, plain text, image/media
+  address), runs the fixed picture-in-picture script, or emits `page-menu` (`tabId`, `action`, `url`,
+  `text`) to the UI, which checks the URL again and opens tabs (also background tabs:
+  `new_tab { background }`), Peek, split view, bookmarks or a search. Per-menu item handlers live with
+  the menu items and are released when the menu closes.
+- `set_context_menu` receives the setting (`standardContextMenu`: WebView2 default menu) and the
+  localized labels from the UI (fixed key allowlist, length and character checks), so Rust needs no
+  translations of its own. In the peek panel "Open in Peek" and "Mute tab" are left out.
+
 ### Live search suggestions
 
 `search_suggest` (`src-tauri/src/suggest.rs`) fetches suggestions for the address bar with the existing
@@ -182,6 +206,7 @@ WebView2 cookie manager and `ClearBrowsingData`.
 | `src-tauri/src/privacy.rs` | Statistics, cookies, browsing data, site permissions |
 | `src-tauri/src/storage.rs` | SQLite storage |
 | `src-tauri/src/uifx.rs` | Custom shortcuts and optional cursor effects on web pages |
+| `src-tauri/src/ctxmenu.rs` | Page context menu (customised native WebView2 menu) |
 | `src/store/` | Browser state (React context) and storage access |
 | `src/components/` | Sidebar, toolbar, popovers, bars, editors |
 | `src/pages/` | Internal `jtech://` pages |

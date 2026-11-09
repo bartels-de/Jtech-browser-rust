@@ -72,6 +72,8 @@ export interface Settings {
   liveSuggest?: boolean;
   /** Settings page: show all options (expert) instead of the most important ones */
   settingsExpert?: boolean;
+  /** Right-click on web pages shows the standard WebView2 menu instead of the JTech menu (default false) */
+  standardContextMenu?: boolean;
   /** Toolbar buttons in order (normalized by normalizeToolbar) */
   toolbar?: ToolbarItem[];
 }

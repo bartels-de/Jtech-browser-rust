@@ -3,6 +3,18 @@
 All notable changes to JTech Browser. The in-app page `jtech://changelog` shows the same notes
 (localized, from `src/data/changelog.ts`).
 
+## [Unreleased]
+
+- Own context menu on web pages: the native WebView2 menu now carries JTech actions.
+  - Links: open in new tab, open in background tab, open in Peek, open in split view, copy link address, copy link as Markdown, add link to bookmarks.
+  - Images: open image in new tab, copy image address, save image.
+  - Selected text: search with the selected search engine, copy, copy as plain text.
+  - Video/audio: picture-in-picture, mute tab, copy media address.
+  - Page: back, forward, reload, add page to bookmarks, split view with a new tab, save as and print. "Inspect" only appears with developer tools enabled.
+  - Input fields keep cut, copy, paste, undo, redo, select all and spell check suggestions.
+- The menu also works in the Peek window (without "Open in Peek") and in split-view panes; labels follow the UI language.
+- New setting (Settings › Radial menu & peek) to switch back to the standard WebView2 menu.
+
 ## [0.1.12]
 
 - Hub menu: one entry point for bookmarks, history, downloads, library, market, extensions, audio, performance, themes, privacy, changelog and settings, with a filter field.

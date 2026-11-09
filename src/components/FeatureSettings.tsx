@@ -63,6 +63,11 @@ export function RadialSettings() {
         <Switch label={t("peek.enable")} checked={b.settings.peekEnabled !== false} onChange={v => b.updateSettings({ peekEnabled: v })} />
       </Row>
     </Group>
+    <Group title={t("cm.group")} desc={t("cm.desc")}>
+      <Row title={t("cm.standard")} desc={t("cm.standardDesc")} keywords="Kontextmenü Rechtsklick Context menu right-click WebView2">
+        <Switch label={t("cm.standard")} checked={b.settings.standardContextMenu === true} onChange={v => b.updateSettings({ standardContextMenu: v })} />
+      </Row>
+    </Group>
   </>;
 }
 

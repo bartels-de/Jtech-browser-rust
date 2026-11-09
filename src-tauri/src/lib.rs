@@ -27,6 +27,8 @@ mod extensions;
 mod pagebridge;
 mod peek;
 mod suggest;
+// Own context menu on web pages (customised native WebView2 menu).
+mod ctxmenu;
 
 thread_local! { static ENGINE: RefCell<Option<Engine>> = RefCell::new(None); }
 static BLOCKED: AtomicU64 = AtomicU64::new(0);
@@ -479,7 +481,10 @@ fn active_tab(app: &AppHandle) -> Option<(String, Tab)> {
 
 // ---------- Tabs ----------
 
-fn create_tab(app: &AppHandle, raw_url: &str) -> Result<String, String> {
+fn create_tab(app: &AppHandle, raw_url: &str) -> Result<String, String> { create_tab_with(app, raw_url, true) }
+
+/// `activate = false`: background tab (context menu "Open link in background tab").
+fn create_tab_with(app: &AppHandle, raw_url: &str, activate: bool) -> Result<String, String> {
     let parsed = normalize_url(raw_url)?;
     let id = {
         let state = app.state::<Mutex<TabManager>>();
@@ -488,13 +493,14 @@ fn create_tab(app: &AppHandle, raw_url: &str) -> Result<String, String> {
         m.counter += 1;
         format!("content-{}", m.counter)
     }; // Lock frei
-    spawn_webview(app, &id, &id, parsed, String::new())?;
+    spawn_webview(app, &id, &id, parsed, String::new(), activate)?;
     Ok(id)
 }
 
 /// Runde 3: erzeugt die Content-Webview fuer Tab `id` – neu oder beim Aufwecken eines schlafenden
 /// Tabs. `label` ist das (eindeutige) Tauri-Webview-Label; die Tab-ID bleibt dabei stabil.
-fn spawn_webview(app: &AppHandle, id: &str, label: &str, parsed: tauri::Url, title: String) -> Result<(), String> {
+/// `activate = false`: Hintergrund-Tab (aktiver Tab bleibt, Webview bleibt versteckt).
+fn spawn_webview(app: &AppHandle, id: &str, label: &str, parsed: tauri::Url, title: String, activate: bool) -> Result<(), String> {
     let id = id.to_string();
     let (window, top_h, sb_w) = {
         let state = app.state::<Mutex<TabManager>>();
@@ -513,6 +519,7 @@ fn spawn_webview(app: &AppHandle, id: &str, label: &str, parsed: tauri::Url, tit
         LogicalPosition::new(b.x, b.y),
         LogicalSize::new(b.w, b.h),
     ).map_err(|e| format!("add_child: {e}"))?;
+    if !activate { let _ = webview.hide(); }
 
     let tab = Tab {
         webview: webview.clone(),
@@ -531,8 +538,10 @@ fn spawn_webview(app: &AppHandle, id: &str, label: &str, parsed: tauri::Url, tit
         m.tabs.insert(id.clone(), tab.clone());
         if !m.order.contains(&id) { m.order.push(id.clone()); }
         m.sleeping.remove(&id);
-        m.active = Some(id.clone());
-        m.content_visible = true;
+        if activate || m.active.is_none() {
+            m.active = Some(id.clone());
+            m.content_visible = true;
+        }
     }
 
     #[cfg(windows)]
@@ -584,7 +593,7 @@ fn wake_tab(app: &AppHandle, id: &str) -> Result<(), String> {
     };
     let parsed = normalize_url(&info.url).or_else(|_| normalize_url(START_URL))?;
     tracing::info!(tab = id, "wecke Tab auf: {parsed}");
-    let r = spawn_webview(app, id, &label, parsed, info.title.clone());
+    let r = spawn_webview(app, id, &label, parsed, info.title.clone(), true);
     if r.is_err() {
         let state = app.state::<Mutex<TabManager>>();
         let mut m = lock(&state);
@@ -660,8 +669,8 @@ fn list_tabs(app: AppHandle) -> Vec<TabInfo> { snapshot_tabs(&app) }
 
 /// async: Webview-Erzeugung in einem synchronen Command kann unter Windows deadlocken.
 #[tauri::command]
-async fn new_tab(app: AppHandle, url: String) -> Result<String, String> {
-    create_tab(&app, &url).inspect_err(|e| report_error(&app, "", "new_tab", e))
+async fn new_tab(app: AppHandle, url: String, background: Option<bool>) -> Result<String, String> {
+    create_tab_with(&app, &url, background != Some(true)).inspect_err(|e| report_error(&app, "", "new_tab", e))
 }
 
 #[tauri::command]
@@ -1582,6 +1591,20 @@ unsafe fn attach_handlers(pwv: &tauri::webview::PlatformWebview, app: &AppHandle
         }
     }
 
+    // Own JTech context menu: the native WebView2 menu is customised per request (ctxmenu.rs).
+    // Covers new, popup, restored, woken and split-view tabs (all created by spawn_webview).
+    {
+        let mut hwnd = windows::Win32::Foundation::HWND::default();
+        if let Err(e) = unsafe { controller.ParentWindow(&mut hwnd) } { tracing::warn!(tab = tab_id, "ParentWindow: {e}"); }
+        let src = ctxmenu::Source { tab_id: tab_id.to_string(), peek: false, muted: Some(tab.muted.clone()) };
+        let r = pwv.environment().cast::<SYS::ICoreWebView2Environment>().map_err(|e| format!("cast Environment: {e}"))
+            .and_then(|env| unsafe { ctxmenu::attach(&core, &env, hwnd, app, src) });
+        match r {
+            Ok(tok) => push("ContextMenuRequested", tok),
+            Err(e) => tracing::warn!(tab = tab_id, "Kontextmenue: {e}"),
+        }
+    }
+
     // Runde 4: Website-Berechtigungen (eigene Abfrage-Leiste) + vorgemerktes Loeschen beim Start.
     match unsafe { privacy::attach_permissions(&core, app, tab_id) } {
         Ok(tok) => push("PermissionRequested", tok),
@@ -1735,6 +1758,7 @@ unsafe fn detach_handlers(pwv: &tauri::webview::PlatformWebview, tab_id: &str, t
                 "DownloadStarting" => core.cast::<SYS::ICoreWebView2_4>().and_then(|c| c.remove_DownloadStarting(tok)),
                 "PermissionRequested" => core.remove_PermissionRequested(tok),
                 "WebMessageReceived" => core.remove_WebMessageReceived(tok),
+                "ContextMenuRequested" => ctxmenu::detach(&core, tok),
                 _ => Ok(()),
             }
         };
@@ -1930,11 +1954,13 @@ fn media_control(app: AppHandle, id: String, action: String, value: Option<f64>)
     tab.webview.eval(&js).map_err(|e| e.to_string())
 }
 
+/// Fixed picture-in-picture toggle script (toolbar command and page context menu).
+const PIP_JS: &str = "(function(){try{var v=document.querySelector('video'); if(!v) return 'no-video'; if(document.pictureInPictureElement){document.exitPictureInPicture(); return 'exit';} v.requestPictureInPicture().catch(function(e){console.error('PiP',e);}); return 'ok';}catch(e){return 'err:'+e;}})()";
+
 #[tauri::command]
 fn pip_active(app: AppHandle) -> Result<(), String> {
     let Some((_id, tab)) = active_tab(&app) else { return Err("kein aktiver Tab".into()); };
-    let js = "(function(){try{var v=document.querySelector('video'); if(!v) return 'no-video'; if(document.pictureInPictureElement){document.exitPictureInPicture(); return 'exit';} v.requestPictureInPicture().catch(function(e){console.error('PiP',e);}); return 'ok';}catch(e){return 'err:'+e;}})()";
-    tab.webview.eval(js).map_err(|e| e.to_string())
+    tab.webview.eval(PIP_JS).map_err(|e| e.to_string())
 }
 
 pub fn run() {
@@ -1950,7 +1976,7 @@ pub fn run() {
             privacy::resolve_permission, privacy::list_permissions, privacy::set_permission,
             uifx::set_shortcuts, uifx::set_page_fx,
             extensions::ext_list, extensions::ext_diagnostics, extensions::ext_toggle, extensions::ext_site_toggle, extensions::market_fetch, prepare_update_exit, get_performance_stats, pip_active,
-            set_tab_memory_target, suspend_tab, media_control, pagebridge::set_bridge_options, peek::peek_open, peek::peek_bounds, peek::peek_close, suggest::search_suggest])
+            set_tab_memory_target, suspend_tab, media_control, pagebridge::set_bridge_options, peek::peek_open, peek::peek_bounds, peek::peek_close, suggest::search_suggest, ctxmenu::set_context_menu])
         .setup(|app| {
             // Runde 4: SQLite-Persistenz, Statistik, Filterlisten (Cache + Hintergrund-Update).
             let data_dir = app.path().app_data_dir().unwrap_or_else(|_| std::env::temp_dir().join("jtech-browser"));

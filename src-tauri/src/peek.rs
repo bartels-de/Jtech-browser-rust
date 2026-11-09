@@ -4,7 +4,7 @@
 //!
 //! The peek webview is a plain website view: no Tauri IPC (remote URL, no capability), no page
 //! bridge, no extension scripts and no ad blocking. Esc (AcceleratorKeyPressed) closes it,
-//! popups open as normal tabs.
+//! popups open as normal tabs. It gets the JTech context menu without "Open in Peek".
 
 use serde::Serialize;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -129,6 +129,16 @@ unsafe fn attach(pwv: &tauri::webview::PlatformWebview, app: &AppHandle) {
             Ok(())
         }));
         if let Ok(h) = h.cast::<SYS::ICoreWebView2AcceleratorKeyPressedEventHandler>() { let _ = unsafe { ctl.add_AcceleratorKeyPressed(&h, &mut tok) }; }
+    }
+    // JTech context menu without "Open in Peek" / "Mute tab". The peek webview is closed as a whole,
+    // so its tokens are not kept (same as the handlers above).
+    {
+        let mut hwnd = windows::Win32::Foundation::HWND::default();
+        let _ = unsafe { ctl.ParentWindow(&mut hwnd) };
+        let src = crate::ctxmenu::Source { tab_id: "peek".into(), peek: true, muted: None };
+        let r = pwv.environment().cast::<SYS::ICoreWebView2Environment>().map_err(|e| e.to_string())
+            .and_then(|env| unsafe { crate::ctxmenu::attach(&core, &env, hwnd, app, src) });
+        if let Err(e) = r { tracing::warn!("peek Kontextmenue: {e}"); }
     }
     crate::apply_devtools(&core, crate::DEVTOOLS.load(Ordering::Relaxed));
 }

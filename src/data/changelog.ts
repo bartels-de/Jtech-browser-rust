@@ -13,6 +13,23 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.1.13", date: null,
+    notes: {
+      de: [
+        "Eigenes Kontextmenü auf Webseiten: Links in neuem Tab, im Hintergrund, in Peek oder in der geteilten Ansicht öffnen, als Markdown kopieren und als Lesezeichen speichern.",
+        "Bilder in neuem Tab öffnen, markierten Text mit der eigenen Suchmaschine suchen oder als reinen Text kopieren, bei Videos Bild-im-Bild, Tab stummschalten und Medienadresse kopieren.",
+        "Auf freier Seitenfläche: Seite als Lesezeichen speichern und geteilte Ansicht mit neuem Tab. Kopieren, Einfügen, Rechtschreibung, Speichern und Drucken bleiben erhalten; „Untersuchen“ nur mit aktivierten Entwicklertools.",
+        "Gilt auch im Peek-Fenster; unter Einstellungen › Radialmenü & Peek lässt sich wieder das Standardmenü von WebView2 wählen.",
+      ],
+      en: [
+        "Own context menu on web pages: open links in a new tab, in the background, in Peek or in split view, copy them as Markdown and add them to bookmarks.",
+        "Open images in a new tab, search selected text with your search engine or copy it as plain text; for videos picture-in-picture, mute tab and copy media address.",
+        "On empty page space: add the page to bookmarks and split view with a new tab. Copy, paste, spell check, save and print stay available; “Inspect” only with developer tools enabled.",
+        "Also works in the Peek window; Settings › Radial menu & peek can switch back to the standard WebView2 menu.",
+      ],
+    },
+  },
+  {
     version: "0.1.12", date: "2026-11-09",
     notes: {
       de: [

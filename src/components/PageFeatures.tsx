@@ -4,7 +4,8 @@ import { useBrowser } from "../store/BrowserStore";
 import { call, siteOf, type TabEvent } from "../lib/ipc";
 import { applyMediaEvent, mediaStore, setThrottle, throttleStore, type BridgeEvent } from "../lib/bridge";
 import { COMMAND_BY_ID } from "../lib/commands";
-import { isWebUrl } from "../lib/urls";
+import { SEARCH_ENGINES, isWebUrl } from "../lib/urls";
+import { t as tr, useT, type TKey } from "../i18n";
 import { normalizeLimits, normalizeRadial } from "../store/types";
 import { openRadialAt } from "./RadialMenu";
 import { openPeek } from "./PeekPanel";
@@ -35,6 +36,60 @@ function usePageBridge() {
     const live = new Set(ids.split(","));
     mediaStore.set(m => (Object.keys(m).some(k => !live.has(k)) ? Object.fromEntries(Object.entries(m).filter(([k]) => live.has(k))) : m));
   }, [ids]);
+}
+
+/** Label keys of the native page context menu (src-tauri/src/ctxmenu.rs, DEFAULT_LABELS) -> i18n "cm.<key>". */
+const MENU_LABELS = ["newTab", "backgroundTab", "peek", "split", "copyLink", "copyMarkdown", "bookmarkLink", "openImage", "copyImage",
+  "search", "copyPlain", "pip", "mute", "unmute", "copyMedia", "bookmarkPage", "splitNew", "more"] as const;
+
+/** Payload of the "page-menu" event (JTech item chosen in the native page context menu). */
+interface PageMenuEvent { tabId: string; action: string; url?: string | null; text?: string | null }
+
+/**
+ * Page context menu: Rust customises the native WebView2 menu (native webviews lie above React).
+ * The UI pushes the setting and the localized labels and runs the chosen JTech actions.
+ */
+function usePageMenu() {
+  const b = useBrowser();
+  const { t, lang } = useT();
+  const enabled = b.settings.standardContextMenu !== true;
+  const engine = (SEARCH_ENGINES[b.settings.searchEngine] ?? SEARCH_ENGINES.duckduckgo).name;
+  useEffect(() => {
+    const labels = Object.fromEntries(MENU_LABELS.map(k => [k, k === "search" ? t("cm.search", { engine }) : t(`cm.${k}` as TKey)]));
+    call("set_context_menu", { enabled, labels }, m => console.warn(m));
+  }, [enabled, engine, lang, t]);
+  const ref = useRef(b);
+  ref.current = b;
+  useEffect(() => {
+    const un = listen<PageMenuEvent>("page-menu", ({ payload: ev }) => {
+      const b = ref.current;
+      // Rust only sends absolute http(s) URLs; checked again here before anything is opened.
+      const url = typeof ev.url === "string" && isWebUrl(ev.url) && ev.url.length <= 4096 ? ev.url : null;
+      const tab = b.tabs.find(x => x.id === ev.tabId);
+      const from = tab?.id;
+      switch (ev.action) {
+        case "new-tab": case "open-image": if (url) void b.newTab(url); break;
+        case "background-tab": if (url) void b.newTab(url, { background: true }); break;
+        case "peek": if (url) openPeek(url); break;
+        case "split": if (url) void b.openInSplit(url, from); break;
+        case "split-new": void b.openInSplit(undefined, from); break;
+        case "bookmark-link": case "bookmark-page": {
+          if (!url) break;
+          const title = (ev.action === "bookmark-page" && tab?.url === url ? tab.title : ev.text ?? "").trim() || url;
+          if (!b.isBookmarked(url)) { b.addBookmark(url, title); b.showToast(tr("cm.bookmarked", { name: title.slice(0, 40) })); }
+          break;
+        }
+        case "search": {
+          const q = (ev.text ?? "").trim().slice(0, 1000);
+          const se = SEARCH_ENGINES[b.settings.searchEngine] ?? SEARCH_ENGINES.duckduckgo;
+          if (q) void b.newTab(se.url + encodeURIComponent(q));
+          break;
+        }
+        case "mute": if (tab && !tab.internal) b.setTabMuted(tab.id, !tab.muted); break;
+      }
+    });
+    return () => { un.then(f => f()); };
+  }, []);
 }
 
 /** Audio hub: sites on the always-mute list are muted when a tab shows them (once per tab + site). */
@@ -144,6 +199,7 @@ function useResourceLimits() {
 /** Mounted once in the shell. */
 export function PageFeatures() {
   usePageBridge();
+  usePageMenu();
   useAudioRules();
   useResourceLimits();
   return null;
