@@ -91,32 +91,48 @@ the `files` hashes (LF line endings, as stored in the repository).
 ## Twitch Ad Blocker (`jtech.twitch-adblock`)
 
 - Content script at `document_start` in the page context. It wraps `fetch` in the page and, by
-  wrapping the `Worker` constructor, inside the video player worker.
-- Media playlists from Twitch (`*.ttvnw.net`) are checked for ad markers (stitched-ad / SCTE-35
-  date ranges, `X-TV-TWITCH-AD`, non-`live` segment titles such as "Amazon").
-- While an ad is running, the script requests a playback token for another player type
-  and platform (`embed`/web, `site`/ios, `popout`, `autoplay`/android, `picture-by-picture`)
-  from Twitch's own GQL endpoint and serves that variant's playlist if it is ad-free (also for
-  mid-rolls; backups are cached per channel/resolution and renewed after 8 minutes). Otherwise
-  the ad segments are removed; `MEDIA-SEQUENCE` and `DISCONTINUITY` are kept consistent, and a
-  playlist consisting only of ads is replaced by the last clean one.
-- The worker hook (since 1.1.0) loads the worker script synchronously and prepends the hook in a
-  new blob worker (fallback `importScripts`). Module workers are not hooked.
+  wrapping the `Worker` constructor, inside the video player worker (worker script loaded
+  synchronously, hook prepended in a new blob worker; module workers are not hooked).
+- Media playlists from Twitch (`*.ttvnw.net`) are checked for ad markers (`stitched` date ranges,
+  `X-TV-TWITCH-AD`, SCTE-35, segments without the `live` title). `MIDROLL` is logged separately.
+- Page side (since 1.3.0): Twitch's own `PlaybackAccessToken` request is switched to
+  `playerType: "popout"` (picture-by-picture stays untouched), `parent_domains` is removed from
+  the usher URL, and the headers of Twitch's GQL requests (`Client-ID`, `X-Device-Id`,
+  `Client-Version`, `Client-Session-Id`, `Client-Integrity`, `Authorization` when logged in) and
+  the persisted-query hash are remembered and passed to the worker.
+- While an ad runs, a token is requested per backup player type in the order `embed`, `popout`,
+  `site`, `mobile_web`, `autoplay` (persisted query `PlaybackAccessToken`, `platform` = `web`,
+  `android` only for `autoplay`). GQL requests from the worker are relayed through the page with
+  those headers. The backup usher URL is the original one (all parameters kept), only
+  `sig`/`token` are replaced. The first ad-free variant (same resolution/frame rate, else closest)
+  is served. If none is ad-free, the `embed` playlist (or the original) is stripped of ad
+  segments; `MEDIA-SEQUENCE`/`DISCONTINUITY` stay consistent, prefetch hints are dropped during
+  ads, and an ad-only playlist is replaced by the last clean one. A backup that still carried ads
+  gets a new token after 10 s at the earliest; tokens are renewed after 8 minutes.
+- After an ad break the player is reloaded once through its React state
+  (`setSrc({ isNewMediaPlayerInstance, refreshAccessToken })`), not while paused, at most every
+  3 s. Disable with `localStorage.setItem('jtech-twitch-noreload','1')`.
 - Debug: `localStorage.setItem('jtech-twitch-debug','1')`, reload; logs use the prefix
-  `[JTech TwitchAB]` (page and worker). Counter: `window.__jtechTwitchStats`.
+  `[JTech TwitchAB]` (page and `[worker]`). Counter: `window.__jtechTwitchStats`
+  (`ads`, `swaps`, `stripped`, `tokenFail`, `reloads`).
 - `rules.txt` blocks Amazon ad system and Twitch ad endpoints on Twitch pages.
-- No third-party proxy is used.
+- No third-party proxy is used. Credits and licenses: `NOTICE` (TwitchAdSolutions/vaft, MIT;
+  TTV-AB by GosuDRM, MIT with attribution).
+- Offline test: `node scripts/test-twitch-adblock.mjs src-tauri/resources/extensions/jtech.twitch-adblock/content.js`
+  (v2 usher master, preroll with backup swap, midroll strip, ad-only playlist, token rewrite, headers).
 
 ### Known limits
 
 - Twitch changes its player regularly; the method can stop working until the extension is updated
-  with a release.
-- The backup stream can have a lower quality or a short delay; when segments are stripped, the
-  player can stall briefly or show a "commercial break" screen.
+  with a release. The persisted-query hash, the React fields used for the reload (`setSrc`,
+  `mediaPlayerInstance`) and the set of ad-free player types are the most likely to change.
+- Without a `Client-Integrity` header (Twitch sends it only in some sessions) token requests can
+  fail; `tokenFail` in the counter and `backup ... failed: token ...` in the log show this.
+- Twitch serves ads on all player types for some channels/regions; then only stripping is left,
+  which can show a short freeze or the "commercial break" screen until the reload.
+- The backup stream can have a lower quality (`autoplay` = 360p) or a short delay.
 - Since 1.2.0 / browser 0.1.9 tabs start on about:blank and load their URL only after all content
   scripts are registered (3 s fallback), so a directly opened stream is covered too.
-- 1.2.0 recognises the current usher endpoint `/api/v2/channel/hls/` (1.1.0 only matched
-  `/api/channel/hls/`, so no playlist was ever processed on current Twitch).
 - If a `<id>/` subfolder exists, stale legacy flat files (v0.1.4) with the same id are ignored.
 - VODs and clips are not handled.
 
@@ -125,9 +141,13 @@ the `files` hashes (LF line endings, as stored in the repository).
 1. Settings › About JTech › Advanced › "Enable developer tools".
 2. Open the Twitch tab, press F12 (or right-click › Inspect) and open the Console.
 3. Run `localStorage.setItem('jtech-twitch-debug','1')` and reload the page.
-4. Filter the console for `[JTech TwitchAB]` (page and `[worker]` lines). Expected: `1.2.0 active on`,
-   `worker hooked`, `usher master <channel>`, `master playlist`, then `ad detected` / `using ad-free backup`.
-   `window.__jtechTwitchStats` shows the counters. Turn off with `localStorage.removeItem('jtech-twitch-debug')`.
+4. Filter the console for `[JTech TwitchAB]`. Expected order: `1.3.0 active on`, `worker hooked`,
+   `page token playerType ... -> popout`, `gql headers updated`, `usher url seen <channel> v2`,
+   `master playlist`, then on an ad `ad detected on <channel> ... preroll|midroll`,
+   `token ok <type>` or `backup <type> failed: token ... status ...`, `backup <type> ad-free: yes|no`,
+   `using ad-free backup` or `no ad-free backup ..., fallback: strip`, and finally
+   `ad break over` / `player reloaded`.
+5. `window.__jtechTwitchStats` shows the counters. Turn off with `localStorage.removeItem('jtech-twitch-debug')`.
 
 ## YouTube Ad Blocker (`jtech.youtube-adblock`)
 

@@ -1,11 +1,11 @@
 {
   "id": "jtech.twitch-adblock",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "minBrowser": "0.1.3",
   "name": { "en": "Twitch Ad Blocker", "de": "Twitch Werbeblocker" },
   "description": {
-    "en": "Blocks video ads on Twitch by switching to an ad-free stream variant while an ad runs, and removes ad segments as a fallback.",
-    "de": "Blockiert Videowerbung auf Twitch, indem waehrend einer Werbung auf eine werbefreie Stream-Variante gewechselt wird; als Rueckfall werden Werbesegmente entfernt."
+    "en": "Blocks video ads on Twitch by switching to an ad-free stream variant while an ad runs, removes ad segments as a fallback and reloads the player after the break.",
+    "de": "Blockiert Videowerbung auf Twitch, indem waehrend einer Werbung auf eine werbefreie Stream-Variante gewechselt wird; als Rueckfall werden Werbesegmente entfernt und der Player nach der Pause neu geladen."
   },
   "author": "JTech",
   "icon": "icon.svg",
