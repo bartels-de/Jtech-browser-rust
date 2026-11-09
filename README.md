@@ -10,6 +10,8 @@ and a **React/TypeScript** UI, with network-level ad and tracker blocking powere
 
 > Status: early development (0.x). Windows only.
 
+Website: https://bartels-de.github.io/Jtech-browser-rust/
+
 ## Features
 
 - Vertical tab sidebar with pinning, drag & drop, tab groups, tab sleep for inactive tabs,

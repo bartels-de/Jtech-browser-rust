@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JTech Browser – open-source browser for Windows</title>
+  <meta name="description" content="JTech Browser is a free, open-source browser for Windows 10 and 11 with a vertical tab sidebar, split view, built-in ad and tracker blocking and a Design Studio for themes.">
+  <meta name="theme-color" content="#15181c" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f3f5f6" media="(prefers-color-scheme: light)">
+  <meta name="referrer" content="no-referrer">
+  <link rel="canonical" href="https://bartels-de.github.io/Jtech-browser-rust/">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" href="assets/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="JTech Browser">
+  <meta property="og:title" content="JTech Browser – open-source browser for Windows">
+  <meta property="og:description" content="A focused browser for Windows with tabs in a sidebar, split view and built-in ad and tracker blocking. Free and MIT licensed.">
+  <meta property="og:url" content="https://bartels-de.github.io/Jtech-browser-rust/">
+  <meta property="og:image" content="https://bartels-de.github.io/Jtech-browser-rust/assets/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="JTech Browser logo next to the browser's start page with the tab sidebar">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+  <a class="skip" href="#main" data-i18n="skip">Skip to content</a>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="i-download" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14"/></symbol>
+      <symbol id="i-code" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m8 7-5 5 5 5m8-10 5 5-5 5M14 4l-4 16"/></symbol>
+      <symbol id="i-sidebar" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16M5.5 8h1.5M5.5 11h1.5M5.5 14h1.5"/></g></symbol>
+      <symbol id="i-split" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M12 4v16"/></g></symbol>
+      <symbol id="i-command" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M9 9V6.5A2.5 2.5 0 1 0 6.5 9H9Zm0 0h6m-6 0v6m6-6V6.5A2.5 2.5 0 1 1 17.5 9H15Zm0 0v6m0 0h2.5a2.5 2.5 0 1 1-2.5 2.5V15Zm0 0H9m0 0v2.5A2.5 2.5 0 1 1 6.5 15H9Z"/></symbol>
+      <symbol id="i-sound" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 9.5h3l4.5-4v13L7 14.5H4zM15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M12 3 5 6v5.5c0 4.2 3 7.8 7 9.5 4-1.7 7-5.3 7-9.5V6zm-3 9 2.2 2.2L15.5 10"/></symbol>
+      <symbol id="i-puzzle" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M9 4h3v1.5a1.5 1.5 0 0 0 3 0V4h3a1 1 0 0 1 1 1v4h-1.5a1.5 1.5 0 0 0 0 3H19v7a1 1 0 0 1-1 1h-4v-1.5a1.5 1.5 0 0 0-3 0V20H6a1 1 0 0 1-1-1v-4h1.5a1.5 1.5 0 0 0 0-3H5V5a1 1 0 0 1 1-1z"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3z"/></g></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    </defs>
+  </svg>
+
+  <header class="rail">
+    <a class="brand" href="#top" aria-label="JTech Browser">
+      <img src="assets/jtech-logo.png" alt="" width="28" height="28">
+      <span>JTech Browser</span>
+    </a>
+    <nav aria-label="Sections" data-i18n-attr="aria-label:navLabel">
+      <ul class="tabs">
+        <li><a href="#top"><span class="fav" aria-hidden="true">J</span><span data-i18n="nav.overview">Overview</span></a></li>
+        <li><a href="#features"><span class="fav" aria-hidden="true">F</span><span data-i18n="nav.features">Features</span></a></li>
+        <li><a href="#blocking"><span class="fav" aria-hidden="true">B</span><span data-i18n="nav.blocking">Blocking and extensions</span></a></li>
+        <li><a href="#design"><span class="fav" aria-hidden="true">D</span><span data-i18n="nav.design">Design Studio</span></a></li>
+        <li><a href="#open"><span class="fav" aria-hidden="true">O</span><span data-i18n="nav.open">Open source and privacy</span></a></li>
+        <li><a href="#download"><span class="fav" aria-hidden="true">W</span><span data-i18n="nav.download">Download</span></a></li>
+      </ul>
+    </nav>
+    <div class="rail-foot">
+      <a class="rail-get" href="#download" aria-label="Go to download" data-i18n-attr="aria-label:railGetLabel">
+        <span class="ico" aria-hidden="true"><svg width="18" height="18"><use href="#i-download"/></svg></span>
+        <span class="txt"><span data-i18n="rail.get">Get it for Windows</span><small data-i18n="rail.free">Free and open source</small></span>
+      </a>
+      <div class="lang" role="group" aria-label="Language" data-i18n-attr="aria-label:langLabel">
+        <button type="button" data-lang="en" aria-pressed="true" lang="en">EN</button>
+        <button type="button" data-lang="de" aria-pressed="false" lang="de">DE</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- Hero -->
+    <section class="hero" id="top">
+      <div class="wrap">
+        <div class="hero-id">
+          <img src="assets/jtech-logo.png" alt="JTech Browser logo" width="64" height="64" data-i18n-attr="alt:logoAlt">
+          <span>JTech Browser</span>
+          <span class="badge" data-i18n="hero.badge">Early release</span>
+        </div>
+        <h1 data-i18n="hero.title">A focused browser for Windows, with tabs in a sidebar and ad blocking built in.</h1>
+        <p class="lead" data-i18n="hero.lead">JTech Browser is free and open source. It is built with Rust on Microsoft Edge WebView2, so websites render with the same engine as Edge, and it keeps itself up to date.</p>
+        <div class="ctas">
+          <a class="btn btn-primary js-download" href="https://github.com/bartels-de/Jtech-browser-rust/releases/latest">
+            <svg width="22" height="22" aria-hidden="true"><use href="#i-download"/></svg>
+            <span><span data-i18n="cta.download">Download for Windows</span><span class="sub js-version" data-i18n="cta.sub">Windows 10 and 11, 64-bit</span></span>
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/bartels-de/Jtech-browser-rust">
+            <svg width="20" height="20" aria-hidden="true"><use href="#i-code"/></svg>
+            <span data-i18n="cta.github">View on GitHub</span>
+          </a>
+        </div>
+        <p class="hero-note" data-i18n="hero.note">Version 0.x: new and still changing. Interface in English and German.</p>
+
+        <figure class="shot">
+          <picture>
+            <source srcset="assets/start-light.webp" media="(prefers-color-scheme: light)">
+            <img src="assets/start-dark.webp" width="1280" height="484" alt="JTech Browser start page: tabs listed in a sidebar on the left, a centred address bar on top, a large clock, a search field and quick links below it." data-i18n-attr="alt:heroAlt">
+          </picture>
+        </figure>
+        <p class="shot-cap" data-i18n="hero.cap">The start page with the tab sidebar. Preview of the current interface with sample content.</p>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section id="features" aria-labelledby="features-h">
+      <div class="wrap">
+        <div class="sec-head">
+          <h2 id="features-h" data-i18n="feat.title">Made for long sessions with many tabs</h2>
+          <p class="lead" data-i18n="feat.lead">The interface stays out of the way until you need it, and most of it can be reached without leaving the keyboard.</p>
+        </div>
+        <div class="groups">
+          <article class="group">
+            <div class="icon" aria-hidden="true"><svg width="22" height="22"><use href="#i-sidebar"/></svg></div>
+            <h3 data-i18n="g1.t">Tabs that stay in order</h3>
+            <p data-i18n="g1.p">Tabs run down a resizable sidebar instead of across the top. Pin the ones you always need, gather related ones in groups and drag them where you want. Idle tabs can sleep to free memory, and your session comes back after a restart.</p>
+          </article>
+          <article class="group">
+            <div class="icon" aria-hidden="true"><svg width="22" height="22"><use href="#i-split"/></svg></div>
+            <h3 data-i18n="g2.t">Two pages at once</h3>
+            <p data-i18n-html="g2.p">Split view shows two tabs side by side or stacked, with a divider you can move. <kbd>Shift</kbd> + click a link to open it in a Peek window over the current page, and close it again when you are done.</p>
+          </article>
+          <article class="group">
+            <div class="icon" aria-hidden="true"><svg width="22" height="22"><use href="#i-command"/></svg></div>
+            <h3 data-i18n="g3.t">Quick with keyboard and mouse</h3>
+            <p data-i18n-html="g3.p"><kbd>Ctrl</kbd> + <kbd>K</kbd> opens the command palette for tabs, pages and actions, and every shortcut can be reassigned. Hold the middle mouse button or press <kbd>Alt</kbd> + <kbd>Q</kbd> for a radial menu with four to eight commands of your choice.</p>
+          </article>
+          <article class="group">
+            <div class="icon" aria-hidden="true"><svg width="22" height="22"><use href="#i-sound"/></svg></div>
+            <h3 data-i18n="g4.t">Sound and resources under control</h3>
+            <p data-i18n="g4.p">The Audio Hub lists every tab that plays sound, with play and pause, volume per tab and sites that always start muted. Resource limits keep background tabs lean, with optional caps for total memory and CPU.</p>
+          </article>
+        </div>
+
+        <div class="pair">
+          <div>
+            <h3 data-i18n="pair.t">A mini player in the sidebar</h3>
+            <p data-i18n="pair.p">Music in a background tab shows up at the bottom of the sidebar with its title and controls, so you can pause or mute it without searching for the tab.</p>
+          </div>
+          <figure class="shot">
+            <img src="assets/audio-hub.webp" width="1280" height="480" loading="lazy" alt="The Audio Hub page listing a tab that plays music, with play, volume slider, mute and always mute controls, and the mini player at the bottom of the sidebar." data-i18n-attr="alt:audioAlt">
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- Blocking and extensions -->
+    <section id="blocking" aria-labelledby="blocking-h">
+      <div class="wrap">
+        <div class="sec-head">
+          <h2 id="blocking-h" data-i18n="blk.title">Ad and tracker blocking, with its limits stated</h2>
+          <p class="lead" data-i18n="blk.lead">Blocking is part of the browser, not an add-on. It removes a lot of clutter and tracking, but not everything, and we would rather say so up front.</p>
+        </div>
+        <div class="split">
+          <div class="panel">
+            <div class="panel-head">
+              <div class="icon" aria-hidden="true"><svg width="22" height="22"><use href="#i-shield"/></svg></div>
+              <h3 data-i18n="blk.t">Built-in blocker</h3>
+            </div>
+            <p data-i18n="blk.p1">Every request a page makes is checked in Rust with Brave's open-source adblock-rust engine. EasyList and EasyPrivacy are on by default; the uBlock filters, Peter Lowe's list and Fanboy's Annoyance list can be added. Lists update automatically, and you can allow any site you want to support.</p>
+            <h4 data-i18n="blk.limitsT">What it does not do</h4>
+            <ul class="limits">
+              <li data-i18n="blk.l1">It does not block every ad and does not match the coverage of mature blocker extensions.</li>
+              <li data-i18n="blk.l2">Scriptlets and procedural cosmetic filters are not executed, so some rules in the lists have no effect.</li>
+              <li data-i18n="blk.l3">Page elements that appear after loading are not re-checked, so an ad can briefly flash.</li>
+              <li data-i18n="blk.l4">WebSocket traffic and some service worker requests cannot be filtered.</li>
+            </ul>
+            <a class="more" href="https://github.com/bartels-de/Jtech-browser-rust/blob/main/docs/ADBLOCK.md" data-i18n="blk.more">Read how the blocker works</a>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div class="icon" aria-hidden="true"><svg width="22" height="22"><use href="#i-puzzle"/></svg></div>
+              <h3 data-i18n="ext.t">JTech Market</h3>
+            </div>
+            <p data-i18n="ext.p">Extensions are reviewed and shipped inside the browser, and they update together with it. Switch them on in the JTech Market, or pause one for a single website. No extension code is downloaded from the internet.</p>
+            <div class="ext">
+              <div class="ext-item">
+                <div class="icon" aria-hidden="true"><svg width="20" height="20"><use href="#i-play"/></svg></div>
+                <div>
+                  <strong><span data-i18n="ext.tw">Twitch ad blocker</span> <span class="tag" data-i18n="ext.best">best effort</span></strong>
+                  <p data-i18n="ext.twp">Tries to keep ads out of Twitch streams without routing your traffic through a third-party proxy. Twitch changes its player often, so it can stop working until an update arrives.</p>
+                </div>
+              </div>
+              <div class="ext-item">
+                <div class="icon" aria-hidden="true"><svg width="20" height="20"><use href="#i-play"/></svg></div>
+                <div>
+                  <strong><span data-i18n="ext.yt">YouTube ad blocker</span> <span class="tag" data-i18n="ext.best2">best effort</span></strong>
+                  <p data-i18n="ext.ytp">Removes ads from YouTube pages and the video player. YouTube also changes frequently, so parts of it can lag behind until the extension is updated.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Design Studio -->
+    <section id="design" aria-labelledby="design-h">
+      <div class="wrap design">
+        <figure class="shot">
+          <img src="assets/design-studio.webp" width="1280" height="800" loading="lazy" alt="The Design Studio with a gallery of theme presets such as JTech, Nova, Synthwave, Toxic, Inferno, Hyperdrive, Abyss and Sakura, filterable by dark, light, vivid, calm and classic." data-i18n-attr="alt:designAlt">
+        </figure>
+        <div>
+          <h2 id="design-h" data-i18n="des.title">Make it look like yours</h2>
+          <p class="lead" data-i18n="des.lead">The Design Studio changes the whole look in one click with a preset, or step by step. Every change applies right away.</p>
+          <ul>
+            <li><svg width="16" height="16" aria-hidden="true"><use href="#i-check"/></svg><span data-i18n="des.l1">A theme gallery with dark, light, vivid and calm presets</span></li>
+            <li><svg width="16" height="16" aria-hidden="true"><use href="#i-check"/></svg><span data-i18n="des.l2">Your own colours and shapes, or custom CSS</span></li>
+            <li><svg width="16" height="16" aria-hidden="true"><use href="#i-check"/></svg><span data-i18n="des.l3">Animated backgrounds, custom cursors and cursor trails</span></li>
+            <li><svg width="16" height="16" aria-hidden="true"><use href="#i-check"/></svg><span data-i18n="des.l4">Duplicate, import and export themes to share them</span></li>
+            <li><svg width="16" height="16" aria-hidden="true"><use href="#i-check"/></svg><span data-i18n="des.l5">A start page with adjustable background, clock, greeting and quick links</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Open source and privacy -->
+    <section id="open" aria-labelledby="open-h">
+      <div class="wrap">
+        <div class="sec-head">
+          <h2 id="open-h" data-i18n="open.title">Open source, and no tracking of its own</h2>
+          <p class="lead" data-i18n="open.lead">You can read every line of JTech Browser. Here is what it keeps to itself and what it does connect to.</p>
+        </div>
+        <div class="facts">
+          <div>
+            <h3 data-i18n="f1.t">MIT licensed</h3>
+            <p data-i18n="f1.p">The complete source code is on GitHub. Read it, build it yourself, change it or report a problem.</p>
+          </div>
+          <div>
+            <h3 data-i18n="f2.t">No telemetry, no account</h3>
+            <p data-i18n="f2.p">The browser sends no usage statistics. History, bookmarks and settings are stored in a local database on your PC.</p>
+          </div>
+          <div>
+            <h3 data-i18n="f3.t">Privacy tools included</h3>
+            <p data-i18n="f3.p">Block statistics, cookies per site, clearing browsing data, clearing cookies and cache on exit, and site permissions for camera, microphone, location and notifications.</p>
+          </div>
+        </div>
+
+        <div class="connects">
+          <h3 data-i18n="con.t">What does go out</h3>
+          <p data-i18n="con.p">Apart from the websites you open, the browser makes these requests:</p>
+          <dl>
+            <div>
+              <dt data-i18n="con.s.t">Search suggestions</dt>
+              <dd data-i18n="con.s.d">While you type in the address bar, the text is sent to your chosen search engine to fetch suggestions. Web addresses are never sent. You can turn this off in Settings.</dd>
+            </div>
+            <div>
+              <dt data-i18n="con.u.t">Update check</dt>
+              <dd data-i18n="con.u.d">The browser asks GitHub for the latest release and verifies an update's signature before installing it. The check can be turned off.</dd>
+            </div>
+            <div>
+              <dt data-i18n="con.f.t">Filter lists</dt>
+              <dd data-i18n="con.f.d">Blocklists are downloaded from their publishers, for example easylist.to, every few days.</dd>
+            </div>
+            <div>
+              <dt data-i18n="con.m.t">JTech Market</dt>
+              <dd data-i18n="con.m.d">The market reads its list of extensions from the project's GitHub repository.</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <!-- Download -->
+    <section id="download" aria-labelledby="download-h">
+      <div class="wrap">
+        <div class="dl">
+          <div>
+            <h2 id="download-h" data-i18n="dl.title">Download JTech Browser</h2>
+            <p class="lead" data-i18n="dl.lead">One installer for 64-bit Windows. After that, the browser updates itself.</p>
+            <div class="ctas">
+              <a class="btn btn-primary js-download" href="https://github.com/bartels-de/Jtech-browser-rust/releases/latest">
+                <svg width="22" height="22" aria-hidden="true"><use href="#i-download"/></svg>
+                <span><span data-i18n="cta.download2">Download for Windows</span><span class="sub js-version" data-i18n="cta.sub2">Latest release on GitHub</span></span>
+              </a>
+            </div>
+            <div class="dl-links">
+              <a href="https://github.com/bartels-de/Jtech-browser-rust/releases" data-i18n="dl.all">All releases</a>
+              <a href="https://github.com/bartels-de/Jtech-browser-rust/blob/main/CHANGELOG.md" data-i18n="dl.changelog">Changelog</a>
+              <a href="https://github.com/bartels-de/Jtech-browser-rust#building-from-source" data-i18n="dl.build">Build from source</a>
+            </div>
+          </div>
+          <div class="req">
+            <h3 data-i18n="req.t">System requirements</h3>
+            <ul>
+              <li><svg width="16" height="16" aria-hidden="true"><use href="#i-check"/></svg><span data-i18n-html="req.os"><strong>Windows 10 or 11</strong>, 64-bit (x64)</span></li>
+              <li><svg width="16" height="16" aria-hidden="true"><use href="#i-check"/></svg><span data-i18n-html="req.wv"><strong>Microsoft Edge WebView2 Runtime.</strong> Windows 11 already includes it; on Windows 10 it is usually present and otherwise set up by the installer.</span></li>
+            </ul>
+            <div class="notice">
+              <strong data-i18n="warn.t">A warning on first start is expected</strong>
+              <span data-i18n="warn.p">The installer is not yet signed with a Windows publisher certificate, so Microsoft SmartScreen may warn you. Choose "More info" and then "Run anyway". This is separate from the update signature the browser checks before installing its own updates.</span>
+            </div>
+            <div class="notice quiet">
+              <strong data-i18n="early.t">Early software</strong>
+              <span data-i18n-html="early.p">JTech Browser is at version 0.x. Expect rough edges and changes between releases. If something breaks, please <a href="https://github.com/bartels-de/Jtech-browser-rust/issues">open an issue</a>.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="wrap">
+      <a class="brand" href="#top">
+        <img src="assets/jtech-logo.png" alt="" width="28" height="28">
+        <span>JTech Browser</span>
+      </a>
+      <nav aria-label="Project links" data-i18n-attr="aria-label:footNav">
+        <a href="https://github.com/bartels-de/Jtech-browser-rust" data-i18n="ft.src">Source code on GitHub</a>
+        <a href="https://github.com/bartels-de/Jtech-browser-rust/blob/main/LICENSE" data-i18n="ft.lic">MIT License</a>
+        <a href="https://github.com/bartels-de/Jtech-browser-rust/issues" data-i18n="ft.issues">Report an issue</a>
+        <a href="https://github.com/bartels-de/Jtech-browser-rust/releases" data-i18n="ft.rel">Releases</a>
+      </nav>
+      <p data-i18n="ft.note">This site sets no cookies and uses no trackers. It only asks GitHub for the latest version number.</p>
+    </div>
+  </footer>
+
+  <script src="js/site.js"></script>
+</body>
+</html>
