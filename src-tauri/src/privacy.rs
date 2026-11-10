@@ -140,7 +140,9 @@ fn any_webview(app: &AppHandle) -> Result<tauri::Webview, String> {
     let state = app.state::<Mutex<TabManager>>();
     let m = lock(&state);
     if let Some(t) = m.active.as_ref().and_then(|a| m.tabs.get(a)) { return Ok(t.webview.clone()); }
-    m.order.iter().find_map(|id| m.tabs.get(id)).map(|t| t.webview.clone()).ok_or_else(|| "kein geoeffneter Web-Tab (Cookies/Profil brauchen eine WebView2-Instanz)".into())
+    if let Some(wv) = m.order.iter().find_map(|id| m.tabs.get(id)).map(|t| t.webview.clone()) { return Ok(wv); }
+    // Internal tabs have no webview of their own; the UI webview uses the same WebView2 profile.
+    m.ui.clone().ok_or_else(|| "kein geoeffneter Web-Tab (Cookies/Profil brauchen eine WebView2-Instanz)".into())
 }
 
 /// Wartet (blockierend, im spawn_blocking) auf ein Ergebnis aus einem WebView2-Callback.
