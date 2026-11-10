@@ -1,28 +1,43 @@
-/* Basic dark-mode inversion: only applies when jtech-dark-reader class is set. */
-html.jtech-dark-reader,
-html.jtech-dark-reader body {
-  background-color: #1a1a1a !important;
-  color: #e0e0e0 !important;
+/* Classic Dark Reader approach: invert the whole page, then uninvert media and
+   other elements that should keep their original colors. */
+html.jtech-dark-reader {
+  filter: invert(1) hue-rotate(180deg) contrast(0.95) !important;
+  background: #111 !important;
 }
 
+html.jtech-dark-reader body {
+  background: #111 !important;
+}
+
+/* Uninvert media and UI that should keep original colors. */
 html.jtech-dark-reader img,
 html.jtech-dark-reader video,
 html.jtech-dark-reader iframe,
 html.jtech-dark-reader canvas,
 html.jtech-dark-reader svg,
-html.jtech-dark-reader [role="img"] {
-  filter: brightness(0.85) contrast(0.95) !important;
+html.jtech-dark-reader [role="img"],
+html.jtech-dark-reader embed,
+html.jtech-dark-reader object,
+html.jtech-dark-reader picture,
+html.jtech-dark-reader .emoji,
+html.jtech-dark-reader [class*="emoji"] {
+  filter: invert(1) hue-rotate(180deg) !important;
 }
 
-html.jtech-dark-reader button,
+/* Also keep iframes that contain maps/charts sane by only inverting once. */
+html.jtech-dark-reader iframe[src*="google.com/maps"],
+html.jtech-dark-reader iframe[src*="openstreetmap"] {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+/* Inputs and code blocks: keep readable. */
 html.jtech-dark-reader input,
 html.jtech-dark-reader textarea,
-html.jtech-dark-reader select {
-  background-color: #2a2a2a !important;
-  color: #e0e0e0 !important;
+html.jtech-dark-reader select,
+html.jtech-dark-reader button,
+html.jtech-dark-reader pre,
+html.jtech-dark-reader code {
+  background-color: #222 !important;
+  color: #eee !important;
   border-color: #444 !important;
-}
-
-html.jtech-dark-reader a {
-  color: #8ab4f8 !important;
 }

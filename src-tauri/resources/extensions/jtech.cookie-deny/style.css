@@ -1,6 +1,11 @@
+/* Known cookie-banner roots and overlays. Display:none is safe here because these
+   elements are modal dialogs that block interaction; legitimate page content is not
+   targeted. */
 #onetrust-banner-sdk,
+#onetrust-pc-sdk,
 #onetrust-consent-sdk,
 #CybotCookiebotDialog,
+#CybotCookiebotDialogBodyUnderlay,
 #cookiebanner-accepted,
 #usercentrics-root,
 .usercentrics-root,
@@ -10,13 +15,12 @@
 #cookieConsent,
 #gdpr-consent-tool-wrapper,
 #klaro .cookie-modal,
+#klaro .context-notice,
 .cookiefirst-root,
 #termly-code-snippet-support,
 #cc--main,
-#CybotCookiebotDialogBody,
 .cookiebot,
 .onetrust,
-.usercentrics-button,
 .cc-banner,
 .cc-window,
 .cookie-notice,
@@ -31,6 +35,7 @@
 #cookie-law-info-bar,
 .didomi-popup-open,
 didomi-notice,
+#didomi-host,
 #moove_gdpr_cookie_info_bar,
 #cookie-alert,
 #cbg-cookie-banner,
@@ -51,7 +56,6 @@ didomi-notice,
 #uniqodoCookiePolicy,
 #ensNotifyBanner,
 #ensConsentWidget,
-#CybotCookiebotDialog,
 #compliBanner,
 #privacyPopup,
 #privacypopup,
@@ -74,12 +78,30 @@ didomi-notice,
 #complianz,
 #cookie-consent,
 #cookieConsentDialog,
-#CybotCookiebotDialog,
-#onetrust-pc-sdk{
-  display:none !important;
+#CookieConsentDialog,
+#notice-window,
+#notice-message,
+#q-app > div > div[class*="cookie"],
+[aria-label="Cookie banner"],
+[data-testid="cookie-banner"],
+[class*="CookieBanner"],
+[class*="cookie-banner"][role="dialog"],
+[id*="cookie-banner"],
+[id*="cookiebanner"] {
+  display: none !important;
 }
-body.onetrust-no-scroll,
+
+/* Restore scroll lock classes commonly added by banner libraries. */
+html.onetrust-no-scroll,
 html.usercentrics-no-scroll,
-body.cookiebot-no-scroll{
-  overflow:auto !important;
+body.onetrust-no-scroll,
+body.cookiebot-no-scroll,
+body.didomi-popup-open,
+body.cookieconsent-overflow-hidden,
+html.cookieconsent-overflow-hidden,
+body.cc-window-open,
+body.qc-cmp-showing,
+body.sp-message-open {
+  overflow: auto !important;
+  position: static !important;
 }

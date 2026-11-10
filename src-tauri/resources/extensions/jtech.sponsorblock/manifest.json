@@ -1,11 +1,11 @@
 {
   "id": "jtech.sponsorblock",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "minBrowser": "0.1.14",
   "name": { "en": "SponsorBlock", "de": "SponsorBlock" },
   "description": {
-    "en": "Skips sponsor segments, intros and outros on YouTube using data from SponsorBlock.",
-    "de": "Ueberspringt Sponsorensegmente, Intros und Outros auf YouTube anhand von SponsorBlock-Daten."
+    "en": "Skips sponsor segments, intros, outros and other non-music parts on YouTube using the SponsorBlock community database.",
+    "de": "Ueberspringt Sponsorensegmente, Intros, Outros und andere Nicht-Musik-Teile auf YouTube anhand der SponsorBlock-Community-Datenbank."
   },
   "author": "JTech",
   "icon": "icon.svg",

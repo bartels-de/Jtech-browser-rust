@@ -1,11 +1,11 @@
 {
   "id": "jtech.dark-reader",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "minBrowser": "0.1.14",
   "name": { "en": "Dark Reader", "de": "Dark Reader" },
   "description": {
-    "en": "Forces a dark theme on websites that do not offer their own dark mode.",
-    "de": "Erzwingt ein dunkles Design auf Webseiten, die keinen eigenen Dunkelmodus anbieten."
+    "en": "Forces a dark theme on websites that do not already have one. Images, videos and other media stay normal.",
+    "de": "Erzwingt ein dunkles Design auf Webseiten, die noch keines haben. Bilder, Videos und andere Medien bleiben normal."
   },
   "author": "JTech",
   "icon": "icon.svg",
