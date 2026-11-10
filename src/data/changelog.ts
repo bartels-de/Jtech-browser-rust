@@ -13,6 +13,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.1.17", date: "2026-11-10",
+    notes: {
+      de: [
+        "Fix: Google-Login auf X.com funktioniert jetzt. Die X/Twitter-Cleanup-Erweiterung zwingt Google Identity Services in den Redirect-Modus, da WebView2 den Popup-Flow blockiert. Der Login wird im selben Tab abgeschlossen.",
+      ],
+      en: [
+        "Fix: Google login on X.com now works. The X/Twitter Cleanup extension forces Google Identity Services into redirect mode because WebView2 blocks the popup flow. Login completes in the same tab.",
+      ],
+    },
+  },
+  {
     version: "0.1.16", date: "2026-11-10",
     notes: {
       de: [

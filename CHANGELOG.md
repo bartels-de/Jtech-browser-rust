@@ -3,6 +3,10 @@
 All notable changes to JTech Browser. The in-app page `jtech://changelog` shows the same notes
 (localized, from `src/data/changelog.ts`).
 
+## [0.1.17]
+
+- Fix Google login on X.com: the X/Twitter Cleanup extension now forces Google Identity Services into redirect mode because WebView2 blocks the popup flow. Login completes in the same tab.
+
 ## [0.1.16]
 
 - Fix Google login on X.com: the Twitter/X Cleanup extension now forces Google Identity Services into redirect mode, because WebView2 blocks the popup-based flow. Login completes in the same tab.
