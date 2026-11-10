@@ -6,6 +6,8 @@
 .color-field input[type="color"] { width: 34px; height: 28px; padding: 0; border: 1px solid var(--border); border-radius: var(--r-xs); background: none; }
 .color-field input.mono { width: 90px; }
 .theme-preview { display: flex; gap: 8px; align-items: center; padding: 12px; margin: 8px 0; border: 1px dashed var(--border-strong); border-radius: var(--r-md); background: var(--surface-0); }
+/* Live-Vorschau der im Theme gewaehlten Schrift */
+.font-preview { margin: 4px 0 10px; padding: 14px 12px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-0); color: var(--text); font-size: 17px; line-height: 1.45; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .theme-json { width: 100%; min-height: 110px; margin-top: 8px; padding: 8px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-0); color: var(--text); font-size: var(--fs-sm); resize: vertical; }
 
 /* Animierter Hintergrund: Canvas hinter allen Flaechen; Flaechen werden teiltransparent */

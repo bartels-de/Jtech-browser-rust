@@ -27,7 +27,12 @@ export interface ThemeSpec {
   customCss: string;
 }
 
-export type FontId = "segoe" | "system" | "bahnschrift" | "verdana" | "trebuchet" | "georgia" | "cascadia";
+export type FontId =
+  | "segoe" | "system" | "bahnschrift" | "verdana" | "trebuchet" | "georgia" | "cascadia"
+  | "arial" | "calibri" | "candara" | "corbel" | "franklingothic" | "lato"
+  | "segoeuiblack" | "seguisb" | "sitka" | "tahoma" | "times" | "constan"
+  | "cambria" | "palatino" | "rockwell" | "bookantiqua" | "garamond" | "ebrima"
+  | "consolas" | "cournew" | "lucida" | "cambriamono" | "gabriola" | "comic" | "impact";
 export const FONTS: Record<FontId, { name: string; stack: string }> = {
   segoe: { name: "Segoe UI (Standard)", stack: '"Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif' },
   system: { name: "System", stack: "system-ui, sans-serif" },
@@ -36,8 +41,45 @@ export const FONTS: Record<FontId, { name: string; stack: string }> = {
   trebuchet: { name: "Trebuchet MS", stack: '"Trebuchet MS", "Segoe UI", sans-serif' },
   georgia: { name: "Georgia (Serif)", stack: 'Georgia, "Times New Roman", serif' },
   cascadia: { name: "Cascadia (Mono)", stack: '"Cascadia Code", Consolas, monospace' },
+  // Weitere Sans-Schriften (alle auf Windows 10/11 vorinstalliert)
+  arial: { name: "Arial", stack: 'Arial, "Helvetica Neue", Helvetica, sans-serif' },
+  calibri: { name: "Calibri", stack: 'Calibri, "Segoe UI", sans-serif' },
+  candara: { name: "Candara", stack: 'Candara, "Segoe UI", sans-serif' },
+  corbel: { name: "Corbel", stack: 'Corbel, "Segoe UI", sans-serif' },
+  tahoma: { name: "Tahoma", stack: 'Tahoma, "Segoe UI", sans-serif' },
+  franklingothic: { name: "Franklin Gothic", stack: '"Franklin Gothic Medium", "Franklin Gothic", "Segoe UI", sans-serif' },
+  lato: { name: "Lato", stack: 'Lato, "Segoe UI", sans-serif' },
+  ebrima: { name: "Ebrima", stack: 'Ebrima, "Segoe UI", sans-serif' },
+  // Serif
+  times: { name: "Times New Roman", stack: '"Times New Roman", Times, serif' },
+  cambria: { name: "Cambria", stack: 'Cambria, Georgia, serif' },
+  constan: { name: "Constantia", stack: 'Constantia, Cambria, Georgia, serif' },
+  palatino: { name: "Palatino Linotype", stack: '"Palatino Linotype", "Book Antiqua", Palatino, serif' },
+  bookantiqua: { name: "Book Antiqua", stack: '"Book Antiqua", "Palatino Linotype", serif' },
+  garamond: { name: "Garamond", stack: 'Garamond, "EB Garamond", Georgia, serif' },
+  rockwell: { name: "Rockwell", stack: 'Rockwell, "Roboto Slab", Georgia, serif' },
+  sitka: { name: "Sitka", stack: 'Sitka, "Sitka Text", Cambria, serif' },
+  // Mono
+  consolas: { name: "Consolas", stack: 'Consolas, "Cascadia Code", monospace' },
+  cournew: { name: "Courier New", stack: '"Courier New", Courier, monospace' },
+  lucida: { name: "Lucida Console", stack: '"Lucida Console", "Lucida Sans Typewriter", monospace' },
+  cambriamono: { name: "Cambria Math", stack: '"Cambria Math", Consolas, monospace' },
+  // Auszeichnung
+  segoeuiblack: { name: "Segoe UI Black", stack: '"Segoe UI Black", "Segoe UI", sans-serif' },
+  seguisb: { name: "Segoe UI Semibold", stack: '"Segoe UI Semibold", "Segoe UI", sans-serif' },
+  gabriola: { name: "Gabriola", stack: 'Gabriola, "Segoe UI", serif' },
+  comic: { name: "Comic Sans MS", stack: '"Comic Sans MS", "Segoe UI", cursive' },
+  impact: { name: "Impact", stack: 'Impact, Haettenschweiler, "Arial Black", sans-serif' },
 };
 export const CUSTOM_CSS_MAX = 20000;
+
+/** Gruppen der Schrift-Auswahl im Theme-Editor. */
+export const FONT_GROUPS: { id: string; label: string; fonts: FontId[] }[] = [
+  { id: "sans", label: "th.fontGroup.sans", fonts: ["segoe", "system", "bahnschrift", "arial", "calibri", "candara", "corbel", "verdana", "tahoma", "trebuchet", "franklingothic", "lato", "ebrima"] },
+  { id: "serif", label: "th.fontGroup.serif", fonts: ["georgia", "times", "cambria", "constan", "palatino", "bookantiqua", "garamond", "rockwell", "sitka"] },
+  { id: "mono", label: "th.fontGroup.mono", fonts: ["cascadia", "consolas", "cournew", "lucida", "cambriamono"] },
+  { id: "display", label: "th.fontGroup.display", fonts: ["segoeuiblack", "seguisb", "gabriola", "comic", "impact"] },
+];
 
 /**
  * Eigenes CSS bereinigen: keine externen Ladevorgaenge (@import, url()), keine Script-artigen

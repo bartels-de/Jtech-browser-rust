@@ -4,7 +4,7 @@ import { isBuiltinTheme } from "../lib/themeGallery";
 import { useEffect, useId, useRef, useState } from "react";
 import { Group, Row, Switch } from "../components/SettingsUI";
 import { useBrowser } from "../store/BrowserStore";
-import { CUSTOM_CSS_MAX, FONTS, JTECH_DEFAULT, fontName, themeName, exportTheme, importTheme, normalizeHex, sanitizeCss, type FontId, type ThemeSpec } from "../lib/theme";
+import { CUSTOM_CSS_MAX, FONTS, FONT_GROUPS, JTECH_DEFAULT, fontName, themeName, exportTheme, importTheme, normalizeHex, sanitizeCss, type FontId, type ThemeSpec } from "../lib/theme";
 import { t, useT, type TKey } from "../i18n";
 import { BACKGROUNDS, CURSOR_PRESETS, QUALITY, TRAILS, cursorSpec, imageToCursor, rescaleCursor, type BgId, type EffectsSettings, type Quality } from "../lib/fx/effects";
 
@@ -77,9 +77,16 @@ export function ThemesPage() {
         <Slider label={t("th.glow")} value={cur.glow} min={0} max={100} unit=" %" hint={t("th.glowHint")} onChange={v => patch({ glow: v })} />
         <Row title={t("th.font")} desc={t("th.fontDesc")}>
           <select value={cur.font} aria-label={t("th.font")} onChange={e => patch({ font: e.target.value as FontId })}>
-            {(Object.keys(FONTS) as FontId[]).map(f => <option key={f} value={f}>{fontName(f)}</option>)}
+            {FONT_GROUPS.map(g => (
+              <optgroup key={g.id} label={t(g.label as TKey)}>
+                {g.fonts.map(f => <option key={f} value={f}>{fontName(f)}</option>)}
+              </optgroup>
+            ))}
           </select>
         </Row>
+        <div className="font-preview" aria-hidden="true" style={{ fontFamily: FONTS[cur.font].stack }}>
+          <span>{t("th.fontPreview")}</span>
+        </div>
         <div className="theme-preview glass" aria-label={t("th.preview")}>
           <span className="btn primary">{t("th.pPrimary")}</span><span className="btn">{t("th.pNormal")}</span><span className="btn ghost">{t("th.pSubtle")}</span>
           <span className="muted">{t("th.c.textDim")}</span>
