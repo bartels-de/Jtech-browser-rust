@@ -3,6 +3,14 @@
 All notable changes to JTech Browser. The in-app page `jtech://changelog` shows the same notes
 (localized, from `src/data/changelog.ts`).
 
+## [0.2.0]
+
+- Design Studio: 32 fonts instead of 7 in the theme editor, grouped into sans serif, serif, monospace and display.
+  - New: Arial, Calibri, Candara, Corbel, Tahoma, Franklin Gothic, Lato, Ebrima, Times New Roman, Cambria, Constantia, Palatino Linotype, Book Antiqua, Garamond, Rockwell, Sitka, Consolas, Courier New, Lucida Console, Cambria Math, Segoe UI Black, Segoe UI Semibold, Gabriola, Comic Sans MS and Impact.
+  - Every font is checked against the Windows font folder, so the list only contains fonts that are actually installed.
+  - A live preview below the selection shows the pangram in the chosen font.
+- All previous changes from 0.1.14 and older are included in this release.
+
 ## [0.1.14]
 
 - New website with six pages, real screenshots and rich animations, deployed via GitHub Pages.

@@ -13,6 +13,25 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.2.0", date: "2026-11-10",
+    notes: {
+      de: [
+        "Design Studio: 32 Schriften statt 7 im Theme-Editor, gruppiert nach serifenlos, Serif, Monospace und Auszeichnung.",
+        "Neu: Arial, Calibri, Candara, Corbel, Tahoma, Franklin Gothic, Lato, Ebrima, Times New Roman, Cambria, Constantia, Palatino Linotype, Book Antiqua, Garamond, Rockwell, Sitka, Consolas, Courier New, Lucida Console, Cambria Math, Segoe UI Black, Segoe UI Semibold, Gabriola, Comic Sans MS und Impact.",
+        "Jede Schrift ist gegen den Windows-Schriftordner geprüft, die Liste enthält also nur wirklich installierte Schriften.",
+        "Live-Vorschau unter der Auswahl zeigt das Pangramm in der gewählten Schrift.",
+        "Alle Änderungen aus 0.1.14 und älter sind in diesem Release enthalten.",
+      ],
+      en: [
+        "Design Studio: 32 fonts instead of 7 in the theme editor, grouped into sans serif, serif, monospace and display.",
+        "New: Arial, Calibri, Candara, Corbel, Tahoma, Franklin Gothic, Lato, Ebrima, Times New Roman, Cambria, Constantia, Palatino Linotype, Book Antiqua, Garamond, Rockwell, Sitka, Consolas, Courier New, Lucida Console, Cambria Math, Segoe UI Black, Segoe UI Semibold, Gabriola, Comic Sans MS and Impact.",
+        "Every font is checked against the Windows font folder, so the list only contains fonts that are actually installed.",
+        "A live preview below the selection shows the pangram in the chosen font.",
+        "All changes from 0.1.14 and older are included in this release.",
+      ],
+    },
+  },
+  {
     version: "0.1.14", date: "2026-11-10",
     notes: {
       de: [
