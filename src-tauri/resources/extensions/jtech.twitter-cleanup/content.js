@@ -71,4 +71,39 @@
   });
   var root = document.documentElement || document.body;
   if (root) obs.observe(root, { childList: true, subtree: true });
+
+  // WebView2 blocks GSI popups, so force Google Identity Services into redirect mode.
+  // X keeps working because the callback is processed in the same tab.
+  (function forceGsiRedirect() {
+    var done = false;
+    function patchObject(obj, name) {
+      if (!obj || typeof obj[name] !== 'function' || obj[name].__jtechPatched) return false;
+      var real = obj[name];
+      obj[name] = function (options) {
+        if (options && options.ux_mode === 'popup') {
+          try { console.log('[JTech X Cleanup] GSI ' + name + ' popup -> redirect'); } catch (e) {}
+          options.ux_mode = 'redirect';
+        }
+        return real.apply(this, arguments);
+      };
+      obj[name].__jtechPatched = true;
+      return true;
+    }
+    function tryPatch() {
+      if (done) return true;
+      var g = window.google;
+      if (g && g.accounts) {
+        if (g.accounts.id && patchObject(g.accounts.id, 'initialize')) done = true;
+        if (g.accounts.oauth2) {
+          patchObject(g.accounts.oauth2, 'initCodeClient');
+          patchObject(g.accounts.oauth2, 'initTokenClient');
+        }
+      }
+      return false;
+    }
+    var tries = 0;
+    var id = setInterval(function () {
+      if (tryPatch() || ++tries > 100) clearInterval(id);
+    }, 100);
+  })();
 })();
