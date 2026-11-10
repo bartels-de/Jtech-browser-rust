@@ -5,7 +5,7 @@
 //!  - The script is registered with AddScriptToExecuteOnDocumentCreated before a tab's first
 //!    navigation and runs in the top frame only.
 //!  - Pages talk to Rust only through `window.chrome.webview.postMessage(JSON string)` with the
-//!    fixed schema `{jtech: 1, type: "radial" | "peek" | "media", ...}`.
+//!    fixed schema `{jtech: 1, type: "radial" | "peek" | "media" | "equalizer", ...}`.
 //!  - `parse` validates type and every field (size limits, finite numbers, http(s) URLs only) and
 //!    drops everything else. A valid message can only ask the UI to show a menu, open a peek panel
 //!    for an http(s) URL or update the audio hub display. No Tauri command, no file or settings
@@ -49,17 +49,45 @@ addEventListener('auxclick',function(e){if(e.button===1&&fired){fired=false;e.pr
 addEventListener('click',function(e){if(!cfg.peek||!e.shiftKey||e.button!==0||e.ctrlKey||e.altKey||e.metaKey)return;
 var t=e.target,a=t&&t.closest?t.closest('a[href]'):null;if(!a)return;var u=String(a.href||'');if(!/^https?:/i.test(u))return;
 e.preventDefault();e.stopImmediatePropagation();send({type:'peek',url:u.slice(0,4096)});},true);
-var ms=navigator.mediaSession,handlers={},vol=-1;
+var ms=navigator.mediaSession,handlers={},vol=-1,eqBands=null,eqGraphs=new WeakMap(),eqPending=new WeakMap();
 if(ms&&typeof ms.setActionHandler==='function'){var orig=ms.setActionHandler.bind(ms);try{ms.setActionHandler=function(a,h){handlers[a]=h;return orig(a,h);};}catch(e){}}
 function media(){return Array.prototype.slice.call(document.querySelectorAll('video,audio'));}
 function call(a){var h=handlers[a];if(typeof h==='function'){try{h({action:a});return true;}catch(e){}}return false;}
+function eqReport(status){send({type:'equalizer',status:status});}
+function eqSet(graph,gains){for(var i=0;i<5;i++)graph.filters[i].gain.setTargetAtTime(gains[i],graph.context.currentTime,0.04);}
+function eqApply(gains,preferred){
+if(!Array.isArray(gains)||gains.length!==5)return eqReport('error');
+if(location.protocol!=='http:'&&location.protocol!=='https:')return eqReport('unsupported');
+eqBands=gains.map(function(x){return typeof x==='number'&&isFinite(x)?Math.max(-12,Math.min(12,x)):0;});
+var list=media(),el=preferred&&list.indexOf(preferred)!==-1?preferred:list.filter(function(x){return !x.paused&&!x.ended;})[0]||list[0];
+if(!el)return eqReport('waiting');
+var src=el.currentSrc||el.src,origin='';try{origin=new URL(src,location.href).origin;}catch(e){}
+if(!src||(src.indexOf('blob:')!==0&&origin!==location.origin&&!el.crossOrigin))return eqReport('unsupported');
+var graph=eqGraphs.get(el);if(graph){if(graph.filters)eqSet(graph,eqBands);return eqReport(graph.filters?'ready':'error');}
+if(eqBands.every(function(x){return x===0;}))return eqReport('ready');
+var pending=eqPending.get(el);if(pending)return pending;
+var C=window.AudioContext||window.webkitAudioContext;if(!C)return eqReport('unsupported');
+var ctx;try{ctx=new C();}catch(e){return eqReport('unsupported');}
+var task=Promise.resolve(ctx.state==='suspended'?ctx.resume():undefined).then(function(){
+if(ctx.state!=='running')throw new Error('audio context suspended');
+var source=ctx.createMediaElementSource(el),filters=[];
+var frequencies=[60,250,1000,4000,12000];
+for(var i=0;i<frequencies.length;i++){var f=ctx.createBiquadFilter();f.type='peaking';f.frequency.value=frequencies[i];f.Q.value=0.8;filters.push(f);}
+try{source.connect(filters[0]);for(var j=0;j<filters.length-1;j++)filters[j].connect(filters[j+1]);filters[4].connect(ctx.destination);}
+catch(e){try{source.disconnect();source.connect(ctx.destination);eqGraphs.set(el,{context:ctx,source:source,filters:null});eqReport('error');return;}catch(ignore){}throw e;}
+graph={context:ctx,source:source,filters:filters};eqGraphs.set(el,graph);eqSet(graph,eqBands);eqReport('ready');
+}).catch(function(){try{ctx.close();}catch(e){}eqReport('error');}).then(function(){eqPending.delete(el);});
+eqPending.set(el,task);return task;
+}
 def('__jtechBridgeCtl',function(a,v){var m=media();
 if(a==='play'){if(!call('play')){var p=m.filter(function(x){return x.paused&&x.currentTime>0;})[0]||m[0];if(p)p.play().catch(function(){});}}
 else if(a==='pause'){if(!call('pause'))m.forEach(function(x){if(!x.paused)x.pause();});}
 else if(a==='next'){call('nexttrack');}else if(a==='prev'){call('previoustrack');}
 else if(a==='volume'&&typeof v==='number'&&v>=0&&v<=1){vol=v;m.forEach(function(x){x.volume=v;});}
+else if(a==='equalizer')return eqApply(v);
 setTimeout(tick,150);});
 document.addEventListener('play',function(e){if(vol>=0&&e.target&&'volume' in e.target)e.target.volume=vol;},true);
+document.addEventListener('play',function(e){if(eqBands&&e.target&&('volume' in e.target))eqApply(eqBands,e.target);},true);
 var last='';
 function s(v){return typeof v==='string'?v.slice(0,300):'';}
 function tick(){try{var m=media(),st='none';
@@ -84,6 +112,7 @@ pub enum BridgeMsg {
     Radial { x: f64, y: f64 },
     Peek { url: String },
     Media { state: String, title: String, artist: String, album: String, artwork: String, can_next: bool, can_prev: bool, volume: f64 },
+    Equalizer { status: String },
 }
 
 fn text(v: &serde_json::Value, k: &str) -> Option<String> {
@@ -124,6 +153,11 @@ pub fn parse(raw: &str) -> Option<BridgeMsg> {
                 can_prev: v.get("canPrev").and_then(|b| b.as_bool()).unwrap_or(false),
                 volume,
             })
+        }
+        "equalizer" => {
+            let status = v.get("status")?.as_str()?;
+            if !matches!(status, "ready" | "waiting" | "unsupported" | "error") { return None; }
+            Some(BridgeMsg::Equalizer { status: status.to_string() })
         }
         _ => None,
     }
@@ -177,6 +211,9 @@ pub fn dispatch(app: &AppHandle, tab_id: &str, msg: BridgeMsg) {
         BridgeMsg::Media { state, title, artist, album, artwork, can_next, can_prev, volume } => {
             emit(app, BridgeEvent { tab_id: tab_id.into(), kind: "media".into(), state: Some(state), title: Some(title), artist: Some(artist), album: Some(album),
                 artwork: Some(artwork), can_next: Some(can_next), can_prev: Some(can_prev), volume: Some(volume), ..Default::default() });
+        }
+        BridgeMsg::Equalizer { status } => {
+            emit(app, BridgeEvent { tab_id: tab_id.into(), kind: "equalizer".into(), state: Some(status), ..Default::default() });
         }
     }
 }
@@ -250,6 +287,14 @@ pub fn media_control_script(action: &str, value: Option<f64>) -> Option<String> 
     Some(format!("try{{window.__jtechBridgeCtl&&window.__jtechBridgeCtl({},{v})}}catch(e){{}}", serde_json::to_string(action).ok()?))
 }
 
+/// Fixed five-band equalizer script. Values are bounded before crossing into page JavaScript.
+pub fn equalizer_script(bands: &[f64]) -> Option<String> {
+    if bands.len() != 5 || bands.iter().any(|value| !value.is_finite()) { return None; }
+    let safe: Vec<f64> = bands.iter().map(|value| value.clamp(-12.0, 12.0)).collect();
+    let json = serde_json::to_string(&safe).ok()?;
+    Some(format!("try{{window.__jtechBridgeCtl&&window.__jtechBridgeCtl('equalizer',{json})}}catch(e){{}}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -279,5 +324,14 @@ mod tests {
         assert!(media_control_script("volume", Some(7.0)).unwrap().contains(",1)"));
         assert!(media_control_script("play", None).is_some());
         assert!(bridge_script(true, false).contains("radial:true,peek:false"));
+    }
+
+    #[test]
+    fn equalizer_script_bounds_all_five_bands() {
+        assert!(equalizer_script(&[0.0; 4]).is_none());
+        assert!(equalizer_script(&[0.0, 0.0, 0.0, 0.0, f64::NAN]).is_none());
+        let script = equalizer_script(&[20.0, -20.0, 0.5, 0.0, 12.0]).unwrap();
+        assert!(script.contains("[12.0,-12.0,0.5,0.0,12.0]"));
+        assert!(script.contains("__jtechBridgeCtl('equalizer'"));
     }
 }

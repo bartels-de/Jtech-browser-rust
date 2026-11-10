@@ -25,23 +25,23 @@
     },
     {
       "id": "jtech.youtube-adblock",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "minBrowser": "0.1.6",
       "name": {
         "en": "YouTube Ad Blocker",
         "de": "YouTube Werbeblocker"
       },
       "description": {
-        "en": "Removes video ads, feed ads and ad overlays on YouTube by stripping ad data from the page, skips ads that still play and hides ad slots.",
-        "de": "Entfernt Videowerbung, Werbung im Feed und Werbe-Overlays auf YouTube, indem Werbedaten aus der Seite entfernt werden; verbleibende Werbung wird uebersprungen und Werbeflaechen werden ausgeblendet."
+        "en": "Removes many video and feed ads on YouTube by stripping ad data, reacting quickly to skip controls and hiding ad slots. Server-inserted ads may remain.",
+        "de": "Entfernt viele Video- und Feed-Anzeigen auf YouTube, indem Werbedaten entfernt, Skip-Schaltflächen schneller erkannt und Werbeflächen ausgeblendet werden. Serverseitig eingefügte Werbung kann weiterhin auftreten."
       },
       "author": "JTech",
       "license": "MIT",
       "files": {
         "NOTICE": "495f69511f276e896299c3d9972800a9d6ed505a93ec3954a8d67d18bc897562",
-        "content.js": "f9d133ed17bbd65ae78c7624ab4a2769aacbf5601a6db3bcedf7bd11125cbd24",
+        "content.js": "d6b48047615b2341e0f9343604e8eac5ec1aad4491fbcb0df93cfb4d32b1db4a",
         "icon.svg": "91ac335333c12fdb14132c47b09176ce34bc6b80cf85f76bed34838f920069b2",
-        "manifest.json": "f0576c3f0cb07a6538beae0e5c17d11c98ce3a72f516c4ae15deb0eb09bbfb11",
+        "manifest.json": "0d7143c51c24823b2a010f7f2d0525d9199634da160e3cad304f4785943c01d3",
         "rules.txt": "9fd524a322c587ca99615e399da750129eede1117191d6c4af747157fb6c69d5"
       }
     }

@@ -58,6 +58,8 @@ export interface Settings {
   start?: StartSettings;
   /** Audio hub: sites that are always muted (host without www.) */
   audioMuteSites?: string[];
+  /** Audio hub: optional five-band equalizer for YouTube playback. */
+  audioEqualizer?: AudioEqualizerSettings;
   /** Shift+click opens links in the peek panel */
   peekEnabled?: boolean;
   /** Changelog: last app version whose "what's new" was shown */
@@ -76,6 +78,31 @@ export interface Settings {
   standardContextMenu?: boolean;
   /** Toolbar buttons in order (normalized by normalizeToolbar) */
   toolbar?: ToolbarItem[];
+}
+
+export type AudioEqPreset = "flat" | "bass" | "voice" | "treble" | "custom";
+export interface AudioEqualizerSettings {
+  enabled: boolean;
+  preset: AudioEqPreset;
+  bands: number[];
+}
+export const DEFAULT_AUDIO_EQUALIZER: AudioEqualizerSettings = {
+  enabled: false,
+  preset: "flat",
+  bands: [0, 0, 0, 0, 0],
+};
+export function normalizeAudioEqualizer(raw: unknown): AudioEqualizerSettings {
+  if (!raw || typeof raw !== "object") return DEFAULT_AUDIO_EQUALIZER;
+  const value = raw as Partial<AudioEqualizerSettings>;
+  const presets: AudioEqPreset[] = ["flat", "bass", "voice", "treble", "custom"];
+  const bands = Array.isArray(value.bands) && value.bands.length === 5
+    ? value.bands.map(x => typeof x === "number" && Number.isFinite(x) ? Math.round(Math.max(-12, Math.min(12, x))) : 0)
+    : DEFAULT_AUDIO_EQUALIZER.bands;
+  return {
+    enabled: value.enabled === true,
+    preset: presets.includes(value.preset as AudioEqPreset) ? value.preset as AudioEqPreset : "flat",
+    bands,
+  };
 }
 
 // ---------- Toolbar layout ----------
@@ -238,6 +265,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autoUpdateCheck: true,
   updateIntervalHours: 24,
   language: "system",
+  audioEqualizer: DEFAULT_AUDIO_EQUALIZER,
 };
 
 /** Split view: gap between the two native webviews (px); must match SPLIT_GAP in lib.rs */

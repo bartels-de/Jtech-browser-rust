@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useBrowser } from "../store/BrowserStore";
 import { call, siteOf, type TabEvent } from "../lib/ipc";
-import { applyMediaEvent, mediaStore, setThrottle, throttleStore, type BridgeEvent } from "../lib/bridge";
+import { applyEqualizerEvent, applyMediaEvent, mediaStore, setThrottle, throttleStore, type BridgeEvent } from "../lib/bridge";
 import { COMMAND_BY_ID } from "../lib/commands";
 import { SEARCH_ENGINES, isWebUrl } from "../lib/urls";
 import { t as tr, useT, type TKey } from "../i18n";
@@ -22,6 +22,7 @@ function usePageBridge() {
   useEffect(() => {
     const un = listen<BridgeEvent>("page-bridge", ({ payload: ev }) => {
       if (ev.kind === "media") applyMediaEvent(ev);
+      else if (ev.kind === "equalizer") applyEqualizerEvent(ev);
       else if (ev.kind === "peek" && ev.url) openPeek(ev.url);
       else if (ev.kind === "radial" && typeof ev.x === "number" && typeof ev.y === "number") {
         const z = zoomRef.current[ev.tabId] ?? 1;

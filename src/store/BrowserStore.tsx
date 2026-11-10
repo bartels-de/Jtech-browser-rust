@@ -8,171 +8,14 @@ import { normalizeEffects, type EffectsSettings } from "../lib/fx/effects";
 import { applyTheme, normalizeTheme, type ThemeSpec } from "../lib/theme";
 import { load, save } from "./storage";
 import { I18nProvider, localizeBackend, normalizeLangSetting, setLang, systemLang, t as tr, type Lang } from "../i18n";
-import { DEFAULT_SETTINGS, GROUP_COLORS, clampSidebarWidth, clampSplitRatio, normalizeToolbar, presetSettings, type PresetId, type SplitPair, type Bookmark, type DownloadItem, type HistoryEntry, type NavError, type PopoverId, type Settings, type TabGroup, type UiTab } from "./types";
-
-/** Runde 3: Zoomstufen wie in Chromium. */
-export const ZOOM_STEPS = [0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5];
-export function nextZoom(cur: number, dir: 1 | -1): number {
-  if (dir > 0) return ZOOM_STEPS.find(z => z > cur + 0.001) ?? ZOOM_STEPS[ZOOM_STEPS.length - 1];
-  return [...ZOOM_STEPS].reverse().find(z => z < cur - 0.001) ?? ZOOM_STEPS[0];
-}
-const validZoom = (z: unknown): z is number => typeof z === "number" && Number.isFinite(z) && z >= 0.25 && z <= 5;
-export interface ActivityEvent { id: string; time: number; kind: string; tabId: string; tabTitle: string; url: string; detail: string; reason: string; }
-function loadZoom(): Record<string, number> {
-  const raw = load<Record<string, unknown>>("zoom", {});
-  const out: Record<string, number> = {};
-  for (const [k, v] of Object.entries(raw)) if (k.length < 256 && validZoom(v)) out[k] = v;
-  return out;
-}
-function normalizeGroups(raw: unknown): TabGroup[] {
-  if (!Array.isArray(raw)) return [];
-  return raw.filter(g => g && typeof g === "object" && typeof g.id === "string").slice(0, 50).map(g => ({
-    id: String(g.id).slice(0, 40),
-    name: typeof g.name === "string" ? g.name.slice(0, 30) : tr("st.group"),
-    color: GROUP_COLORS.includes(g.color) ? g.color : GROUP_COLORS[0],
-    collapsed: !!g.collapsed,
-  }));
-}
-/** Toast with an optional "Undo" action (replaces confirmations for reversible actions). */
-export interface Toast { id: number; msg: string; undo?: () => void; }
-export interface FindState { open: boolean; query: string; count: number; found: boolean; tick: number; }
+import { DEFAULT_SETTINGS, GROUP_COLORS, clampSidebarWidth, clampSplitRatio, normalizeAudioEqualizer, normalizeToolbar, presetSettings, type PresetId, type SplitPair, type Bookmark, type DownloadItem, type HistoryEntry, type NavError, type PopoverId, type Settings, type TabGroup, type UiTab } from "./types";
+import { ACTIVITY_LIMIT, loadZoom, nextZoom, normalizeActivity, normalizeGroups, validZoom } from "./normalization";
+import type { ActivityEvent, FindState, Store, Toast } from "./contracts";
+export type { ActivityEvent, FindState, Store, Toast } from "./contracts";
+export { ZOOM_STEPS } from "./normalization";
 
 const HISTORY_LIMIT = 5000;
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-
-export interface Store {
-  tabs: UiTab[];
-  activeTab: UiTab | null;
-  /** interne Seite im Content-Bereich (auch wenn kein Tab offen ist) */
-  activePage: InternalPage | null;
-  totalBlocked: number;
-  navError: NavError | null;
-  status: string;
-  activity: ActivityEvent[];
-  clearActivity(): void;
-  settings: Settings;
-  bookmarks: Bookmark[];
-  history: HistoryEntry[];
-  popover: PopoverId;
-  focusTick: number;
-  setStatus(s: string): void;
-  dismissError(): void;
-  setPopover(p: PopoverId): void;
-  updateSettings(p: Partial<Settings>): void;
-  /** Sidebar drag in progress (hides the content webview) */
-  sidebarResizing: boolean;
-  /** Vollbild (Seiten-Element oder F11): UI-Chrome ausblenden, Content deckt das Fenster */
-  fullscreen: boolean;
-  setSidebarResizing(v: boolean): void;
-  /** background = open without switching to it (page context menu) */
-  newTab(input?: string, opts?: { background?: boolean }): Promise<string | undefined>;
-  closeTab(id: string, silent?: boolean): void;
-  closeOtherTabs(id: string): void;
-  switchTab(id: string): void;
-  cycleTab(dir: 1 | -1): void;
-  togglePin(id: string): void;
-  reorder(ids: string[]): void;
-  navigate(input: string): Promise<void>;
-  /** Runde 5: interne Seite als eigener Tab (je Seite hoechstens einer; vorhandener wird fokussiert). */
-  openPage(p: InternalPage, opts?: { section?: string }): void;
-  /** Runde 5: Abschnitt der Einstellungsseite */
-  settingsSection: string;
-  setSettingsSection(s: string): void;
-  /** Runde 5: Design-Studio-Effekte */
-  updateEffects(p: Partial<EffectsSettings>): void;
-  /** Runde 5: zentrale Befehle + eigene Kuerzel */
-  runCommand(id: string): void;
-  bindings: Map<string, string>;
-  keysFor(id: string): string[];
-  keyHint(id: string): string | undefined;
-  setShortcut(id: string, keys: string[] | null): void;
-  back(): void;
-  forward(): void;
-  reload(): void;
-  stop(): void;
-  home(): void;
-  focusAddressBar(): void;
-  isBookmarked(url: string): Bookmark | undefined;
-  addBookmark(url: string, title: string): void;
-  updateBookmark(id: string, p: Partial<Bookmark>): void;
-  removeBookmark(id: string): void;
-  removeHistory(id: string): void;
-  clearHistory(): void;
-  /** Port: Audio-Hub */
-  setTabMuted(id: string, muted: boolean): void;
-  /** Port: Design-Studio (null = Standard-Tokens) */
-  customTheme: ThemeSpec | null;
-  savedThemes: ThemeSpec[];
-  setCustomTheme(t: ThemeSpec | null): void;
-  saveTheme(t: ThemeSpec): void;
-  removeTheme(id: string): void;
-  /** Runde 3: Downloads */
-  downloads: DownloadItem[];
-  downloadAction(id: number, action: "pause" | "resume" | "cancel"): void;
-  openDownload(id: number, reveal: boolean): void;
-  removeDownload(key: string): void;
-  clearDownloads(): void;
-  /** Runde 3: Zoom pro Seite (Host -> Faktor) */
-  zoomBySite: Record<string, number>;
-  zoomStep(dir: 1 | -1 | 0): void;
-  resetSiteZoom(host: string): void;
-  /** Runde 3: Suchen auf der Seite */
-  find: FindState;
-  openFind(): void;
-  closeFind(): void;
-  findRun(query: string, backwards?: boolean): void;
-  print(): void;
-  /** Runde 3: Tab-Schlaf */
-  sleepTab(id: string): void;
-  sleepInactiveTabs(): void;
-  /** Runde 3: Tastenkuerzel (UI + Rust AcceleratorKeyPressed) */
-  runShortcut(key: string): void;
-  /** Runde 3: Befehlspalette */
-  paletteMode: "all" | "commands";
-  openPalette(mode?: "all" | "commands"): void;
-  /** Runde 3: Tab-Gruppen */
-  groups: TabGroup[];
-  createGroup(tabId: string): void;
-  setTabGroup(tabId: string, groupId: string | null): void;
-  groupTabsByDomain(): void;
-  updateGroup(id: string, p: Partial<TabGroup>): void;
-  removeGroup(id: string, closeTabs?: boolean): void;
-  /** Put all internal tabs (settings, history, …) into one group */
-  groupInternalTabs(): void;
-  /** Split view: pair of tabs (kept while another tab is active; shown when one of them is active) */
-  split: SplitPair | null;
-  /** Split view is currently on screen (active tab is part of the pair) */
-  splitActive: boolean;
-  /** Live ratio (also during divider drag) and orientation */
-  splitRatio: number;
-  splitVertical: boolean;
-  /** Divider drag in progress (native webviews hidden) */
-  splitDragging: boolean;
-  setSplitDragging(v: boolean): void;
-  /** Open split view: active tab + `withId` (default: last used other tab, else a new tab) */
-  openSplit(withId?: string): Promise<void>;
-  /** Page context menu: open `url` (default: start page) next to tab `fromId` (default: active tab) in split view */
-  openInSplit(url?: string, fromId?: string): Promise<void>;
-  closeSplit(): void;
-  toggleSplit(): void;
-  swapSplit(): void;
-  toggleSplitOrientation(): void;
-  /** live = only update the preview; otherwise persist */
-  setSplitRatio(r: number, live?: boolean): void;
-  /** Overlay over the content area (radial menu): hides the native webviews while true */
-  overlay: boolean;
-  setOverlay(v: boolean): void;
-  /** Recently closed web tabs (newest first) */
-  closedTabs: string[];
-  reopenClosedTab(): void;
-  /** Toast / undo */
-  toast: Toast | null;
-  showToast(msg: string, undo?: () => void): void;
-  dismissToast(): void;
-  /** Apply settings and offer "Undo" (restores the previous values of the changed keys) */
-  updateSettingsUndoable(p: Partial<Settings>, msg: string): void;
-  applyPreset(id: PresetId): void;
-}
 
 const Ctx = createContext<Store | null>(null);
 export const useBrowser = () => {
@@ -191,7 +34,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   const [totalBlocked, setTotalBlocked] = useState(0);
   const [navError, setNavError] = useState<NavError | null>(null);
   const [status, setStatus] = useState("");
-  const [activity, setActivity] = useState<ActivityEvent[]>(() => load("activity", [] as ActivityEvent[]));
+  const [activity, setActivity] = useState<ActivityEvent[]>(() => normalizeActivity(load<unknown>("activity", [])));
   const [toast, setToast] = useState<Toast | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const showToast = useCallback((msg: string, undo?: () => void) => {
@@ -212,7 +55,8 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
       devTools: s.devTools === true,
       updateIntervalHours: [0, 6, 12, 24, 72].includes(s.updateIntervalHours) ? s.updateIntervalHours : 24,
       sidebarWidth: clampSidebarWidth(s.sidebarWidth), language: normalizeLangSetting(s.language),
-      splitRatio: clampSplitRatio(s.splitRatio), splitVertical: s.splitVertical === true, toolbar: normalizeToolbar(s.toolbar) };
+      splitRatio: clampSplitRatio(s.splitRatio), splitVertical: s.splitVertical === true, toolbar: normalizeToolbar(s.toolbar),
+      audioEqualizer: normalizeAudioEqualizer(s.audioEqualizer) };
   });
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
@@ -415,7 +259,11 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
           setNavState(n => ({ ...n, [id]: { back: !!ev.canGoBack, fwd: !!ev.canGoForward } }));
           break;
         case "popup-blocked":
-          setActivity(items => [{ id: uid(), time: Date.now(), kind: "popup-blocked", tabId: id, tabTitle: ev.tabTitle ?? "", url: ev.url ?? "", detail: ev.detail ?? "", reason: ev.reason ?? "unknown" }, ...items].slice(0, 500));
+          setActivity(items => [{
+            id: uid(), time: Date.now(), kind: "popup-blocked", tabId: id,
+            tabTitle: (ev.tabTitle ?? "").slice(0, 300), url: (ev.url ?? "").slice(0, 4096),
+            detail: (ev.detail ?? "").slice(0, 512), reason: (ev.reason ?? "unknown").slice(0, 64),
+          }, ...items].slice(0, ACTIVITY_LIMIT));
           setStatus(tr("st.popupBlocked", { url: ev.url ?? "" }));
           break;
         case "shortcut":

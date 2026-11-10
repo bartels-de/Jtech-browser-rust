@@ -132,12 +132,13 @@ small, audited script (`src-tauri/src/pagebridge.rs`, `BRIDGE_TEMPLATE`):
 - It is registered with `AddScriptToExecuteOnDocumentCreated` before a tab's first navigation
   (same mechanism as extension scripts) and runs in the top frame only.
 - It talks to Rust only through `window.chrome.webview.postMessage` with a JSON string of the fixed
-  schema `{jtech: 1, type: "radial" | "peek" | "media", ...}`:
+  schema `{jtech: 1, type: "radial" | "peek" | "media" | "equalizer", ...}`:
   - `radial` – middle button held for 250 ms without moving (`x`, `y`). Short middle clicks and
     autoscroll are not affected; the `auxclick` after an opened menu is suppressed.
   - `peek` – Shift+click on an `http(s)` link (`url`); the default navigation is prevented.
   - `media` – state of the page's media elements and `navigator.mediaSession.metadata` (title,
     artist, album, artwork URL), sent only on change.
+  - `equalizer` – status feedback (`ready`, `unsupported` or `error`) from the optional web audio filter.
 - `WebMessageReceived` accepts messages only from `http(s)` documents. `pagebridge::parse`
   validates the type and every field (8 KB limit, finite coordinates, absolute `http(s)` URLs
   without credentials, text truncated, unknown types dropped). A valid message can only show the
@@ -147,7 +148,9 @@ small, audited script (`src-tauri/src/pagebridge.rs`, `BRIDGE_TEMPLATE`):
 - Media controls (play/pause/next/previous/volume) run a fixed script from Rust
   (`media_control_script`): the action comes from an allowlist and the volume is clamped; no user
   text is embedded. Per-tab volume sets `HTMLMediaElement.volume` (WebView2 has no native per-tab
-  volume; Web Audio output is not affected).
+  volume). The Audio Hub's optional five-band equalizer is limited to HTTP(S) tabs and uses a
+  validated, bounded gain array. It checks the media URL/CORS mode and resumes AudioContext before
+  connecting a media source; if those checks fail, the existing playback path is left alone.
 - The radial/peek triggers can be switched off in the settings (`set_bridge_options`); Rust then
   ignores the messages and the script stops preventing Shift+click.
 

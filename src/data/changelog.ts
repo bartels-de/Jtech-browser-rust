@@ -13,6 +13,27 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.3.1", date: null,
+    notes: {
+      de: [
+        "Die Browseraktivität erklärt Popup-Blockierungen verständlicher, einschließlich fehlgeschlagener Popup-Fenster.",
+        "Aktivitätseinträge werden bei alten oder fehlerhaften gespeicherten Daten sicher normalisiert und begrenzt.",
+        "Optionaler Equalizer mit fünf Bändern, Klangprofilen und auswählbarer Tab-Steuerung für Web-Audio im Audio-Hub; standardmäßig aus und bei ungeeigneten Medienquellen ohne Eingriff in die Wiedergabe.",
+        "YouTube-Werbebehandlung verbessert: schnellere Prüfungen während laufender Anzeigen und Erkennung nachträglich eingeblendeter Überspringen-Schaltflächen.",
+        "Equalizer-Einstellungen werden nach Navigation im selben Tab erneut angewendet, der Status bleibt bei Medienaktualisierungen erhalten und Regler sind auch im Bypass-Modus einstellbar.",
+        "Interne Module für Einstellungen, Browserzustand und Rust-Commands wurden zur besseren Wartbarkeit aufgeteilt.",
+      ],
+      en: [
+        "Browser Activity explains popup blocking more clearly, including popup-window creation failures.",
+        "Activity entries safely normalize older or malformed saved data and enforce event-data bounds.",
+        "Optional five-band equalizer with sound presets and selectable tab controls for web audio in the Audio Hub; off by default and leaves unsupported media sources unchanged.",
+        "Improved YouTube ad handling with faster active-ad checks and detection of dynamically inserted skip controls.",
+        "Equalizer settings now reapply after same-tab navigation, retain their status between media updates and can be adjusted while bypassed.",
+        "Internal settings, browser-state and Rust command modules were split for easier maintenance.",
+      ],
+    },
+  },
+  {
     version: "0.3.0", date: null,
     notes: {
       de: [
@@ -24,7 +45,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       ],
       en: [
         "Download manager with search, status filters, transfer speed and clearer progress; downloads can be paused, resumed, cancelled, opened or revealed in Explorer.",
-        "Sign-in popups open in a linked WebView2 window and retain `window.opener` and the originating browser profile. Blocked popups appear in Browser Activity with their source and reason.",
+        "Sign-in popups open in a linked WebView2 window and retain `window.opener` and the originating browser profile. Blocked popup events are recorded with their source and reason in Browser Activity.",
         "Added a restrictive Content Security Policy for the privileged browser UI; storage failures no longer silently fall back to plaintext localStorage.",
         "Added input bounds to navigation, tab commands and Peek. Filter-list downloads require HTTPS, do not follow redirects and enforce a hard size limit.",
         "Updated architecture, extension, ad-blocking and security documentation. SQLCipher and Windows DPAPI remain open work.",
