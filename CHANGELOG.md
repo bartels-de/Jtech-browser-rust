@@ -3,7 +3,11 @@
 All notable changes to JTech Browser. The in-app page `jtech://changelog` shows the same notes
 (localized, from `src/data/changelog.ts`).
 
-## [0.3.1] (Unreleased)
+## [0.3.2]
+
+- Fixed animated Design Studio backgrounds not initializing in production builds because the background API was captured by Vite's module wrapper instead of being exposed on `window`.
+
+## [0.3.1]
 
 - Browser Activity explains popup-blocking reasons more clearly, including popup-window creation failures.
 - Activity history now safely normalizes older or malformed saved entries and bounds retained event data.

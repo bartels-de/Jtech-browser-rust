@@ -13,7 +13,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: "0.3.1", date: null,
+    version: "0.3.2", date: "2026-11-10",
+    notes: {
+      de: ["Fehler behoben, durch den animierte Design-Studio-Hintergründe in Produktionsbuilds nicht initialisiert wurden."],
+      en: ["Fixed animated Design Studio backgrounds not initializing in production builds."],
+    },
+  },
+  {
+    version: "0.3.1", date: "2026-11-10",
     notes: {
       de: [
         "Die Browseraktivität erklärt Popup-Blockierungen verständlicher, einschließlich fehlgeschlagener Popup-Fenster.",
