@@ -1,14 +1,24 @@
-.jtech-twitter-cleanup [data-testid="trend"],
-.jtech-twitter-cleanup [data-testid="UserCell"],
-.jtech-twitter-cleanup [aria-label="Who to follow"],
-.jtech-twitter-cleanup [aria-label="Wem folgen"],
-.jtech-twitter-cleanup [data-testid="cellInnerDiv"] div[data-testid="PlacementTracking"],
-.jtech-twitter-cleanup article div[data-testid="placementTracking"],
-.jtech-twitter-cleanup a[href*="/i/related"],
-.jtech-twitter-cleanup [data-testid="subscription-upsell"],
-.jtech-twitter-cleanup [data-testid="inlinePrompt"],
-.jtech-twitter-cleanup [data-testid="premium-upsell"],
-.jtech-twitter-cleanup div[role="complementary"] > div > div > div:nth-child(3),
-.jtech-twitter-cleanup aside[role="complementary"] section[aria-labelledby*="accessible-list"]:not(:first-child){
-  display:none !important;
+/* X / Twitter Cleanup - hide common clutter. Selectors are intentionally broad
+   for elements X marks as promotional or secondary. */
+html.jtech-twitter-cleanup [data-testid="trend"],
+html.jtech-twitter-cleanup [data-testid="UserCell"],
+html.jtech-twitter-cleanup [data-testid="userFollowIndicator"],
+html.jtech-twitter-cleanup [aria-label="Who to follow"],
+html.jtech-twitter-cleanup [aria-label="Wem folgen"],
+html.jtech-twitter-cleanup [aria-label="Relevant people"],
+html.jtech-twitter-cleanup [data-testid="inlinePrompt"],
+html.jtech-twitter-cleanup [data-testid="socialContext"],
+html.jtech-twitter-cleanup [data-testid="cellInnerDiv"] article:has([data-testid="placementTracking"]),
+html.jtech-twitter-cleanup article:has([data-testid="placementTracking"]),
+html.jtech-twitter-cleanup article[data-testid="tweet"]:has(a[href*="/i/events/"]),
+html.jtech-twitter-cleanup a[href*="/i/related"],
+html.jtech-twitter-cleanup a[href*="/i/connect_people"],
+html.jtech-twitter-cleanup [data-testid="subscription-upsell"],
+html.jtech-twitter-cleanup [data-testid="premium-upsell"],
+html.jtech-twitter-cleanup [data-testid="verified-profile-cta"],
+html.jtech-twitter-cleanup aside[role="complementary"] section:not(:first-child),
+html.jtech-twitter-cleanup div[role="complementary"] > div > div > div:nth-child(3),
+html.jtech-twitter-cleanup [data-testid="sidebarColumn"] div:has(> a[href="/i/premium_sign_up"]),
+html.jtech-twitter-cleanup [data-testid="sidebarColumn"] div:has(> a[href="/i/verified-orgs-signup"]) {
+  display: none !important;
 }

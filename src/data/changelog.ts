@@ -13,6 +13,29 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.1.16", date: "2026-11-10",
+    notes: {
+      de: [
+        "Fix: Google-/OAuth-Login auf X.com und anderen Seiten funktioniert jetzt. OAuth-Popups behalten window.opener, damit das Ergebnis an den Eltern-Tab zurückgesendet werden kann.",
+        "Alle fünf gebündelten Erweiterungen auf v1.1.0 verbessert:",
+        "Clean URLs patcht jetzt auch history.pushState/replaceState und window.open, bereinigt Links, Formulare und Hash-Tracking-Parameter.",
+        "Cookie Banner Deny läuft früher, klickt gezielte Ablehnen-Buttons und verwendet ein sicheres Scoring, um versehentliches Akzeptieren zu vermeiden.",
+        "Dark Reader nutzt einen korrekten Invert-Filter, schließt Seiten mit nativem Dunkelmodus aus und lässt Medien lesbar.",
+        "SponsorBlock liest die Video-ID zuverlässiger, reagiert auf YouTube-SPA-Navigation und überspringt bei Seek/Play/Timeupdate.",
+        "X/Twitter Cleanup erkennt promoted Posts zuverlässiger und entfernt mehr Sidebar-Clutter und Premium-Upsells.",
+      ],
+      en: [
+        "Fix: Google / OAuth login on X.com and other sites now works. OAuth popups keep window.opener so the login result can be posted back to the parent tab.",
+        "All five bundled extensions improved to v1.1.0:",
+        "Clean URLs now also patches history.pushState/replaceState and window.open, cleans links, forms and hash-fragment tracking parameters.",
+        "Cookie Banner Deny runs earlier, clicks specific deny buttons first and uses safe scoring to avoid accidentally accepting.",
+        "Dark Reader uses a proper invert filter, excludes sites with native dark mode and keeps media readable.",
+        "SponsorBlock reads the video ID more reliably, reacts to YouTube SPA navigation and skips on seek/play/timeupdate.",
+        "X/Twitter Cleanup detects promoted posts more reliably and removes more sidebar clutter and premium upsells.",
+      ],
+    },
+  },
+  {
     version: "0.1.15", date: "2026-11-10",
     notes: {
       de: [

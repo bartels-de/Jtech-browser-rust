@@ -3,6 +3,16 @@
 All notable changes to JTech Browser. The in-app page `jtech://changelog` shows the same notes
 (localized, from `src/data/changelog.ts`).
 
+## [0.1.16]
+
+- Fix Google / OAuth login on X.com and other sites: OAuth popups now keep `window.opener` so the login result can be posted back to the parent tab.
+- All five bundled extensions bumped to v1.1.0 and substantially improved:
+  - Clean URLs now also patches `history.pushState`, `history.replaceState` and `window.open`; cleans links, forms and hash-fragment tracking parameters.
+  - Cookie Banner Deny runs earlier, clicks specific deny buttons first and uses safer text scoring to avoid accepting by accident.
+  - Dark Reader switches to a proper invert-filter approach, excludes sites with native dark mode and keeps media readable.
+  - SponsorBlock reads the video ID more reliably, handles YouTube SPA navigation and skips on seek/play/timeupdate.
+  - X/Twitter Cleanup detects promoted posts more reliably and removes more sidebar clutter and premium upsells.
+
 ## [0.1.15]
 
 - Five new bundled extensions, all disabled by default: SponsorBlock, Dark Reader, Cookie Banner Deny, X/Twitter Cleanup and Clean URLs.

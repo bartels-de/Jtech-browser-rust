@@ -1,11 +1,11 @@
 {
   "id": "jtech.twitter-cleanup",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "minBrowser": "0.1.14",
   "name": { "en": "X / Twitter Cleanup", "de": "X / Twitter Cleanup" },
   "description": {
-    "en": "Hides ads, promoted tweets, 'Who to follow', trending topics and other clutter on x.com and twitter.com.",
-    "de": "Blendet Werbung, promoted Tweets, 'Wem folgen', Trends und andere Ablenkungen auf x.com und twitter.com aus."
+    "en": "Hides ads, promoted posts, 'Who to follow', trending topics, premium upsells and other clutter on x.com and twitter.com.",
+    "de": "Blendet Werbung, promoted Posts, 'Wem folgen', Trends, Premium-Angebote und andere Ablenkungen auf x.com und twitter.com aus."
   },
   "author": "JTech",
   "icon": "icon.svg",

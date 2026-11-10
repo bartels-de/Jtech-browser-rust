@@ -1337,6 +1337,28 @@ fn inject_cosmetic(core: &webview2_com_sys::Microsoft::Web::WebView2::Win32::ICo
 
 #[cfg(windows)]
 /// `first_nav`: Tab wurde mit about:blank erzeugt; diese URL wird erst nach der Script-Registrierung geladen.
+/// True for URIs that must keep `window.opener` (OAuth / SSO popups).
+/// We let WebView2 open these as real popup windows instead of converting them to JTech tabs.
+fn is_opener_popup_uri(uri: &str) -> bool {
+    let lower = uri.to_lowercase();
+    let host = lower
+        .trim_start_matches("http://")
+        .trim_start_matches("https://")
+        .split('/')
+        .next()
+        .unwrap_or("");
+    host.ends_with("accounts.google.com")
+        || host.ends_with("accounts.google.co.uk")
+        || host == "accounts.youtube.com"
+        || host.ends_with("appleid.apple.com")
+        || host == "www.facebook.com" || host == "facebook.com" || host == "m.facebook.com"
+        || host.ends_with("login.microsoftonline.com")
+        || host.ends_with("login.live.com")
+        || host.ends_with("accounts.microsoft.com")
+        || (host.ends_with("github.com") && lower.contains("/login/oauth"))
+        || host.contains("auth0.com")
+}
+
 unsafe fn attach_handlers(pwv: &tauri::webview::PlatformWebview, app: &AppHandle, tab_id: &str, tab: &Tab, first_nav: Option<(tauri::Url, Arc<AtomicBool>)>) -> Result<(), String> {
     use webview2_com_sys::Microsoft::Web::WebView2::Win32 as SYS;
     use windows::core::{Interface, PCWSTR, PWSTR};
@@ -1583,6 +1605,12 @@ unsafe fn attach_handlers(pwv: &tauri::webview::PlatformWebview, app: &AppHandle
             let mut user = Default::default();
             let _ = unsafe { args.IsUserInitiated(&mut user) };
             let user: bool = user.as_bool();
+            // OAuth / SSO popups need a real opener (window.opener.postMessage).
+            // Let WebView2 open them as native popup windows instead of JTech tabs.
+            if user && is_opener_popup_uri(&uri) {
+                tracing::info!(tab = id.as_str(), "NewWindowRequested -> erlaube OAuth-Popup {uri}");
+                return Ok(());
+            }
             unsafe { args.SetHandled(true.into())? };
             if user && (uri.starts_with("http://") || uri.starts_with("https://")) {
                 tracing::info!(tab = id.as_str(), "NewWindowRequested -> neuer Tab {uri}");
