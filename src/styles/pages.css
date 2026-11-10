@@ -228,6 +228,15 @@ label.setting-text { cursor: pointer; }
 .audio-text { min-width: 0; display: flex; flex-direction: column; }
 .audio-text strong, .audio-text small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .audio-vol { width: 96px; }
+.eq-panel { display: grid; gap: 14px; }
+.eq-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.eq-enable { display: flex; align-items: center; gap: 8px; margin-right: auto; color: var(--text-2); font-size: var(--fs-sm); }
+.eq-bands { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; }
+.eq-band { display: grid; gap: 6px; min-width: 0; color: var(--text-2); font-size: var(--fs-sm); }
+.eq-band input { width: 100%; }
+.eq-band small { color: var(--text-3); text-align: center; font-variant-numeric: tabular-nums; }
+.eq-status { margin: 0; color: var(--text-3); font-size: var(--fs-sm); }
+.eq-status.warn { color: var(--warning, #e2a23a); }
 .expert-toggle { display: flex; align-items: center; gap: 8px; margin: 10px 0 4px; font-size: var(--fs-sm); color: var(--text-2); cursor: pointer; }
 .preset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; padding: 4px 0 8px; }
 .preset-card { display: flex; flex-direction: column; gap: 4px; padding: 12px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-1); color: var(--text); text-align: left; cursor: pointer; }

@@ -160,7 +160,8 @@ the `files` hashes (LF line endings, as stored in the repository).
   masthead/banner promos, merch shelves, Shorts ad entries). `videoDetails` and `streamingData` are untouched.
 - Player fallback: while the player has `ad-showing`/`ad-interrupting`, the video is muted, played at
   16x and moved to its end, and skip buttons are clicked; mute, volume and speed are restored afterwards.
-  Polls once per second (paused in background tabs) plus a class observer on the player.
+  Checks every 250 ms while an ad is active, otherwise every second (paused in background tabs), and
+  observes player class and child changes so dynamically inserted skip controls are detected promptly.
 - Cosmetic CSS hides remaining ad slots, overlays and companion ads.
 - The "ad blockers are not allowed" enforcement dialog is removed and playback resumed; other dialogs
   are left alone.

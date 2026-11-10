@@ -1,11 +1,11 @@
 {
   "id": "jtech.youtube-adblock",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minBrowser": "0.1.6",
   "name": { "en": "YouTube Ad Blocker", "de": "YouTube Werbeblocker" },
   "description": {
-    "en": "Removes video ads, feed ads and ad overlays on YouTube by stripping ad data from the page, skips ads that still play and hides ad slots.",
-    "de": "Entfernt Videowerbung, Werbung im Feed und Werbe-Overlays auf YouTube, indem Werbedaten aus der Seite entfernt werden; verbleibende Werbung wird uebersprungen und Werbeflaechen werden ausgeblendet."
+    "en": "Removes many video and feed ads on YouTube by stripping ad data, reacting quickly to skip controls and hiding ad slots. Server-inserted ads may remain.",
+    "de": "Entfernt viele Video- und Feed-Anzeigen auf YouTube, indem Werbedaten entfernt, Skip-Schaltflächen schneller erkannt und Werbeflächen ausgeblendet werden. Serverseitig eingefügte Werbung kann weiterhin auftreten."
   },
   "author": "JTech",
   "icon": "icon.svg",

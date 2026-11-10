@@ -177,7 +177,13 @@
       try { v.muted = true; } catch (e) {}
       try { v.playbackRate = 16; } catch (e) {}
       try { if (isFinite(v.duration) && v.duration > 0 && v.currentTime < v.duration - 0.2) v.currentTime = v.duration - 0.1; } catch (e) {}
-      var b = p.querySelector(SKIP); if (b) try { b.click(); } catch (e) {}
+      // YouTube can insert or replace the skip control after the ad state changes. Check all
+      // known controls on each ad tick instead of relying on one click at ad-start only.
+      var buttons = p.querySelectorAll(SKIP);
+      for (var i = 0; i < buttons.length; i++) {
+        var b = buttons[i];
+        if (!b.disabled && b.getAttribute('aria-hidden') !== 'true') try { b.click(); } catch (e) {}
+      }
     } else if (saved) {
       try { v.muted = saved.muted; v.volume = saved.volume; v.playbackRate = saved.rate; } catch (e) {}
       saved = null;
@@ -201,11 +207,18 @@
     if (p && p !== observed) {
       if (obs) obs.disconnect();
       observed = p;
-      obs = new MutationObserver(function () { handleAd(p); });
-      obs.observe(p, { attributes: true, attributeFilter: ['class'] });
+      obs = new MutationObserver(function (changes) {
+        // Class changes identify ad transitions; subtree changes catch skip buttons inserted later.
+        if (changes.some(function (change) { return change.type === 'attributes' || change.addedNodes.length > 0; })) handleAd(p);
+      });
+      obs.observe(p, { attributes: true, attributeFilter: ['class'], childList: true, subtree: true });
     }
     if (p) handleAd(p);
     handleEnforcement();
   }
-  setInterval(function () { if (!document.hidden || saved) tick(); }, 1000);
+  (function scheduleTick() {
+    if (!document.hidden || saved) tick();
+    // Check more frequently only during an ad, when fast-forward and skip controls matter.
+    setTimeout(scheduleTick, saved ? 250 : 1000);
+  })();
 })();

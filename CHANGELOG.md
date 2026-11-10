@@ -3,13 +3,14 @@
 All notable changes to JTech Browser. The in-app page `jtech://changelog` shows the same notes
 (localized, from `src/data/changelog.ts`).
 
-## [0.2.0]
+## [0.3.1] (Unreleased)
 
-- Design Studio: 32 fonts instead of 7 in the theme editor, grouped into sans serif, serif, monospace and display.
-  - New: Arial, Calibri, Candara, Corbel, Tahoma, Franklin Gothic, Lato, Ebrima, Times New Roman, Cambria, Constantia, Palatino Linotype, Book Antiqua, Garamond, Rockwell, Sitka, Consolas, Courier New, Lucida Console, Cambria Math, Segoe UI Black, Segoe UI Semibold, Gabriola, Comic Sans MS and Impact.
-  - Every font is checked against the Windows font folder, so the list only contains fonts that are actually installed.
-  - A live preview below the selection shows the pangram in the chosen font.
-- All previous changes from 0.1.14 and older are included in this release.
+- Browser Activity explains popup-blocking reasons more clearly, including popup-window creation failures.
+- Activity history now safely normalizes older or malformed saved entries and bounds retained event data.
+- Added an optional five-band equalizer with presets and selectable per-tab controls for web audio in the Audio Hub; it is off by default and leaves unsupported media sources untouched.
+- Improved YouTube ad handling with faster active-ad checks and detection of dynamically inserted skip controls.
+- Equalizer settings now reapply after same-tab navigation, retain their status between media updates and can be adjusted while bypassed.
+- Refactored large settings and Rust modules into smaller, responsibility-focused modules without changing browser commands or features.
 
 ## [0.3.0]
 
@@ -19,6 +20,14 @@ All notable changes to JTech Browser. The in-app page `jtech://changelog` shows 
 - Hardened navigation and tab commands with URL length/control-character and tab-ID validation; Peek URLs are bounded.
 - Filter-list updates require HTTPS, reject redirects and URL credentials, use a 10-second connection timeout and enforce the 30 MiB limit while streaming.
 - Updated architecture, extension, ad-blocking and security documentation. SQLCipher and Windows DPAPI remain unimplemented and are documented as open risks.
+
+## [0.2.0]
+
+- Design Studio: 32 fonts instead of 7 in the theme editor, grouped into sans serif, serif, monospace and display.
+  - New: Arial, Calibri, Candara, Corbel, Tahoma, Franklin Gothic, Lato, Ebrima, Times New Roman, Cambria, Constantia, Palatino Linotype, Book Antiqua, Garamond, Rockwell, Sitka, Consolas, Courier New, Lucida Console, Cambria Math, Segoe UI Black, Segoe UI Semibold, Gabriola, Comic Sans MS and Impact.
+  - Every font is checked against the Windows font folder, so the list only contains fonts that are actually installed.
+  - A live preview below the selection shows the pangram in the chosen font.
+- All previous changes from 0.1.14 and older are included in this release.
 
 ## [0.1.14]
 

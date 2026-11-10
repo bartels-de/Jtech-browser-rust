@@ -1,14 +1,23 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useBrowser } from "../store/BrowserStore";
 import { useT } from "../i18n";
 import { Favicon } from "../components/Favicon";
 import { mediaStore } from "../lib/bridge";
-import { siteOf } from "../lib/ipc";
+import { call, siteOf } from "../lib/ipc";
 import { MediaButtons, mediaControl } from "../components/MediaControls";
 import { Group } from "../components/SettingsUI";
 import { IconMusic, IconTrash } from "../components/Icons";
 import { PageShell } from "../components/PageShell";
 import { EmptyState } from "../components/EmptyState";
+import type { AudioEqPreset } from "../store/types";
+
+const EQ_BANDS = ["60 Hz", "250 Hz", "1 kHz", "4 kHz", "12 kHz"];
+const EQ_PRESETS: Record<Exclude<AudioEqPreset, "custom">, number[]> = {
+  flat: [0, 0, 0, 0, 0],
+  bass: [6, 4, 1, 0, -1],
+  voice: [-2, 1, 4, 3, 0],
+  treble: [-2, -1, 0, 3, 5],
+};
 
 /**
  * Audio hub (jtech://audio). WebView2 reports "playing audio" and mutes per tab (ICoreWebView2_8).
@@ -21,6 +30,30 @@ export function AudioPage() {
   const { t } = useT();
   const media = mediaStore.use();
   const [site, setSite] = useState("");
+  const [selectedEqTabId, setSelectedEqTabId] = useState<string | null>(null);
+  const equalizer = b.settings.audioEqualizer ?? { enabled: false, preset: "flat" as const, bands: EQ_PRESETS.flat };
+  const activeTab = b.activeTab;
+  const eqTabs = useMemo(() => b.tabs.filter(tab => !tab.internal && !tab.sleeping && /^https?:/i.test(tab.url)), [b.tabs]);
+  const eqTab = eqTabs.find(tab => tab.id === selectedEqTabId)
+    ?? eqTabs.find(tab => tab.id === activeTab?.id)
+    ?? eqTabs.find(tab => tab.playingAudio || media[tab.id]?.state === "playing")
+    ?? eqTabs[0];
+  const eqTabId = eqTab?.id;
+  const activeEqStatus = eqTabId ? media[eqTabId]?.equalizerStatus : undefined;
+  const bandSignature = equalizer.bands.join(",");
+  useEffect(() => {
+    if (!eqTabId) return;
+    const bands = equalizer.enabled ? equalizer.bands : EQ_PRESETS.flat;
+    call("set_media_equalizer", { id: eqTabId, bands }, message => console.warn("Audio equalizer:", message));
+  }, [eqTabId, eqTab?.url, equalizer.enabled, bandSignature]);
+
+  const setEqualizer = (next: typeof equalizer) => b.updateSettings({ audioEqualizer: next });
+  const choosePreset = (preset: Exclude<AudioEqPreset, "custom">) => setEqualizer({ ...equalizer, preset, bands: EQ_PRESETS[preset] });
+  const changeBand = (index: number, value: number) => {
+    const bands = [...equalizer.bands];
+    bands[index] = value;
+    setEqualizer({ ...equalizer, preset: "custom", bands });
+  };
   const list = b.settings.audioMuteSites ?? [];
   const audible = b.tabs.filter(x => !x.internal && !x.sleeping && (x.playingAudio || x.muted || (media[x.id] && media[x.id].state !== "none")));
   const others = (id: string) => audible.filter(x => x.id !== id);
@@ -64,6 +97,44 @@ export function AudioPage() {
           );
         })}
       </section>
+      <Group title={t("au.eq.title")} desc={t("au.eq.desc")}>
+        {eqTab && (
+          <div className="eq-panel">
+            <div className="eq-toolbar">
+              {eqTabs.length > 1 && <label className="eq-enable">
+                <span>{t("au.eq.target")}</span>
+                <select value={eqTab.id} onChange={e => setSelectedEqTabId(e.target.value)} aria-label={t("au.eq.target")}>
+                  {eqTabs.map(tab => <option key={tab.id} value={tab.id}>{tab.title || siteOf(tab.url) || tab.url}</option>)}
+                </select>
+              </label>}
+              <label className="eq-enable">
+                <input type="checkbox" role="switch" checked={equalizer.enabled} onChange={e => setEqualizer({ ...equalizer, enabled: e.target.checked })} />
+                <span>{t("au.eq.enable")}</span>
+              </label>
+              <select value={equalizer.preset} onChange={e => choosePreset(e.target.value as Exclude<AudioEqPreset, "custom">)} aria-label={t("au.eq.preset")}>
+                {(["flat", "bass", "voice", "treble"] as const).map(preset => <option key={preset} value={preset}>{t(`au.eq.${preset}` as "au.eq.flat")}</option>)}
+                {equalizer.preset === "custom" && <option value="custom">{t("au.eq.custom")}</option>}
+              </select>
+              <button className="btn ghost sm" onClick={() => choosePreset("flat")}>{t("au.eq.reset")}</button>
+            </div>
+            <div className="eq-bands" aria-label={t("au.eq.title")}>
+              {equalizer.bands.map((gain, index) => (
+                <label className="eq-band" key={EQ_BANDS[index]}>
+                  <span>{EQ_BANDS[index]}</span>
+                  <input type="range" min={-12} max={12} step={1} value={gain}
+                    aria-label={t("au.eq.band", { band: EQ_BANDS[index] })}
+                    onChange={e => changeBand(index, Number(e.target.value))} />
+                  <small>{gain > 0 ? "+" : ""}{gain} dB</small>
+                </label>
+              ))}
+            </div>
+            <p className={`eq-status${activeEqStatus === "unsupported" || activeEqStatus === "error" ? " warn" : ""}`} role="status">
+              {activeEqStatus === "waiting" ? t("au.eq.waiting") : activeEqStatus === "unsupported" ? t("au.eq.unsupported") : activeEqStatus === "error" ? t("au.eq.error") : t("au.eq.note")}
+            </p>
+          </div>
+        )}
+        {!eqTab && <EmptyState compact title={t("au.eq.noTabs")} />}
+      </Group>
       <Group title={t("au.sitesTitle")} desc={t("au.sitesDesc")}>
         <form className="inline-form" onSubmit={e => { e.preventDefault(); addSite(site); }}>
           <input value={site} onChange={e => setSite(e.target.value)} placeholder="example.com" spellCheck={false} aria-label={t("au.sitesTitle")} />

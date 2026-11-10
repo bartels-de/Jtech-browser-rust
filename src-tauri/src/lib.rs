@@ -13,11 +13,14 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use tauri::{AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, window::WindowBuilder};
 use adblock::engine::Engine;
 use serde::Serialize;
-use std::path::{Path, PathBuf};
 
 // Runde 4: Module fuer Persistenz, Filterlisten und Datenschutz.
+mod downloads;
+mod performance;
+mod tab_commands;
 mod storage;
 mod filters;
+mod fullscreen;
 mod privacy;
 // Runde 5: eigene Tastenkuerzel (AcceleratorKeyPressed-Allowlist) + optionale Cursor-Effekte in Webseiten.
 mod uifx;
@@ -38,6 +41,7 @@ static BLOCKED: AtomicU64 = AtomicU64::new(0);
 static DEVTOOLS: AtomicBool = AtomicBool::new(false);
 /// Etappe G: Adblock zur Laufzeit an/aus (UI-Einstellung). Wirkt sofort auf alle Tabs.
 static ADBLOCK_ENABLED: AtomicBool = AtomicBool::new(true);
+static POPUP_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 pub const START_URL: &str = "about:blank"; // Etappe G: UI zeigt darueber die Startseite jtech://newtab
 pub const DEFAULT_TOP_HEIGHT: f64 = 72.0;
@@ -45,7 +49,7 @@ pub const DEFAULT_SIDEBAR_WIDTH: f64 = 248.0;
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct TabInfo { id: String, title: String, url: String, active: bool, blocked: u64, playing_audio: bool, muted: bool, /** Runde 3: Tab schlaeft (Webview zerstoert) */ sleeping: bool }
+pub struct TabInfo { id: String, title: String, url: String, active: bool, blocked: u64, playing_audio: bool, muted: bool, /** Runde 3: Tab schlaeft (Webview zerstoert) */ sleeping: bool }
 
 /// Event an die UI. kind: navigation-starting | navigation-completed | source-changed |
 /// title-changed | process-failed | controller-ready | bounds | visibility | error | blocked-document
@@ -149,7 +153,7 @@ struct TabManager {
     /// Etappe G: false = aktive Content-Webview verstecken (interne Seiten, Menues).
     content_visible: bool,
     /// Vollbild: HTML5-Element-Vollbild der Seite und/oder Browser-Vollbild (F11).
-    fullscreen: Option<FullscreenState>,
+    fullscreen: Option<fullscreen::FullscreenState>,
     /// Geteilte Ansicht: zwei Tabs nebeneinander (von der UI per set_layout gemeldet, validiert).
     split: Option<SplitState>,
 }
@@ -182,20 +186,6 @@ pub fn split_bounds(c: Bounds, ratio: f64, vertical: bool) -> (Bounds, Bounds) {
         (Bounds { x: c.x, y: c.y, w: wa, h: c.h }, Bounds { x: c.x + wa + SPLIT_GAP, y: c.y, w: (avail - wa).max(1.0), h: c.h })
     }
 }
-
-#[derive(Clone, Debug)]
-struct FullscreenState {
-    /// Tab, dessen Seite ein Element im Vollbild hat (requestFullscreen).
-    page_tab: Option<String>,
-    /// Browser-Vollbild per F11 / Befehl.
-    browser: bool,
-    /// Fensterzustand vor dem Vollbild (Groesse/Position stellt tao beim Verlassen selbst wieder her).
-    was_maximized: bool,
-}
-
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct FullscreenEvent { tab_id: Option<String>, fullscreen: bool, page: bool, browser: bool }
 
 impl TabManager {
     fn new() -> Self {
@@ -244,6 +234,8 @@ impl TabManager {
         first
     }
 }
+
+fn now_ms() -> u64 { std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|duration| duration.as_millis() as u64).unwrap_or(0) }
 
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> { m.lock().unwrap_or_else(|p| p.into_inner()) }
 
@@ -407,99 +399,6 @@ fn main_window(app: &AppHandle) -> Option<tauri::Window> {
     m.window.clone()
 }
 
-// ---------- Vollbild ----------
-
-fn emit_fullscreen(app: &AppHandle) {
-    let ev = {
-        let state = app.state::<Mutex<TabManager>>();
-        let m = lock(&state);
-        match &m.fullscreen {
-            Some(f) => FullscreenEvent { tab_id: f.page_tab.clone(), fullscreen: true, page: f.page_tab.is_some(), browser: f.browser },
-            None => FullscreenEvent { tab_id: None, fullscreen: false, page: false, browser: false },
-        }
-    };
-    if let Err(e) = app.emit("content-fullscreen", ev) { tracing::error!("emit content-fullscreen: {e}"); }
-}
-
-/// Vollbild-Zustand aendern. page: Some(Some(id)) = Seite betritt, Some(None) = Seite verlaesst;
-/// browser: Some(b) = F11-Zustand setzen. Fenster geht in Vollbild, solange einer von beiden aktiv ist.
-fn update_fullscreen(app: &AppHandle, page: Option<Option<String>>, browser: Option<bool>) {
-    let Some(window) = ({ let state = app.state::<Mutex<TabManager>>(); let m = lock(&state); m.window.clone() }) else { return };
-    let was_max_now = window.is_maximized().unwrap_or(false);
-    let (enter, leave) = {
-        let state = app.state::<Mutex<TabManager>>();
-        let mut m = lock(&state);
-        let before = m.fullscreen.clone();
-        let mut f = before.clone().unwrap_or(FullscreenState { page_tab: None, browser: false, was_maximized: was_max_now });
-        if let Some(p) = page { f.page_tab = p; }
-        if let Some(b) = browser { f.browser = b; }
-        let active = f.page_tab.is_some() || f.browser;
-        m.fullscreen = if active { Some(f) } else { None };
-        (before.is_none() && active, before.as_ref().filter(|_| !active).map(|b| b.was_maximized))
-    };
-    if enter {
-        tracing::info!("Vollbild an (vorher maximiert: {was_max_now})");
-        if let Err(e) = window.set_fullscreen(true) { report_error(app, "", "set_fullscreen(true)", e); }
-    }
-    if let Some(was_max) = leave {
-        tracing::info!("Vollbild aus (wieder maximieren: {was_max})");
-        if let Err(e) = window.set_fullscreen(false) { report_error(app, "", "set_fullscreen(false)", e); }
-        if was_max { if let Err(e) = window.maximize() { report_error(app, "", "maximize", e); } }
-    }
-    apply_layout(app);
-    emit_fullscreen(app);
-}
-
-/// Seite meldet ContainsFullScreenElement. Nur der aktive Tab darf das Fenster in Vollbild schalten.
-fn page_fullscreen_changed(app: &AppHandle, tab_id: &str, on: bool) {
-    let (is_active, is_fs_tab) = {
-        let state = app.state::<Mutex<TabManager>>();
-        let m = lock(&state);
-        let in_split = m.split.as_ref().is_some_and(|s| (s.a == tab_id || s.b == tab_id) && m.active.as_deref().is_some_and(|a| a == s.a || a == s.b));
-        (m.active.as_deref() == Some(tab_id) || in_split, m.fullscreen.as_ref().and_then(|f| f.page_tab.as_deref()) == Some(tab_id))
-    };
-    if on && is_active {
-        // Geteilte Ansicht: der Bereich, der Vollbild anfordert, wird fokussiert.
-        {
-            let state = app.state::<Mutex<TabManager>>();
-            let mut m = lock(&state);
-            if m.active.as_deref() != Some(tab_id) { m.active = Some(tab_id.to_string()); }
-        }
-        emit_tabs_changed(app); update_fullscreen(app, Some(Some(tab_id.to_string())), None); }
-    else if !on && is_fs_tab { update_fullscreen(app, Some(None), None); }
-}
-
-/// Nach Tab-Wechsel/-Schliessen: Element-Vollbild eines nicht mehr aktiven Tabs beenden.
-fn check_fullscreen_tab(app: &AppHandle) {
-    let stale = {
-        let state = app.state::<Mutex<TabManager>>();
-        let m = lock(&state);
-        m.fullscreen.as_ref().and_then(|f| f.page_tab.clone()).filter(|t| m.active.as_deref() != Some(t.as_str()))
-            .map(|t| (t.clone(), m.tabs.get(&t).map(|x| x.webview.clone())))
-    };
-    let Some((_id, wv)) = stale else { return };
-    if let Some(wv) = wv { let _ = wv.eval("try{document.fullscreenElement&&document.exitFullscreen()}catch(e){}"); }
-    update_fullscreen(app, Some(None), None);
-}
-
-/// F11: Browser-Vollbild umschalten (beendet auch ein Element-Vollbild der Seite).
-#[tauri::command]
-fn toggle_fullscreen(app: AppHandle) -> Result<bool, String> {
-    let (on, page_wv) = {
-        let state = app.state::<Mutex<TabManager>>();
-        let m = lock(&state);
-        let page_wv = m.fullscreen.as_ref().and_then(|f| f.page_tab.as_ref()).and_then(|t| m.tabs.get(t)).map(|t| t.webview.clone());
-        (m.fullscreen.is_some(), page_wv)
-    };
-    if on {
-        if let Some(wv) = page_wv { let _ = wv.eval("try{document.fullscreenElement&&document.exitFullscreen()}catch(e){}"); }
-        update_fullscreen(&app, Some(None), Some(false));
-    } else {
-        update_fullscreen(&app, None, Some(true));
-    }
-    Ok(!on)
-}
-
 enum SnapEntry { Live(Tab), Sleeping(SleepInfo), Page(PageInfo) }
 
 fn snapshot_tabs(app: &AppHandle) -> Vec<TabInfo> {
@@ -633,9 +532,9 @@ fn spawn_webview(app: &AppHandle, id: &str, label: &str, parsed: tauri::Url, tit
                     return tauri::webview::NewWindowResponse::Deny;
                 }
 
-                let Ok(window) = tauri::WebviewWindowBuilder::new(
+                let window = tauri::WebviewWindowBuilder::new(
                     &app_for_popups,
-                    format!("oauth-{}", DL_COUNTER.fetch_add(1, Ordering::Relaxed)),
+                    format!("oauth-{}", POPUP_COUNTER.fetch_add(1, Ordering::Relaxed)),
                     tauri::WebviewUrl::External("about:blank".parse().expect("statische URL")),
                 )
                 .with_environment(features.opener().environment.clone())
@@ -645,12 +544,26 @@ fn spawn_webview(app: &AppHandle, id: &str, label: &str, parsed: tauri::Url, tit
                     features.size().map(|s| s.height).unwrap_or(760.0).clamp(480.0, 1000.0),
                 )
                 .center()
-                .build() else {
-                    tracing::warn!(tab = parent_id_for_popups.as_str(), "OAuth-Popup-Fenster konnte nicht erstellt werden");
-                    return tauri::webview::NewWindowResponse::Deny;
+                .build();
+                let window = match window {
+                    Ok(window) => window,
+                    Err(error) => {
+                        tracing::warn!(tab = parent_id_for_popups.as_str(), error = %error, "OAuth-Popup-Fenster konnte nicht erstellt werden");
+                        let title = lock(&app_for_popups.state::<Mutex<TabManager>>())
+                            .tabs.get(&parent_id_for_popups).map(|tab| lock(&tab.title).clone());
+                        emit_tab(&app_for_popups, TabEvent {
+                            tab_id: parent_id_for_popups.clone(),
+                            tab_title: title,
+                            kind: "popup-blocked".into(),
+                            url: Some(url.to_string()),
+                            reason: Some("popup-window-failed".into()),
+                            detail: Some("Das Popup-Fenster konnte nicht erstellt werden".into()),
+                            ..Default::default()
+                        });
+                        return tauri::webview::NewWindowResponse::Deny;
+                    }
                 };
                 tracing::info!(tab = parent_id_for_popups.as_str(), "OAuth-Popup-Fenster erstellt: {url}");
-                let _ = features; // Features are consumed above only for a bounded initial size.
                 tauri::webview::NewWindowResponse::Create { window }
             }),
         LogicalPosition::new(b.x, b.y),
@@ -820,193 +733,6 @@ fn set_devtools(app: AppHandle, enabled: bool) -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
-fn get_blocked_count() -> u64 { BLOCKED.load(Ordering::Relaxed) }
-
-#[tauri::command]
-fn list_tabs(app: AppHandle) -> Vec<TabInfo> { snapshot_tabs(&app) }
-
-/// async: Webview-Erzeugung in einem synchronen Command kann unter Windows deadlocken.
-#[tauri::command]
-async fn new_tab(app: AppHandle, url: String, background: Option<bool>) -> Result<String, String> {
-    create_tab_with(&app, &url, background != Some(true)).inspect_err(|e| report_error(&app, "", "new_tab", e))
-}
-
-#[tauri::command]
-fn close_tab(app: AppHandle, id: String) -> Result<(), String> {
-    if !valid_tab_id(&id) { return Err("ungueltige Tab-ID".into()); }
-    // Removes the tab (with webview, sleeping or webview-less), ends split view if it was a pane,
-    // picks the next active tab and reports a sleeping one to wake.
-    let (removed, wake) = {
-        let state = app.state::<Mutex<TabManager>>();
-        let mut m = lock(&state);
-        m.remove_tab(&id)?
-    };
-    if let Some(tab) = removed { destroy_webview(&app, &id, tab); }
-    check_fullscreen_tab(&app);
-    apply_layout(&app);
-    emit_tabs_changed(&app);
-    if let Some(w) = wake { schedule_wake(&app, w); }
-    Ok(())
-}
-
-/// Runde 3 (Tab-Schlaf): Webview eines inaktiven Tabs zerstoeren; URL/Titel bleiben erhalten.
-/// Nie fuer den aktiven oder einen Audio abspielenden Tab (angeheftete filtert die UI).
-#[tauri::command]
-fn sleep_tab(app: AppHandle, id: String) -> Result<(), String> {
-    if !valid_tab_id(&id) { return Err(format!("ungueltige Tab-ID '{id}'")); }
-    let tab = {
-        let state = app.state::<Mutex<TabManager>>();
-        let mut m = lock(&state);
-        if m.active.as_deref() == Some(id.as_str()) { return Err("aktiver Tab wird nicht schlafen gelegt".into()); }
-        if m.split.as_ref().is_some_and(|s| s.a == id || s.b == id) { return Err("Tab in geteilter Ansicht wird nicht schlafen gelegt".into()); }
-        if m.pages.contains_key(&id) { return Ok(()); } // no webview, nothing to release
-        let playing = m.tabs.get(&id).map(|t| t.playing_audio.load(Ordering::Relaxed)).ok_or_else(|| format!("Tab {id} nicht gefunden"))?;
-        if playing { return Err(format!("Tab {id} spielt Audio")); }
-        let Some(t) = m.tabs.remove(&id) else { return Err(format!("Tab {id} nicht gefunden")); };
-        let info = SleepInfo { url: lock(&t.url).clone(), title: lock(&t.title).clone(), waking: false };
-        m.sleeping.insert(id.clone(), info);
-        t
-    };
-    tracing::info!(tab = id.as_str(), "Tab schlaeft");
-    destroy_webview(&app, &id, tab);
-    emit_tabs_changed(&app);
-    Ok(())
-}
-
-#[tauri::command]
-fn switch_tab(app: AppHandle, id: String) -> Result<(), String> {
-    if !valid_tab_id(&id) { return Err("ungueltige Tab-ID".into()); }
-    let wake = {
-        let state = app.state::<Mutex<TabManager>>();
-        let mut m = lock(&state);
-        let sleeping = m.sleeping.contains_key(&id);
-        if !m.knows(&id) { return Err(format!("Tab {id} nicht gefunden")); }
-        m.active = Some(id.clone());
-        sleeping
-    };
-    check_fullscreen_tab(&app);
-    apply_layout(&app);
-    emit_tabs_changed(&app);
-    if wake { schedule_wake(&app, id); }
-    Ok(())
-}
-
-#[tauri::command]
-fn navigate_active(app: AppHandle, url: String) -> Result<String, String> {
-    let parsed = normalize_url(&url)?;
-    // Webview-less tab (internal page): create its webview for the real URL.
-    let page = {
-        let state = app.state::<Mutex<TabManager>>();
-        let mut m = lock(&state);
-        m.active.clone().filter(|a| m.pages.contains_key(a)).map(|a| {
-            let start = needs_webview(parsed.as_str()) && m.request_page_webview(&a, parsed.as_str());
-            (a, start)
-        })
-    };
-    if let Some((id, start)) = page {
-        tracing::info!(tab = id.as_str(), "navigate {parsed} (Webview wird erzeugt)");
-        if start { schedule_page_webview(&app, id); }
-        emit_tabs_changed(&app);
-        return Ok(parsed.to_string());
-    }
-    let Some((id, tab)) = active_tab(&app) else {
-        // kein Tab offen -> neuen anlegen ist hier nicht erlaubt (sync command), UI ruft new_tab
-        return Err("kein aktiver Tab".into());
-    };
-    tracing::info!(tab = id.as_str(), "navigate {parsed}");
-    tab.webview.navigate(parsed.clone()).map_err(|e| { report_error(&app, &id, "navigate", &e); e.to_string() })?;
-    Ok(parsed.to_string())
-}
-
-#[tauri::command]
-fn reload_active(app: AppHandle) -> Result<(), String> {
-    let Some((id, tab)) = active_tab(&app) else { return Err("kein aktiver Tab".into()); };
-    let current = lock(&tab.url).clone();
-    let parsed = normalize_url(&current)?;
-    tracing::info!(tab = id.as_str(), "reload {parsed}");
-    tab.webview.navigate(parsed).map_err(|e| { report_error(&app, &id, "reload", &e); e.to_string() })
-}
-
-// ---------- Etappe G: neue Commands ----------
-
-/// Fuehrt ein festes (nicht vom Nutzer kommendes) Script in der aktiven Content-Webview aus.
-/// (Unter Windows ungenutzt – dort laufen go_back/go_forward/stop nativ.)
-#[cfg_attr(windows, allow(dead_code))]
-fn eval_active(app: &AppHandle, what: &str, js: &str) -> Result<(), String> {
-    let Some((id, tab)) = active_tab(app) else { return Err("kein aktiver Tab".into()); };
-    tracing::info!(tab = id.as_str(), "{what}");
-    tab.webview.eval(js).map_err(|e| { report_error(app, &id, what, &e); e.to_string() })
-}
-
-/// Etappe CD: native WebView2-Aktion auf der aktiven Content-Webview (GoBack/GoForward/Stop).
-#[cfg(windows)]
-fn native_active(app: &AppHandle, what: &'static str) -> Result<(), String> {
-    if active_is_page(app) { return Ok(()); } // internal page: no history of its own
-    let Some((id, tab)) = active_tab(app) else { return Err("kein aktiver Tab".into()); };
-    if what == "stop" { tab.user_stopped.store(true, Ordering::SeqCst); }
-    tracing::info!(tab = id.as_str(), "{what} (nativ)");
-    let (app2, id2) = (app.clone(), id.clone());
-    tab.webview.with_webview(move |pwv| {
-        use webview2_com_sys::Microsoft::Web::WebView2::Win32 as SYS;
-        use windows::core::Interface;
-        let r = unsafe { pwv.controller().CoreWebView2() }.and_then(|c| c.cast::<SYS::ICoreWebView2>()).and_then(|core| unsafe {
-            match what { "back" => core.GoBack(), "forward" => core.GoForward(), _ => core.Stop() }
-        });
-        if let Err(e) = r { report_error(&app2, &id2, what, e); }
-    }).map_err(|e| { report_error(app, &id, what, &e); e.to_string() })
-}
-
-#[cfg(windows)]
-#[tauri::command]
-fn go_back(app: AppHandle) -> Result<(), String> { native_active(&app, "back") }
-#[cfg(windows)]
-#[tauri::command]
-fn go_forward(app: AppHandle) -> Result<(), String> { native_active(&app, "forward") }
-#[cfg(windows)]
-#[tauri::command]
-fn stop_active(app: AppHandle) -> Result<(), String> { native_active(&app, "stop") }
-
-#[cfg(not(windows))]
-#[tauri::command]
-fn go_back(app: AppHandle) -> Result<(), String> { eval_active(&app, "go_back", "history.back()") }
-#[cfg(not(windows))]
-#[tauri::command]
-fn go_forward(app: AppHandle) -> Result<(), String> { eval_active(&app, "go_forward", "history.forward()") }
-#[cfg(not(windows))]
-#[tauri::command]
-fn stop_active(app: AppHandle) -> Result<(), String> { eval_active(&app, "stop", "window.stop()") }
-
-/// Aktive Content-Webview zeigen/verstecken (interne Seiten jtech://..., Menues, Dialoge).
-#[tauri::command]
-fn set_content_visible(app: AppHandle, visible: bool) -> Result<(), String> {
-    let changed = {
-        let state = app.state::<Mutex<TabManager>>();
-        let mut m = lock(&state);
-        let c = m.content_visible != visible;
-        m.content_visible = visible;
-        c
-    };
-    if changed { apply_layout(&app); }
-    Ok(())
-}
-
-/// Neue Reihenfolge der Tabs (Drag & Drop). Muss genau dieselben IDs enthalten.
-#[tauri::command]
-fn reorder_tabs(app: AppHandle, order: Vec<String>) -> Result<(), String> {
-    {
-        let state = app.state::<Mutex<TabManager>>();
-        let mut m = lock(&state);
-        if order.len() != m.order.len() { return Err("Reihenfolge: falsche Anzahl".into()); }
-        let mut a = order.clone(); a.sort();
-        let mut b = m.order.clone(); b.sort();
-        if a != b { return Err("Reihenfolge: unbekannte oder doppelte IDs".into()); }
-        m.order = order;
-    }
-    emit_tabs_changed(&app);
-    Ok(())
-}
-
 /// Port (Audio-Hub): Tab-ID pruefen – nur bekannte IDs der Form "content-<zahl>".
 pub fn valid_tab_id(id: &str) -> bool {
     id.len() <= 32 && id.strip_prefix("content-").is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
@@ -1026,37 +752,6 @@ mod popup_reason_tests {
         assert_eq!(blocked_reason(true, "https://example.com"), None);
     }
 }
-
-/// Port (Audio-Hub): Tab stumm/laut schalten (WebView2 ICoreWebView2_8::SetIsMuted).
-#[tauri::command]
-fn set_tab_muted(app: AppHandle, id: String, muted: bool) -> Result<(), String> {
-    if !valid_tab_id(&id) { return Err(format!("ungueltige Tab-ID '{id}'")); }
-    let tab = {
-        let state = app.state::<Mutex<TabManager>>();
-        let m = lock(&state);
-        m.tabs.get(&id).cloned().ok_or_else(|| format!("Tab {id} nicht gefunden"))?
-    };
-    #[cfg(windows)]
-    {
-        let (app2, id2, flag) = (app.clone(), id.clone(), tab.muted.clone());
-        tab.webview.with_webview(move |pwv| {
-            use webview2_com_sys::Microsoft::Web::WebView2::Win32 as SYS;
-            use windows::core::Interface;
-            let r = unsafe { pwv.controller().CoreWebView2() }
-                .and_then(|c| c.cast::<SYS::ICoreWebView2_8>())
-                .and_then(|c8| unsafe { c8.SetIsMuted(muted.into()) });
-            match r {
-                Ok(()) => { flag.store(muted, Ordering::Relaxed); tracing::info!(tab = id2.as_str(), "muted={muted}"); }
-                Err(e) => report_error(&app2, &id2, "SetIsMuted (WebView2 >= 1.0.1072 noetig)", e),
-            }
-        }).map_err(|e| e.to_string())?;
-    }
-    #[cfg(not(windows))]
-    { let _ = (tab, muted); return Err("Stummschalten nur unter Windows/WebView2".into()); }
-    #[cfg(windows)]
-    { emit_tabs_changed(&app); Ok(()) }
-}
-
 
 // ---------- Runde 3: Zoom, Suchen, Drucken ----------
 
@@ -1157,187 +852,6 @@ fn print_active(app: AppHandle) -> Result<(), String> {
     }
     #[cfg(not(windows))]
     { let _ = id; tab.webview.eval("window.print()").map_err(|e| e.to_string()) }
-}
-
-// ---------- Runde 3: Downloads ----------
-
-#[derive(Clone, Serialize, Debug, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct DownloadInfo {
-    id: u64,
-    tab_id: String,
-    url: String,
-    path: String,
-    file_name: String,
-    received: i64,
-    speed_bytes_per_sec: u64,
-    /// -1 = unbekannt
-    total: i64,
-    /// progressing | interrupted | completed
-    state: String,
-    paused: bool,
-    can_resume: bool,
-    interrupt_reason: i32,
-    started_at: u64,
-}
-
-static DOWNLOADS: Mutex<Vec<DownloadInfo>> = Mutex::new(Vec::new());
-static DL_COUNTER: AtomicU64 = AtomicU64::new(0);
-const DL_KEEP: usize = 300;
-static DL_RATE: std::sync::LazyLock<Mutex<HashMap<u64, (i64, std::time::Instant)>>> = std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
-
-#[cfg(windows)]
-thread_local! {
-    /// COM-Objekte nur auf dem UI-Thread (dort laufen alle WebView2-Callbacks).
-    static DL_OPS: RefCell<HashMap<u64, webview2_com_sys::Microsoft::Web::WebView2::Win32::ICoreWebView2DownloadOperation>> = RefCell::new(HashMap::new());
-    static DL_LAST_EMIT: RefCell<HashMap<u64, std::time::Instant>> = RefCell::new(HashMap::new());
-}
-
-fn now_ms() -> u64 { std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0) }
-
-fn emit_download(app: &AppHandle, d: &DownloadInfo) {
-    if let Err(e) = app.emit("download-event", d.clone()) { tracing::error!("emit download-event: {e}"); }
-}
-
-/// Liest den Zustand der DownloadOperation, aktualisiert DOWNLOADS und meldet ihn der UI
-/// (Fortschritt hoechstens alle 250 ms, Zustandswechsel immer).
-#[cfg(windows)]
-unsafe fn refresh_download(app: &AppHandle, id: u64, op: &webview2_com_sys::Microsoft::Web::WebView2::Win32::ICoreWebView2DownloadOperation, force: bool) {
-    use webview2_com_sys::Microsoft::Web::WebView2::Win32 as SYS;
-    let mut received = 0i64;
-    let _ = unsafe { op.BytesReceived(&mut received) };
-    let mut total = 0i64;
-    let _ = unsafe { op.TotalBytesToReceive(&mut total) };
-    let mut st = SYS::COREWEBVIEW2_DOWNLOAD_STATE::default();
-    let _ = unsafe { op.State(&mut st) };
-    let mut reason = SYS::COREWEBVIEW2_DOWNLOAD_INTERRUPT_REASON::default();
-    let _ = unsafe { op.InterruptReason(&mut reason) };
-    let mut can = Default::default();
-    let _ = unsafe { op.CanResume(&mut can) };
-    let can: bool = can.as_bool();
-    let state = match st {
-        SYS::COREWEBVIEW2_DOWNLOAD_STATE_COMPLETED => "completed",
-        SYS::COREWEBVIEW2_DOWNLOAD_STATE_INTERRUPTED => "interrupted",
-        _ => "progressing",
-    };
-    if !force && state == "progressing" {
-        let now = std::time::Instant::now();
-        let skip = DL_LAST_EMIT.with(|m| {
-            let mut m = m.borrow_mut();
-            let last = m.get(&id).copied();
-            if let Some(t) = last { if now.duration_since(t).as_millis() < 250 { return true; } }
-            m.insert(id, now);
-            false
-        });
-        if skip { return; }
-    }
-    let snapshot = {
-        let now = std::time::Instant::now();
-        let speed = {
-            let mut rates = lock(&DL_RATE);
-            let rate = rates.get(&id).and_then(|(prev_bytes, prev_at)| {
-                let elapsed = now.duration_since(*prev_at).as_secs_f64();
-                (elapsed >= 0.25 && received >= *prev_bytes).then(|| ((received - *prev_bytes) as f64 / elapsed) as u64)
-            }).unwrap_or(0);
-            rates.insert(id, (received, now));
-            rate
-        };
-        let mut list = lock(&DOWNLOADS);
-        let Some(d) = list.iter_mut().find(|d| d.id == id) else { return };
-        d.received = received;
-        d.speed_bytes_per_sec = if state == "progressing" { speed } else { 0 };
-        d.total = total;
-        d.state = state.into();
-        d.can_resume = can;
-        d.interrupt_reason = reason.0;
-        if state != "interrupted" { d.paused = false; }
-        // COREWEBVIEW2_DOWNLOAD_INTERRUPT_REASON_USER_PAUSED = 28 (laut WebView2-Header; unsicher)
-        if state == "interrupted" && reason.0 == 28 { d.paused = true; }
-        d.clone()
-    };
-    if state == "completed" {
-        DL_OPS.with(|m| { m.borrow_mut().remove(&id); });
-        DL_LAST_EMIT.with(|m| { m.borrow_mut().remove(&id); });
-        lock(&DL_RATE).remove(&id);
-        tracing::info!("Download #{id} fertig: {}", snapshot.path);
-    }
-    emit_download(app, &snapshot);
-}
-
-#[tauri::command]
-fn list_downloads() -> Vec<DownloadInfo> { lock(&DOWNLOADS).clone() }
-
-/// pause | resume | cancel fuer einen laufenden Download.
-#[tauri::command]
-fn download_action(app: AppHandle, id: u64, action: String) -> Result<(), String> {
-    if !matches!(action.as_str(), "pause" | "resume" | "cancel") { return Err(format!("unbekannte Aktion '{action}'")); }
-    if !lock(&DOWNLOADS).iter().any(|d| d.id == id) { return Err(format!("Download {id} unbekannt")); }
-    #[cfg(windows)]
-    {
-        let app2 = app.clone();
-        app.run_on_main_thread(move || {
-            let Some(op) = DL_OPS.with(|m| m.borrow().get(&id).cloned()) else {
-                report_error(&app2, "", "Download", format!("Download {id} ist nicht mehr aktiv"));
-                return;
-            };
-            let r = unsafe { match action.as_str() { "pause" => op.Pause(), "resume" => op.Resume(), _ => op.Cancel() } };
-            match r {
-                Ok(()) => {
-                    if let Some(d) = lock(&DOWNLOADS).iter_mut().find(|d| d.id == id) { d.paused = action == "pause"; }
-                    tracing::info!("Download #{id}: {action}");
-                    unsafe { refresh_download(&app2, id, &op, true) };
-                    // refresh setzt paused bei "interrupted" nicht zurueck; bei pause erneut melden
-                    if action == "pause" { if let Some(d) = lock(&DOWNLOADS).iter().find(|d| d.id == id).cloned() { emit_download(&app2, &d); } }
-                }
-                Err(e) => report_error(&app2, "", &format!("Download {action}"), e),
-            }
-        }).map_err(|e| e.to_string())?;
-        Ok(())
-    }
-    #[cfg(not(windows))]
-    { let _ = app; Err("Downloads nur unter Windows/WebView2".into()) }
-}
-
-/// Pfad muss existieren und (kanonisch) im Download-Ordner liegen.
-fn validated_download_path(app: &AppHandle, raw: &str) -> Result<PathBuf, String> {
-    let dir = app.path().download_dir().map_err(|e| format!("Download-Ordner: {e}"))?;
-    let dir = std::fs::canonicalize(&dir).map_err(|e| format!("Download-Ordner: {e}"))?;
-    let p = std::fs::canonicalize(raw).map_err(|e| format!("Datei nicht gefunden: {e}"))?;
-    if !p.starts_with(&dir) { return Err("Datei liegt nicht im Download-Ordner".into()); }
-    Ok(p)
-}
-
-fn display_path(p: &Path) -> String {
-    let s = p.to_string_lossy().to_string();
-    s.strip_prefix(r"\\?\").map(str::to_string).unwrap_or(s)
-}
-
-/// Dateitypen, die nicht per Klick gestartet werden (nur "Im Ordner zeigen").
-pub fn is_risky_extension(path: &str) -> bool {
-    const RISKY: &[&str] = &["exe", "msi", "bat", "cmd", "com", "scr", "ps1", "vbs", "vbe", "js", "jse", "wsf", "wsh", "hta", "lnk", "reg", "jar", "cpl", "msc", "pif", "appx", "msix"];
-    Path::new(path).extension().and_then(|e| e.to_str()).map(|e| RISKY.contains(&e.to_ascii_lowercase().as_str())).unwrap_or(false)
-}
-
-/// reveal = true: Explorer mit markierter Datei; sonst Datei mit Standardprogramm oeffnen.
-#[tauri::command]
-fn open_download(app: AppHandle, id: u64, reveal: bool) -> Result<(), String> {
-    let (path, state) = lock(&DOWNLOADS).iter().find(|d| d.id == id).map(|d| (d.path.clone(), d.state.clone())).ok_or_else(|| format!("Download {id} unbekannt"))?;
-    if !reveal && state != "completed" { return Err("Download ist noch nicht fertig".into()); }
-    let p = validated_download_path(&app, &path)?;
-    let shown = display_path(&p);
-    if reveal {
-        #[cfg(windows)]
-        {
-            use std::os::windows::process::CommandExt;
-            std::process::Command::new("explorer").raw_arg(format!("/select,\"{shown}\"")).spawn().map_err(|e| format!("explorer: {e}"))?;
-            return Ok(());
-        }
-        #[cfg(not(windows))]
-        { return Err(format!("Ordner anzeigen nur unter Windows ({shown})")); }
-    }
-    if is_risky_extension(&shown) { return Err("Programme/Skripte werden nicht direkt gestartet – bitte „Im Ordner zeigen“ verwenden".into()); }
-    use tauri_plugin_opener::OpenerExt;
-    app.opener().open_path(shown, None::<&str>).map_err(|e| format!("oeffnen: {e}"))
 }
 
 #[tauri::command]
@@ -1551,7 +1065,7 @@ unsafe fn attach_handlers(pwv: &tauri::webview::PlatformWebview, app: &AppHandle
             tracing::info!(tab = id.as_str(), "ContainsFullScreenElement = {on}");
             // Ausserhalb des COM-Callbacks umschalten (Fenster-API + Layout).
             let (app2, id2) = (app.clone(), id.clone());
-            if let Err(e) = app.run_on_main_thread(move || page_fullscreen_changed(&app2, &id2, on)) { tracing::warn!("run_on_main_thread: {e}"); }
+            if let Err(e) = app.run_on_main_thread(move || fullscreen::page_fullscreen_changed(&app2, &id2, on)) { tracing::warn!("run_on_main_thread: {e}"); }
             Ok(())
         }));
         let h: SYS::ICoreWebView2ContainsFullScreenElementChangedEventHandler = h.cast().map_err(|e| format!("cast ContainsFullScreenElementChanged: {e}"))?;
@@ -1657,55 +1171,8 @@ unsafe fn attach_handlers(pwv: &tauri::webview::PlatformWebview, app: &AppHandle
         push("HistoryChanged", tok);
     }
 
-    // Runde 3: Downloads (ICoreWebView2_4::DownloadStarting). Eigene UI statt WebView2-Dialog.
-    match core.cast::<SYS::ICoreWebView2_4>() {
-        Ok(core4) => {
-            let (app, id) = (app.clone(), tab_id.to_string());
-            let h = webview2_com::DownloadStartingEventHandler::create(Box::new(move |_s, args| {
-                let Some(args) = args else { return Ok(()) };
-                let op = unsafe { args.DownloadOperation()? };
-                unsafe { args.SetHandled(true.into())? };
-                let dl_id = DL_COUNTER.fetch_add(1, Ordering::Relaxed) + 1;
-                let mut p = PWSTR::null();
-                let _ = unsafe { op.Uri(&mut p) };
-                let uri = take_pwstr(p);
-                let mut p = PWSTR::null();
-                let _ = unsafe { args.ResultFilePath(&mut p) };
-                let path = take_pwstr(p);
-                let file_name = Path::new(&path).file_name().map(|f| f.to_string_lossy().to_string()).unwrap_or_else(|| path.clone());
-                tracing::info!(tab = id.as_str(), "DownloadStarting #{dl_id} {uri} -> {path}");
-                {
-                    let mut list = lock(&DOWNLOADS);
-                    list.push(DownloadInfo { id: dl_id, tab_id: id.clone(), url: uri, path, file_name, total: -1, state: "progressing".into(), started_at: now_ms(), ..Default::default() });
-                    if list.len() > DL_KEEP { if let Some(i) = list.iter().position(|d| d.state != "progressing") { list.remove(i); } }
-                }
-                let app_b = app.clone();
-                let hb = webview2_com::BytesReceivedChangedEventHandler::create(Box::new(move |sender, _args| {
-                    if let Some(op) = sender { unsafe { refresh_download(&app_b, dl_id, &op, false) }; }
-                    Ok(())
-                }));
-                let hb: SYS::ICoreWebView2BytesReceivedChangedEventHandler = hb.cast()?;
-                let mut t = 0i64;
-                unsafe { op.add_BytesReceivedChanged(&hb, &mut t)? };
-                let app_s = app.clone();
-                let hs = webview2_com::StateChangedEventHandler::create(Box::new(move |sender, _args| {
-                    if let Some(op) = sender { unsafe { refresh_download(&app_s, dl_id, &op, true) }; }
-                    Ok(())
-                }));
-                let hs: SYS::ICoreWebView2StateChangedEventHandler = hs.cast()?;
-                let mut t = 0i64;
-                unsafe { op.add_StateChanged(&hs, &mut t)? };
-                DL_OPS.with(|m| { m.borrow_mut().insert(dl_id, op.clone()); });
-                unsafe { refresh_download(&app, dl_id, &op, true) };
-                Ok(())
-            }));
-            let h: SYS::ICoreWebView2DownloadStartingEventHandler = h.cast().map_err(|e| format!("cast DownloadStarting: {e}"))?;
-            let mut tok = 0i64;
-            unsafe { core4.add_DownloadStarting(&h, &mut tok) }.map_err(|e| format!("add_DownloadStarting: {e}"))?;
-            push("DownloadStarting", tok);
-        }
-        Err(e) => tracing::warn!(tab = tab_id, "ICoreWebView2_4 fehlt (keine Download-Verwaltung): {e}"),
-    }
+    // Download events and operations are encapsulated by the downloads subsystem.
+    downloads::attach_to_webview(app, tab_id, &core, &push)?;
 
     // Runde 3: ZoomFactorChanged (Strg+Mausrad, eigene set_zoom-Aufrufe) -> UI speichert pro Seite.
     {
@@ -1951,112 +1418,6 @@ async fn prepare_update_exit() -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(|| { privacy::on_exit(); extensions::flush(); }).await.map_err(|e| e.to_string())
 }
 
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ProcessStat { pid: u32, name: String, memory_bytes: u64, cpu_time_100ns: u64, command_line: String }
-
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct PerformanceStats { total_memory_bytes: u64, processes: Vec<ProcessStat>, tab_count: usize }
-
-#[cfg(windows)]
-#[tauri::command]
-fn get_performance_stats(app: AppHandle) -> PerformanceStats {
-    use windows::Win32::System::Diagnostics::ToolHelp::*;
-    use windows::Win32::System::Threading::*;
-    use windows::Win32::System::ProcessStatus::*;
-    use windows::Win32::Foundation::CloseHandle;
-
-    let tab_count = {
-        let state = app.state::<Mutex<TabManager>>();
-        let m = lock(&state);
-        m.order.len()
-    };
-    let current_pid = std::process::id();
-
-    // Snapshot aller Prozesse
-    let mut parent: std::collections::HashMap<u32, u32> = std::collections::HashMap::new();
-    let mut names: std::collections::HashMap<u32, String> = std::collections::HashMap::new();
-    unsafe {
-        let snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0).unwrap_or_default();
-        let mut pe = PROCESSENTRY32W::default();
-        pe.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
-        if Process32FirstW(snap, &mut pe).is_ok() {
-            loop {
-                let pid = pe.th32ProcessID;
-                parent.insert(pid, pe.th32ParentProcessID);
-                let name = String::from_utf16_lossy(&pe.szExeFile).trim_end_matches('\0').to_string();
-                names.insert(pid, name);
-                if Process32NextW(snap, &mut pe).is_err() { break; }
-            }
-        }
-        let _ = CloseHandle(snap);
-    }
-
-    // Nachkommen des aktuellen Prozesses sammeln (rekursiv)
-    let mut descendants: Vec<u32> = Vec::new();
-    let mut stack = vec![current_pid];
-    while let Some(p) = stack.pop() {
-        for (pid, ppid) in &parent {
-            if *ppid == p && *pid != current_pid {
-                if !descendants.contains(pid) {
-                    descendants.push(*pid);
-                    stack.push(*pid);
-                }
-            }
-        }
-    }
-    // aktuellen Prozess selbst mit aufnehmen
-    descendants.insert(0, current_pid);
-
-    let mut processes = Vec::new();
-    let mut total = 0u64;
-    for pid in &descendants {
-        let h = unsafe { OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, *pid) };
-        let (mem, cpu) = match h {
-            Ok(handle) => {
-                let mut pmc = PROCESS_MEMORY_COUNTERS::default();
-                pmc.cb = std::mem::size_of::<PROCESS_MEMORY_COUNTERS>() as u32;
-                let r = unsafe { GetProcessMemoryInfo(handle, &mut pmc, pmc.cb) };
-                let m = if r.is_ok() { pmc.WorkingSetSize as u64 } else { 0 };
-                let mut creation = windows::Win32::Foundation::FILETIME::default();
-                let mut exit = windows::Win32::Foundation::FILETIME::default();
-                let mut kernel = windows::Win32::Foundation::FILETIME::default();
-                let mut user = windows::Win32::Foundation::FILETIME::default();
-                let c = unsafe { GetProcessTimes(handle, &mut creation, &mut exit, &mut kernel, &mut user) };
-                let cpu = if c.is_ok() {
-                    let k = ((kernel.dwHighDateTime as u64) << 32) | kernel.dwLowDateTime as u64;
-                    let u = ((user.dwHighDateTime as u64) << 32) | user.dwLowDateTime as u64;
-                    k + u
-                } else { 0 };
-                unsafe { let _ = CloseHandle(handle); }
-                (m, cpu)
-            }
-            Err(_) => (0, 0),
-        };
-        total += mem;
-        let name = names.get(pid).cloned().unwrap_or_else(|| "unknown".into());
-        let label = if *pid == current_pid { format!("{} (Hauptprozess)", name) } else { name };
-        processes.push(ProcessStat {
-            pid: *pid,
-            name: label,
-            memory_bytes: mem,
-            cpu_time_100ns: cpu,
-            command_line: String::new(),
-        });
-    }
-    processes.sort_by(|a, b| b.memory_bytes.cmp(&a.memory_bytes));
-
-    PerformanceStats { total_memory_bytes: total, processes, tab_count }
-}
-
-#[cfg(not(windows))]
-#[tauri::command]
-fn get_performance_stats(app: AppHandle) -> PerformanceStats {
-    let tab_count = { let state = app.state::<Mutex<TabManager>>(); let m = lock(&state); m.order.len() };
-    PerformanceStats { total_memory_bytes: 0, processes: vec![], tab_count }
-}
-
 // ---------- Resource limits ----------
 
 /// Resource limits: memory target of a (background) tab. WebView2 ICoreWebView2_19
@@ -2129,6 +1490,19 @@ fn media_control(app: AppHandle, id: String, action: String, value: Option<f64>)
     tab.webview.eval(&js).map_err(|e| e.to_string())
 }
 
+/// Apply the optional five-band equalizer to an HTTP(S) media tab.
+#[tauri::command]
+fn set_media_equalizer(app: AppHandle, id: String, bands: Vec<f64>) -> Result<(), String> {
+    let js = pagebridge::equalizer_script(&bands).ok_or_else(|| "ungueltige Equalizer-Einstellungen".to_string())?;
+    let tab = tab_by_id(&app, &id)?;
+    let url = lock(&tab.url).clone();
+    let is_web_url = tauri::Url::parse(&url).ok().is_some_and(|parsed| matches!(parsed.scheme(), "http" | "https"));
+    if !is_web_url {
+        return Err("Equalizer ist nur fuer HTTP(S)-Webseiten verfuegbar".into());
+    }
+    tab.webview.eval(&js).map_err(|e| e.to_string())
+}
+
 /// Fixed picture-in-picture toggle script (toolbar command and page context menu).
 const PIP_JS: &str = "(function(){try{var v=document.querySelector('video'); if(!v) return 'no-video'; if(document.pictureInPictureElement){document.exitPictureInPicture(); return 'exit';} v.requestPictureInPicture().catch(function(e){console.error('PiP',e);}); return 'ok';}catch(e){return 'err:'+e;}})()";
 
@@ -2144,14 +1518,14 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(Mutex::new(TabManager::new()))
-        .invoke_handler(tauri::generate_handler![get_blocked_count, set_devtools, list_tabs, new_tab, close_tab, switch_tab, navigate_active, reload_active, set_layout, toggle_fullscreen, go_back, go_forward, stop_active, set_content_visible, reorder_tabs, set_adblock_enabled, set_tab_muted, sleep_tab, set_tab_zoom, find_in_page, print_active, list_downloads, download_action, open_download,
+        .invoke_handler(tauri::generate_handler![tab_commands::get_blocked_count, set_devtools, tab_commands::list_tabs, tab_commands::new_tab, tab_commands::close_tab, tab_commands::switch_tab, tab_commands::navigate_active, tab_commands::reload_active, set_layout, fullscreen::toggle_fullscreen, tab_commands::go_back, tab_commands::go_forward, tab_commands::stop_active, tab_commands::set_content_visible, tab_commands::reorder_tabs, set_adblock_enabled, tab_commands::set_tab_muted, tab_commands::sleep_tab, set_tab_zoom, find_in_page, print_active, downloads::list_downloads, downloads::download_action, downloads::open_download,
             storage::storage_load, storage::storage_set, storage::storage_remove, storage::storage_import,
             filters::filter_status, filters::filter_set_list, filters::filter_set_options, filters::filter_update_now, filters::allowlist_set, filters::allowlist_check,
             privacy::privacy_stats, privacy::privacy_reset_stats, privacy::privacy_get_options, privacy::privacy_set_options,
             privacy::list_cookies, privacy::delete_cookies, privacy::clear_browsing_data,
             privacy::resolve_permission, privacy::list_permissions, privacy::set_permission,
             uifx::set_shortcuts, uifx::set_page_fx,
-            extensions::ext_list, extensions::ext_diagnostics, extensions::ext_toggle, extensions::ext_site_toggle, extensions::market_fetch, prepare_update_exit, get_performance_stats, pip_active,
+            extensions::ext_list, extensions::ext_diagnostics, extensions::ext_toggle, extensions::ext_site_toggle, extensions::market_fetch, prepare_update_exit, performance::get_performance_stats, pip_active, set_media_equalizer,
             set_tab_memory_target, suspend_tab, media_control, pagebridge::set_bridge_options, peek::peek_open, peek::peek_bounds, peek::peek_close, suggest::search_suggest, ctxmenu::set_context_menu])
         .setup(|app| {
             // Runde 4: SQLite-Persistenz, Statistik, Filterlisten (Cache + Hintergrund-Update).
@@ -2271,8 +1645,8 @@ mod tests {
     fn round3_validation() {
         assert!(valid_zoom(1.0) && valid_zoom(0.25) && valid_zoom(5.0));
         assert!(!valid_zoom(0.1) && !valid_zoom(f64::NAN) && !valid_zoom(f64::INFINITY));
-        assert!(is_risky_extension("C:\\x\\setup.EXE"));
-        assert!(!is_risky_extension("C:\\x\\bericht.pdf"));
+        assert!(downloads::is_risky_extension("C:\\x\\setup.EXE"));
+        assert!(!downloads::is_risky_extension("C:\\x\\bericht.pdf"));
         let js = find_script("a\"); alert(1); //", false, false);
         assert!(js.contains(r#""a\"); alert(1); //""#));
         assert_eq!(shortcut_name(0x46, true, false, false), Some("ctrl+f"));
