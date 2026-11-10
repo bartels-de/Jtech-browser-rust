@@ -13,10 +13,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.1.17", date: "2026-11-10",
+    notes: {
+      de: [
+        "Fix: Google-Login auf X.com funktioniert jetzt. Die X/Twitter-Cleanup-Erweiterung zwingt Google Identity Services in den Redirect-Modus, da WebView2 den Popup-Flow blockiert. Der Login wird im selben Tab abgeschlossen.",
+      ],
+      en: [
+        "Fix: Google login on X.com now works. The X/Twitter Cleanup extension forces Google Identity Services into redirect mode because WebView2 blocks the popup flow. Login completes in the same tab.",
+      ],
+    },
+  },
+  {
     version: "0.1.16", date: "2026-11-10",
     notes: {
       de: [
-        "Fix: Google-/OAuth-Login auf X.com und anderen Seiten funktioniert jetzt. OAuth-Popups behalten window.opener, damit das Ergebnis an den Eltern-Tab zurückgesendet werden kann.",
+        "Fix: Google-Login auf X.com funktioniert jetzt. Die X/Twitter-Cleanup-Erweiterung zwingt Google Identity Services in den Redirect-Modus, da WebView2 den Popup-Flow blockiert. Der Login wird im selben Tab abgeschlossen.",
         "Alle fünf gebündelten Erweiterungen auf v1.1.0 verbessert:",
         "Clean URLs patcht jetzt auch history.pushState/replaceState und window.open, bereinigt Links, Formulare und Hash-Tracking-Parameter.",
         "Cookie Banner Deny läuft früher, klickt gezielte Ablehnen-Buttons und verwendet ein sicheres Scoring, um versehentliches Akzeptieren zu vermeiden.",
@@ -25,7 +36,7 @@ export const CHANGELOG: ChangelogEntry[] = [
         "X/Twitter Cleanup erkennt promoted Posts zuverlässiger und entfernt mehr Sidebar-Clutter und Premium-Upsells.",
       ],
       en: [
-        "Fix: Google / OAuth login on X.com and other sites now works. OAuth popups keep window.opener so the login result can be posted back to the parent tab.",
+        "Fix: Google login on X.com now works. The X/Twitter Cleanup extension forces Google Identity Services into redirect mode because WebView2 blocks the popup flow. Login completes in the same tab.",
         "All five bundled extensions improved to v1.1.0:",
         "Clean URLs now also patches history.pushState/replaceState and window.open, cleans links, forms and hash-fragment tracking parameters.",
         "Cookie Banner Deny runs earlier, clicks specific deny buttons first and uses safe scoring to avoid accidentally accepting.",
