@@ -15,7 +15,7 @@ Website: https://bartels-de.github.io/Jtech-browser-rust/
 ## Features
 
 - Vertical tab sidebar with pinning, drag & drop, tab groups, tab sleep for inactive tabs,
-  session restore and per-site zoom.
+  session restore, recently closed tabs, split view, Peek panels and per-site zoom.
 - Ad and tracker blocker (EasyList, EasyPrivacy, optional uBlock, Peter Lowe and Fanboy lists)
   with automatic filter list updates, a per-site allowlist and basic cosmetic filtering.
 - Privacy dashboard: block statistics, cookies per site, clear browsing data, clear cookies and
@@ -23,10 +23,12 @@ Website: https://bartels-de.github.io/Jtech-browser-rust/
 - Site permissions (camera, microphone, location, notifications) with a prompt bar and
   per-site memory.
 - Bookmarks, bookmarks bar, history, downloads, find in page, print and a command palette.
+- Download manager with progress, transfer speed, pause/resume, search and status filters.
 - Fully customizable keyboard shortcuts.
 - Design studio: themes, presets, animated backgrounds, custom cursors and cursor trails.
 - Audio hub: see and mute tabs that are playing audio.
-- All data is stored locally in SQLite (`%APPDATA%\com.jtech.browser\jtech.sqlite3`).
+- Browser data is stored locally in SQLite (`%APPDATA%\com.jtech.browser\jtech.sqlite3`).
+  The database is currently **not encrypted**; SQLCipher/DPAPI are not integrated.
 - Signed automatic updates from GitHub Releases.
 
 ## Ad blocking: coverage and limits
@@ -42,8 +44,8 @@ but does not reach parity with browser extensions such as uBlock Origin. Known l
   applied; blocked requests receive an empty `204` response.
 - Cosmetic filters are applied once at `DOMContentLoaded`, in the main frame only; elements added
   later are not re-checked, so a brief flash is possible.
-- **Procedural cosmetic filters** (`:has-text`, `:upward`, …) and **scriptlets** (`+js(...)`)
-  are not executed, so parts of the uBlock and annoyance lists have no effect.
+- Scriptlets (`+js(...)`) and a subset of procedural cosmetic filters are supported. Coverage and
+  timing limitations are documented in [docs/ADBLOCK.md](docs/ADBLOCK.md).
 - The displayed rule count is an approximation.
 
 Details: [docs/ADBLOCK.md](docs/ADBLOCK.md).
@@ -91,7 +93,9 @@ docs/                    Architecture and ad blocking documentation
 ```
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): windows, webviews, tabs, internal pages, IPC and storage
-- [docs/ADBLOCK.md](docs/ADBLOCK.md): filter engine, filter lists, coverage and limitations
+- [docs/ADBLOCK.md](docs/ADBLOCK.md): filter engine, lists, coverage and limitations
+- [docs/EXTENSIONS.md](docs/EXTENSIONS.md): bundled extensions and Market
+- [docs/SECURITY_HARDENING_PHASE10.md](docs/SECURITY_HARDENING_PHASE10.md): security review and open work
 
 ## License
 

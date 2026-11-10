@@ -13,6 +13,25 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.3.0", date: null,
+    notes: {
+      de: [
+        "Download-Manager mit Suche, Statusfiltern, Übertragungsgeschwindigkeit und klareren Fortschrittsanzeigen; Downloads lassen sich pausieren, fortsetzen, abbrechen, öffnen oder im Ordner zeigen.",
+        "Anmelde-Popups öffnen sich als verknüpftes WebView2-Fenster und erhalten `window.opener` sowie das Browserprofil des Ursprungstabs. Blockierte Popups erscheinen mit Quelle und Grund in der Browseraktivität.",
+        "Restriktive Content Security Policy für die privilegierte Browseroberfläche; bei Speicherausfällen gibt es keinen stillen Klartext-Fallback zu localStorage.",
+        "Navigation, Tab-Befehle und Peek wurden mit Eingabegrenzen abgesichert. Filterlisten-Downloads verlangen HTTPS, folgen keinen Redirects und haben eine harte Größenbegrenzung.",
+        "Architektur-, Erweiterungs-, Werbeblocker- und Sicherheitsdokumentation aktualisiert. SQLCipher und Windows DPAPI bleiben offene Arbeiten.",
+      ],
+      en: [
+        "Download manager with search, status filters, transfer speed and clearer progress; downloads can be paused, resumed, cancelled, opened or revealed in Explorer.",
+        "Sign-in popups open in a linked WebView2 window and retain `window.opener` and the originating browser profile. Blocked popups appear in Browser Activity with their source and reason.",
+        "Added a restrictive Content Security Policy for the privileged browser UI; storage failures no longer silently fall back to plaintext localStorage.",
+        "Added input bounds to navigation, tab commands and Peek. Filter-list downloads require HTTPS, do not follow redirects and enforce a hard size limit.",
+        "Updated architecture, extension, ad-blocking and security documentation. SQLCipher and Windows DPAPI remain open work.",
+      ],
+    },
+  },
+  {
     version: "0.2.0", date: "2026-11-10",
     notes: {
       de: [

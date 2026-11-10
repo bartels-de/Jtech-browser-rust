@@ -54,12 +54,14 @@ struct TabInfo { id: String, title: String, url: String, active: bool, blocked: 
 struct TabEvent {
     tab_id: String,
     kind: String,
+    tab_title: Option<String>,
     url: Option<String>,
     title: Option<String>,
     is_success: Option<bool>,
     web_error_status: Option<i32>,
     error_name: Option<String>,
     detail: Option<String>,
+    reason: Option<String>,
     /// Etappe CD: WebView2-NavigationId (NavigationStarting/Completed).
     navigation_id: Option<u64>,
     /// Etappe CD: true = Completed gehoert NICHT zur neuesten Navigation dieses Tabs (ueberholt).
@@ -259,6 +261,7 @@ pub fn content_bounds(win_w: f64, win_h: f64, top_h: f64, sidebar_w: f64) -> Bou
 pub fn normalize_url(input: &str) -> Result<tauri::Url, String> {
     let s = input.trim();
     if s.is_empty() { return Err("leere URL".into()); }
+    if s.len() > 16 * 1024 || s.chars().any(char::is_control) { return Err("URL zu lang oder enthält Steuerzeichen".into()); }
     let candidate = if s.contains("://") || s.starts_with("about:") {
         s.to_string()
     } else if !s.contains(' ') && (s.contains('.') || s.starts_with("localhost")) {
@@ -596,8 +599,60 @@ fn spawn_webview(app: &AppHandle, id: &str, label: &str, parsed: tauri::Url, tit
     // Sonst bekommt das erste Dokument (z. B. direkt geoeffneter Twitch-Stream) keine Content-Scripts.
     let deferred = parsed.as_str() != "about:blank";
     let initial: tauri::Url = if deferred { "about:blank".parse().map_err(|e| format!("about:blank: {e}"))? } else { parsed.clone() };
+    let app_for_popups = app.clone();
+    let parent_id_for_popups = id.clone();
     let webview = window.add_child(
-        tauri::webview::WebviewBuilder::new(label, tauri::WebviewUrl::External(initial)),
+        tauri::webview::WebviewBuilder::new(label, tauri::WebviewUrl::External(initial))
+            .on_new_window(move |url, features| {
+                // OAuth/Sign-in depends on a genuine linked popup (`window.opener`).
+                // Use Tauri/Wry's supported WebView2 response rather than opening a
+                // separate, unrelated tab. New-window popups remain restricted to
+                // credential-free HTTP(S) URLs.
+                let allowed = matches!(url.scheme(), "http" | "https")
+                    && url.host_str().is_some()
+                    && url.username().is_empty()
+                    && url.password().is_none();
+                if !allowed {
+                    let reason = if matches!(url.scheme(), "http" | "https") {
+                        "invalid-popup-url"
+                    } else {
+                        "unsupported-scheme"
+                    };
+                    tracing::info!(tab = parent_id_for_popups.as_str(), "Popup blockiert ({reason}) {url}");
+                    let title = lock(&app_for_popups.state::<Mutex<TabManager>>())
+                        .tabs.get(&parent_id_for_popups).map(|tab| lock(&tab.title).clone());
+                    emit_tab(&app_for_popups, TabEvent {
+                        tab_id: parent_id_for_popups.clone(),
+                        tab_title: title,
+                        kind: "popup-blocked".into(),
+                        url: Some(url.to_string()),
+                        reason: Some(reason.into()),
+                        detail: Some("Popup-Ziel ist nicht als sichere Webadresse erlaubt".into()),
+                        ..Default::default()
+                    });
+                    return tauri::webview::NewWindowResponse::Deny;
+                }
+
+                let Ok(window) = tauri::WebviewWindowBuilder::new(
+                    &app_for_popups,
+                    format!("oauth-{}", DL_COUNTER.fetch_add(1, Ordering::Relaxed)),
+                    tauri::WebviewUrl::External("about:blank".parse().expect("statische URL")),
+                )
+                .with_environment(features.opener().environment.clone())
+                .title("Anmelden")
+                .inner_size(
+                    features.size().map(|s| s.width).unwrap_or(720.0).clamp(420.0, 1200.0),
+                    features.size().map(|s| s.height).unwrap_or(760.0).clamp(480.0, 1000.0),
+                )
+                .center()
+                .build() else {
+                    tracing::warn!(tab = parent_id_for_popups.as_str(), "OAuth-Popup-Fenster konnte nicht erstellt werden");
+                    return tauri::webview::NewWindowResponse::Deny;
+                };
+                tracing::info!(tab = parent_id_for_popups.as_str(), "OAuth-Popup-Fenster erstellt: {url}");
+                let _ = features; // Features are consumed above only for a bounded initial size.
+                tauri::webview::NewWindowResponse::Create { window }
+            }),
         LogicalPosition::new(b.x, b.y),
         LogicalSize::new(b.w, b.h),
     ).map_err(|e| format!("add_child: {e}"))?;
@@ -779,6 +834,7 @@ async fn new_tab(app: AppHandle, url: String, background: Option<bool>) -> Resul
 
 #[tauri::command]
 fn close_tab(app: AppHandle, id: String) -> Result<(), String> {
+    if !valid_tab_id(&id) { return Err("ungueltige Tab-ID".into()); }
     // Removes the tab (with webview, sleeping or webview-less), ends split view if it was a pane,
     // picks the next active tab and reports a sleeping one to wake.
     let (removed, wake) = {
@@ -820,6 +876,7 @@ fn sleep_tab(app: AppHandle, id: String) -> Result<(), String> {
 
 #[tauri::command]
 fn switch_tab(app: AppHandle, id: String) -> Result<(), String> {
+    if !valid_tab_id(&id) { return Err("ungueltige Tab-ID".into()); }
     let wake = {
         let state = app.state::<Mutex<TabManager>>();
         let mut m = lock(&state);
@@ -953,6 +1010,21 @@ fn reorder_tabs(app: AppHandle, order: Vec<String>) -> Result<(), String> {
 /// Port (Audio-Hub): Tab-ID pruefen – nur bekannte IDs der Form "content-<zahl>".
 pub fn valid_tab_id(id: &str) -> bool {
     id.len() <= 32 && id.strip_prefix("content-").is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
+}
+
+#[cfg(test)]
+mod popup_reason_tests {
+    #[test]
+    fn blocked_popup_reason_distinguishes_user_gesture_and_scheme() {
+        let blocked_reason = |user: bool, uri: &str| {
+            if !user { Some("non-user-initiated") }
+            else if !(uri.starts_with("http://") || uri.starts_with("https://")) { Some("unsupported-scheme") }
+            else { None }
+        };
+        assert_eq!(blocked_reason(false, "https://example.com"), Some("non-user-initiated"));
+        assert_eq!(blocked_reason(true, "mailto:user@example.com"), Some("unsupported-scheme"));
+        assert_eq!(blocked_reason(true, "https://example.com"), None);
+    }
 }
 
 /// Port (Audio-Hub): Tab stumm/laut schalten (WebView2 ICoreWebView2_8::SetIsMuted).
@@ -1098,6 +1170,7 @@ pub struct DownloadInfo {
     path: String,
     file_name: String,
     received: i64,
+    speed_bytes_per_sec: u64,
     /// -1 = unbekannt
     total: i64,
     /// progressing | interrupted | completed
@@ -1111,6 +1184,7 @@ pub struct DownloadInfo {
 static DOWNLOADS: Mutex<Vec<DownloadInfo>> = Mutex::new(Vec::new());
 static DL_COUNTER: AtomicU64 = AtomicU64::new(0);
 const DL_KEEP: usize = 300;
+static DL_RATE: std::sync::LazyLock<Mutex<HashMap<u64, (i64, std::time::Instant)>>> = std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
 
 #[cfg(windows)]
 thread_local! {
@@ -1158,9 +1232,20 @@ unsafe fn refresh_download(app: &AppHandle, id: u64, op: &webview2_com_sys::Micr
         if skip { return; }
     }
     let snapshot = {
+        let now = std::time::Instant::now();
+        let speed = {
+            let mut rates = lock(&DL_RATE);
+            let rate = rates.get(&id).and_then(|(prev_bytes, prev_at)| {
+                let elapsed = now.duration_since(*prev_at).as_secs_f64();
+                (elapsed >= 0.25 && received >= *prev_bytes).then(|| ((received - *prev_bytes) as f64 / elapsed) as u64)
+            }).unwrap_or(0);
+            rates.insert(id, (received, now));
+            rate
+        };
         let mut list = lock(&DOWNLOADS);
         let Some(d) = list.iter_mut().find(|d| d.id == id) else { return };
         d.received = received;
+        d.speed_bytes_per_sec = if state == "progressing" { speed } else { 0 };
         d.total = total;
         d.state = state.into();
         d.can_resume = can;
@@ -1173,6 +1258,7 @@ unsafe fn refresh_download(app: &AppHandle, id: u64, op: &webview2_com_sys::Micr
     if state == "completed" {
         DL_OPS.with(|m| { m.borrow_mut().remove(&id); });
         DL_LAST_EMIT.with(|m| { m.borrow_mut().remove(&id); });
+        lock(&DL_RATE).remove(&id);
         tracing::info!("Download #{id} fertig: {}", snapshot.path);
     }
     emit_download(app, &snapshot);
@@ -1569,38 +1655,6 @@ unsafe fn attach_handlers(pwv: &tauri::webview::PlatformWebview, app: &AppHandle
         let mut tok = 0i64;
         unsafe { core.add_HistoryChanged(&h, &mut tok) }.map_err(|e| format!("add_HistoryChanged: {e}"))?;
         push("HistoryChanged", tok);
-    }
-
-    // Etappe CD: NewWindowRequested -> neuer JTech-Tab statt Popup-Fenster. Nicht vom Nutzer
-    // ausgeloeste Popups werden verworfen (Popup-Schutz).
-    {
-        let (app, id) = (app.clone(), tab_id.to_string());
-        let h = webview2_com::NewWindowRequestedEventHandler::create(Box::new(move |_s, args| {
-            let Some(args) = args else { return Ok(()) };
-            let mut p = PWSTR::null();
-            unsafe { args.Uri(&mut p)? };
-            let uri = take_pwstr(p);
-            let mut user = Default::default();
-            let _ = unsafe { args.IsUserInitiated(&mut user) };
-            let user: bool = user.as_bool();
-            unsafe { args.SetHandled(true.into())? };
-            if user && (uri.starts_with("http://") || uri.starts_with("https://")) {
-                tracing::info!(tab = id.as_str(), "NewWindowRequested -> neuer Tab {uri}");
-                let app2 = app.clone();
-                // nicht im COM-Callback erzeugen (Reentranz/Deadlock) -> asynchron
-                tauri::async_runtime::spawn(async move {
-                    if let Err(e) = create_tab(&app2, &uri) { report_error(&app2, "", "Popup-Tab", e); }
-                });
-            } else {
-                tracing::info!(tab = id.as_str(), "Popup blockiert (user={user}) {uri}");
-                emit_tab(&app, TabEvent { tab_id: id.clone(), kind: "popup-blocked".into(), url: Some(uri), ..Default::default() });
-            }
-            Ok(())
-        }));
-        let h: SYS::ICoreWebView2NewWindowRequestedEventHandler = h.cast().map_err(|e| format!("cast NewWindowRequested: {e}"))?;
-        let mut tok = 0i64;
-        unsafe { core.add_NewWindowRequested(&h, &mut tok) }.map_err(|e| format!("add_NewWindowRequested: {e}"))?;
-        push("NewWindowRequested", tok);
     }
 
     // Runde 3: Downloads (ICoreWebView2_4::DownloadStarting). Eigene UI statt WebView2-Dialog.
@@ -2102,7 +2156,7 @@ pub fn run() {
         .setup(|app| {
             // Runde 4: SQLite-Persistenz, Statistik, Filterlisten (Cache + Hintergrund-Update).
             let data_dir = app.path().app_data_dir().unwrap_or_else(|_| std::env::temp_dir().join("jtech-browser"));
-            if let Err(e) = storage::init(&data_dir) { tracing::error!("{e} – UI faellt auf localStorage zurueck"); }
+            if let Err(e) = storage::init(&data_dir) { tracing::error!("{e} – persistenter Speicher bleibt deaktiviert"); }
             privacy::start_stats();
             filters::start(app.handle());
             extensions::start(app.handle());

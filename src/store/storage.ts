@@ -3,16 +3,16 @@ import { invoke } from "@tauri-apps/api/core";
 /**
  * Runde 4: Persistenz liegt in Rust (SQLite, Tabelle kv). Die UI arbeitet weiter synchron mit
  * load/save auf einem Cache, der vor dem ersten Render per initStorage() gefuellt wird.
- * Schreiben geht entprellt an `storage_set`. Ohne Rust-Speicher (Fehler) Rueckfall auf localStorage.
+ * Schreiben geht entprellt an `storage_set`; ohne Rust-Speicher bleibt Persistenz deaktiviert.
  * Beim ersten Start mit SQLite werden die vorhandenen localStorage-Daten einmalig importiert
  * (localStorage bleibt als Sicherung unveraendert liegen).
  */
-const PREFIX = "jtech.";
 /** Muss zu storage::KV_KEYS in Rust passen. */
-export const KV_KEYS = ["settings", "bookmarks", "history", "customTheme", "savedThemes", "zoom", "groups", "downloads", "session", "startBg"] as const;
+export const KV_KEYS = ["settings", "bookmarks", "history", "customTheme", "savedThemes", "zoom", "groups", "downloads", "session", "startBg", "activity"] as const;
 
 const cache = new Map<string, string>();
-let backend: "rust" | "local" = "local";
+const PREFIX = "jtech."; // ausschließlich für den einmaligen Import vorhandener Daten
+let backend: "rust" | "unavailable" = "unavailable";
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 const pendingValues = new Map<string, string>();
 
@@ -32,7 +32,7 @@ function readLocal(): Record<string, string> {
 export async function initStorage(): Promise<void> {
   try {
     const snap = await invoke<Snapshot>("storage_load");
-    if (!snap.available) throw new Error("SQLite nicht verfuegbar");
+    if (!snap.available) throw new Error("Rust-Speicher nicht verfuegbar");
     let entries = snap.entries;
     if (!snap.migrated) {
       const local = readLocal();
@@ -43,9 +43,8 @@ export async function initStorage(): Promise<void> {
     for (const [k, v] of Object.entries(entries)) cache.set(k, v);
     backend = "rust";
   } catch (e) {
-    console.warn("Rust-Speicher nicht verfuegbar, nutze localStorage:", e);
-    for (const [k, v] of Object.entries(readLocal())) cache.set(k, v);
-    backend = "local";
+    console.error("Rust-Speicher nicht verfuegbar; persistente Daten bleiben deaktiviert:", e);
+    backend = "unavailable";
   }
 }
 
@@ -53,7 +52,7 @@ export const storageBackend = () => backend;
 
 export function load<T>(key: string, fallback: T): T {
   try {
-    const raw = cache.get(key) ?? (backend === "local" ? localStorage.getItem(PREFIX + key) : null);
+    const raw = cache.get(key) ?? null;
     if (raw == null) return fallback;
     const v = JSON.parse(raw);
     if (fallback && typeof fallback === "object" && !Array.isArray(fallback)) return { ...fallback, ...v };
@@ -68,7 +67,6 @@ function writeNow(key: string) {
   if (v === undefined) return;
   invoke("storage_set", { key, value: v }).catch(e => {
     console.error(`storage_set ${key}:`, e);
-    try { localStorage.setItem(PREFIX + key, v); } catch { /* voll */ }
   });
 }
 
@@ -77,7 +75,7 @@ export function save(key: string, value: unknown) {
   try { json = JSON.stringify(value) ?? "null"; } catch { return; }
   if (cache.get(key) === json) return;
   cache.set(key, json);
-  if (backend === "local") { try { localStorage.setItem(PREFIX + key, json); } catch { /* voll/blockiert */ } return; }
+  if (backend !== "rust") return;
   pendingValues.set(key, json);
   if (!timers.has(key)) timers.set(key, setTimeout(() => writeNow(key), 400));
 }

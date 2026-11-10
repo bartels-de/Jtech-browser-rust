@@ -6,6 +6,7 @@ export interface RustTab { id: string; title: string; url: string; active: boole
 
 export interface TabEvent {
   tabId: string;
+  tabTitle?: string | null;
   kind: string;
   url?: string | null;
   title?: string | null;
@@ -13,6 +14,7 @@ export interface TabEvent {
   webErrorStatus?: number | null;
   errorName?: string | null;
   detail?: string | null;
+  reason?: string | null;
   navigationId?: number | null;
   stale?: boolean | null;
   benign?: boolean | null;
@@ -29,7 +31,7 @@ export interface TabEvent {
 /** Runde 3: Payload von "download-event" / list_downloads. */
 export interface DownloadInfo {
   id: number; tabId: string; url: string; path: string; fileName: string;
-  received: number; total: number; state: "progressing" | "interrupted" | "completed";
+  received: number; total: number; speedBytesPerSec: number; state: "progressing" | "interrupted" | "completed";
   paused: boolean; canResume: boolean; interruptReason: number; startedAt: number;
 }
 

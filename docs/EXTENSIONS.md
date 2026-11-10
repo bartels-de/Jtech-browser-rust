@@ -189,6 +189,9 @@ the `files` hashes (LF line endings, as stored in the repository).
   per-extension and total `blocked` counters (refreshed every 5 s).
 - Both are singleton internal pages (command palette, toolbar menu, sidebar library). Wrappers in
   `src/lib/extensions.ts`; every call passes the current UI language as `lang`.
+- While open, the installed-extensions page refreshes its status snapshot every 5 seconds.
+- The installed-extensions page refreshes its data every 5 seconds while open.
+- The extensions page refreshes its installed-extension snapshot every 5 seconds while open.
 - Icons: `iconSvg` (SVG text) is rendered via an `<img>` `data:` URL (`src/components/ExtIcon.tsx`), so
   scripts in the SVG never run in the UI webview. Non-SVG icons, missing icons and market entries that are
   not bundled yet (the index carries no icon) fall back to a puzzle tile.

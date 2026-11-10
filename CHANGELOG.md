@@ -11,6 +11,15 @@ All notable changes to JTech Browser. The in-app page `jtech://changelog` shows 
   - A live preview below the selection shows the pangram in the chosen font.
 - All previous changes from 0.1.14 and older are included in this release.
 
+## [0.3.0]
+
+- Download manager: search and status filters, transfer speed, clearer progress and status, plus pause, resume, cancel, open and reveal actions.
+- OAuth and sign-in popups open in a linked WebView2 window that preserves `window.opener` and the originating browser profile. Blocked popup events are recorded with their source and reason in Browser Activity.
+- Added a restrictive Content Security Policy for the privileged browser UI. Storage failures no longer silently switch to a new plaintext `localStorage` fallback.
+- Hardened navigation and tab commands with URL length/control-character and tab-ID validation; Peek URLs are bounded.
+- Filter-list updates require HTTPS, reject redirects and URL credentials, use a 10-second connection timeout and enforce the 30 MiB limit while streaming.
+- Updated architecture, extension, ad-blocking and security documentation. SQLCipher and Windows DPAPI remain unimplemented and are documented as open risks.
+
 ## [0.1.14]
 
 - New website with six pages, real screenshots and rich animations, deployed via GitHub Pages.

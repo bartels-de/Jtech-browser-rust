@@ -13,7 +13,7 @@ import { MenuItem, Popover } from "./Popover";
 const LIBRARY: InternalPage[][] = [
   ["bookmarks", "history", "downloads"],
   ["audio", "performance"],
-  ["extensions", "market", "themes", "privacy"],
+  ["extensions", "market", "themes", "privacy", "activity"],
 ];
 const LIBRARY_PAGES = LIBRARY.flat();
 

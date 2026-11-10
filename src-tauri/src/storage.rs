@@ -21,7 +21,7 @@ static DB: OnceLock<Mutex<Connection>> = OnceLock::new();
 
 /// Erlaubte kv-Schluessel (UI). Alles andere wird abgelehnt.
 pub const KV_KEYS: &[&str] = &[
-    "settings", "bookmarks", "history", "customTheme", "savedThemes", "zoom", "groups", "downloads", "session", "startBg",
+    "settings", "bookmarks", "history", "customTheme", "savedThemes", "zoom", "groups", "downloads", "session", "startBg", "activity",
 ];
 /// Max. Groesse eines kv-Werts (JSON-Text).
 pub const KV_MAX_BYTES: usize = 8 * 1024 * 1024;
