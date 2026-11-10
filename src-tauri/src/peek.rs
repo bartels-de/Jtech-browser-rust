@@ -32,6 +32,7 @@ fn current() -> Option<tauri::Webview> { crate::lock(&PEEK).clone() }
 /// Opens (or re-targets) the peek panel. async: creating a webview in a sync command can deadlock.
 #[tauri::command]
 pub async fn peek_open(app: AppHandle, url: String, x: f64, y: f64, w: f64, h: f64) -> Result<(), String> {
+    if url.len() > crate::pagebridge::URL_MAX { return Err("Peek: URL zu lang".into()); }
     let url = crate::pagebridge::web_url(url.trim()).ok_or("Peek: nur http(s)-Adressen")?;
     let parsed: tauri::Url = url.parse().map_err(|e| format!("Peek: {e}"))?;
     let (x, y, w, h) = rect(x, y, w, h)?;

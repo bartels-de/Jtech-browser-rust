@@ -288,6 +288,7 @@ export interface DownloadItem {
   fileName: string;
   received: number;
   total: number;
+  speedBytesPerSec: number;
   state: "progressing" | "interrupted" | "completed";
   paused: boolean;
   canResume: boolean;

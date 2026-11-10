@@ -17,6 +17,7 @@ export function nextZoom(cur: number, dir: 1 | -1): number {
   return [...ZOOM_STEPS].reverse().find(z => z < cur - 0.001) ?? ZOOM_STEPS[0];
 }
 const validZoom = (z: unknown): z is number => typeof z === "number" && Number.isFinite(z) && z >= 0.25 && z <= 5;
+export interface ActivityEvent { id: string; time: number; kind: string; tabId: string; tabTitle: string; url: string; detail: string; reason: string; }
 function loadZoom(): Record<string, number> {
   const raw = load<Record<string, unknown>>("zoom", {});
   const out: Record<string, number> = {};
@@ -47,6 +48,8 @@ export interface Store {
   totalBlocked: number;
   navError: NavError | null;
   status: string;
+  activity: ActivityEvent[];
+  clearActivity(): void;
   settings: Settings;
   bookmarks: Bookmark[];
   history: HistoryEntry[];
@@ -188,6 +191,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   const [totalBlocked, setTotalBlocked] = useState(0);
   const [navError, setNavError] = useState<NavError | null>(null);
   const [status, setStatus] = useState("");
+  const [activity, setActivity] = useState<ActivityEvent[]>(() => load("activity", [] as ActivityEvent[]));
   const [toast, setToast] = useState<Toast | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const showToast = useCallback((msg: string, undo?: () => void) => {
@@ -274,7 +278,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     const key = `${dlStamp.current}-${d.id}`;
     if (!knownDl.current.has(key)) { knownDl.current.add(key); if (d.state === "progressing") setStatus(tr("st.dlStarted", { name: d.fileName })); }
     setDownloads(list => {
-      const item: DownloadItem = { ...d, key, live: true };
+      const item: DownloadItem = { ...d, speedBytesPerSec: d.speedBytesPerSec ?? 0, key, live: true };
       const i = list.findIndex(x => x.key === key);
       if (i < 0) return [item, ...list].slice(0, 200);
       const n = [...list]; n[i] = item; return n;
@@ -294,6 +298,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   useEffect(() => save("groups", groups), [groups]);
   const dlSig = downloads.filter(d => d.state !== "progressing").map(d => d.key + d.state).join("|");
   useEffect(() => { save("downloads", downloads.filter(d => d.state !== "progressing").slice(0, 200)); }, [dlSig]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => save("activity", activity.slice(0, 500)), [activity]);
 
   // ---- abgeleitete Tabs ----
   const tabs: UiTab[] = useMemo(() => rustTabs.map(t => {
@@ -410,6 +415,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
           setNavState(n => ({ ...n, [id]: { back: !!ev.canGoBack, fwd: !!ev.canGoForward } }));
           break;
         case "popup-blocked":
+          setActivity(items => [{ id: uid(), time: Date.now(), kind: "popup-blocked", tabId: id, tabTitle: ev.tabTitle ?? "", url: ev.url ?? "", detail: ev.detail ?? "", reason: ev.reason ?? "unknown" }, ...items].slice(0, 500));
           setStatus(tr("st.popupBlocked", { url: ev.url ?? "" }));
           break;
         case "shortcut":
@@ -1014,7 +1020,7 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
 
   const store: Store = {
     tabs: [...tabs.filter(t => t.pinned), ...tabs.filter(t => !t.pinned)],
-    activeTab, activePage, totalBlocked, navError, status, settings, bookmarks, history, popover, focusTick,
+    activeTab, activePage, totalBlocked, navError, status, activity, clearActivity: () => setActivity([]), settings, bookmarks, history, popover, focusTick,
     setStatus, dismissError: () => setNavError(null), setPopover, updateSettings, sidebarResizing, setSidebarResizing, fullscreen,
     newTab, closeTab, closeOtherTabs, switchTab, cycleTab, togglePin, reorder, navigate, openPage,
     back, forward, reload, stop, home, focusAddressBar,

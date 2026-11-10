@@ -5,7 +5,7 @@ import { IconBookmarks, IconDownload, IconGauge, IconGlobe, IconHistory, IconInf
 /** Icon per internal page (sidebar, address bar); the start page keeps the JTech logo. */
 const PAGE_ICON: Record<Exclude<InternalPage, "newtab">, (p: { size?: number }) => React.ReactElement> = {
   settings: IconSettings, history: IconHistory, bookmarks: IconBookmarks, downloads: IconDownload, privacy: IconShield, themes: IconPalette,
-  audio: IconMusic, performance: IconGauge, market: IconStore, extensions: IconPuzzle, changelog: IconInfo,
+  audio: IconMusic, performance: IconGauge, market: IconStore, extensions: IconPuzzle, changelog: IconInfo, activity: IconInfo,
 };
 
 export function PageIcon({ page, size = 16 }: { page: InternalPage; size?: number }) {

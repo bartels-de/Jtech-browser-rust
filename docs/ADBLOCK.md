@@ -23,14 +23,15 @@ toolbar or the privacy page). Allowlist entries include subdomains.
 |---|---|---|
 | EasyList | on | Ads |
 | EasyPrivacy | on | Trackers |
-| uBlock filters | off | Additional uBlock Origin rules (scriptlets are not executed) |
+| uBlock filters | off | Additional uBlock Origin rules (supported scriptlets/procedural filters run when enabled) |
 | uBlock filters – Privacy | off | Additional tracker rules |
 | Peter Lowe's List | off | Ad and tracking servers (hosts) |
 | Fanboy's Annoyance | off | Cookie banners, popups, social widgets (mostly cosmetic) |
 
-- Lists are downloaded to the app data folder (`filters/<id>.txt`) with a timeout and a size
-  limit. Responses that do not look like a filter list are rejected, and the previous copy is
-  kept on failure.
+- Lists are downloaded to the app data folder (`filters/<id>.txt`) over HTTPS only, without
+  redirects or URL credentials, with connect/overall timeouts and a hard streaming size limit
+  (30 MiB), including when `Content-Length` is absent. Responses that do not look like a filter
+  list are rejected, and the previous copy is kept on failure.
 - The engine is built on a background thread, serialized to `engine.dat` and loaded from this
   cache on the next start, so blocking is active immediately, also offline.
 - Lists are refreshed automatically when they are older than the configured interval (default

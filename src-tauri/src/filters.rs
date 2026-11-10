@@ -13,6 +13,7 @@ use adblock::lists::ParseOptions;
 use adblock::FilterSet;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+use std::io::Read;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock, RwLock};
@@ -233,22 +234,42 @@ fn install(app: &AppHandle, bytes: Option<Vec<u8>>, from_cache: bool) {
 fn client() -> reqwest::blocking::Client {
     reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(60))
+        .connect_timeout(std::time::Duration::from_secs(10))
+        .redirect(reqwest::redirect::Policy::none())
         .user_agent("JTechBrowser/0.1 (filter-update)")
         .build()
         .unwrap_or_default()
 }
 
 fn download(client: &reqwest::blocking::Client, url: &str) -> Result<String, String> {
+    let parsed = url::Url::parse(url).map_err(|_| "ungueltige Filterlisten-URL".to_string())?;
+    if parsed.scheme() != "https" || parsed.host_str().is_none() || !parsed.username().is_empty() || parsed.password().is_some() {
+        return Err("Filterlisten muessen HTTPS ohne Zugangsdaten verwenden".into());
+    }
     let resp = client.get(url).send().map_err(|e| format!("Netz: {e}"))?;
     if !resp.status().is_success() { return Err(format!("HTTP {}", resp.status())); }
     if let Some(len) = resp.content_length() { if len as usize > MAX_LIST_BYTES { return Err("Liste zu gross".into()); } }
-    let text = resp.text().map_err(|e| format!("Lesen: {e}"))?;
-    if text.len() > MAX_LIST_BYTES { return Err("Liste zu gross".into()); }
+    let mut bytes = Vec::with_capacity(resp.content_length().unwrap_or(0).min(MAX_LIST_BYTES as u64) as usize);
+    resp.take(MAX_LIST_BYTES as u64 + 1).read_to_end(&mut bytes).map_err(|e| format!("Lesen: {e}"))?;
+    if bytes.len() > MAX_LIST_BYTES { return Err("Liste zu gross".into()); }
+    let text = String::from_utf8(bytes).map_err(|_| "Filterliste ist kein UTF-8".to_string())?;
     plausible_list(&text)?;
     Ok(text)
 }
 
 fn stale(m: &ListMeta, days: u32, now: u64) -> bool { m.last_updated == 0 || now.saturating_sub(m.last_updated) > days.max(1) as u64 * DAY_MS }
+
+#[cfg(test)]
+mod download_security_tests {
+    use super::*;
+
+    #[test]
+    fn filter_list_sources_must_be_https_without_credentials() {
+        let client = reqwest::blocking::Client::new();
+        assert!(download(&client, "http://example.com/list.txt").is_err());
+        assert!(download(&client, "https://user:pass@example.com/list.txt").is_err());
+    }
+}
 
 fn any_stale() -> bool {
     let cfg = load_config();

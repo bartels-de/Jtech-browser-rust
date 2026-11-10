@@ -61,8 +61,8 @@ while a menu, popover or dialog overlaps the content area (`set_content_visible`
 ## Tabs
 
 `TabManager` (Rust) holds the tabs in a fixed order with a stable tab ID, the current URL, title,
-loading state and per-tab counters. The UI receives `tabs-changed` and `tab-event` events and
-never polls for normal operation.
+loading state and per-tab counters. The UI receives `tabs-changed` and `tab-event` events, and
+also refreshes the tab/count snapshot every 3 seconds as a consistency fallback.
 
 For every content webview the backend registers WebView2 event handlers through `webview2-com`:
 navigation start/completion, source and title changes, history state (back/forward
@@ -83,12 +83,19 @@ per tab and removed when the tab is closed.
 
 Internal pages are React views inside the UI webview, not web content:
 
-`jtech://newtab`, `settings`, `history`, `bookmarks`, `downloads`, `privacy`, `themes`, `audio`.
+`jtech://newtab`, `settings`, `history`, `bookmarks`, `downloads`, `privacy`, `themes`, `audio`,
+`performance`, `extensions`, `market`, `changelog` and `activity` (browser event log).
 
 Each internal page is a regular tab in `TabManager`, backed by an `about:blank` webview that
 stays hidden while the page is shown. This keeps closing, reordering, pinning and grouping
 identical for web and internal tabs. Each internal page is open in at most one tab; opening it
 again focuses the existing tab.
+
+Implemented internal pages include the start page, settings, history, bookmarks, downloads,
+privacy, themes, audio, performance, extensions, market and changelog. The new-tab/start-page
+surface includes quick links and recently visited items; settings cover search engines/live
+suggestions, toolbar/sidebar layout, shortcuts, tab/session behaviour, privacy, downloads,
+performance limits and appearance.
 
 ## IPC and security model
 
@@ -100,14 +107,22 @@ again focuses the existing tab.
   (`src-tauri/capabilities/updater.json`).
 - Commands validate their input in Rust: tab IDs, zoom range, find-in-page queries (length limit,
   embedded only as a JSON string), shortcut combinations, cursor images (restricted `data:` URLs)
-  and storage keys.
-- Downloads are saved to the user's download folder. Opening executables or scripts from the
-  download list is refused; they can only be revealed in Explorer.
+  and storage keys. Navigation rejects URLs longer than 16 KiB and control characters; peek URLs
+  are limited to the Page Bridge URL bound.
+- Downloads are saved to the user's download folder. Opening executable/script-like extensions
+  from the list is refused; they can only be revealed in Explorer.
+- Filter-list updates require HTTPS, reject redirects and credentials, and stream at most 30 MiB.
+- The UI document policy is configured in `tauri.conf.json`; it belongs to the privileged app UI
+  and is not applied as a policy header to remote page documents.
 - Custom CSS for the UI is sanitized (`@import`, `url(…)`, `expression()` and HTML are removed)
   and only affects the browser UI, never websites.
 - Site permissions (camera, microphone, location, notifications) are decided by the user via a
   prompt bar; WebView2 is told not to persist decisions itself, and remembered decisions are
   stored by the browser.
+- The privileged UI has a configured CSP in `src-tauri/tauri.conf.json`. External content webviews
+  are separate native webviews and do not receive that UI document policy.
+- SQLite currently uses bundled, unencrypted SQLite in WAL mode. SQLCipher and DPAPI key
+  management are not implemented; see the current status in `docs/SECURITY_HARDENING_PHASE10.md`.
 
 ### Page bridge (radial menu, peek, media session)
 
@@ -204,11 +219,25 @@ All persistent data lives in SQLite at `%APPDATA%\com.jtech.browser\jtech.sqlite
   configuration and the ad blocker allowlist.
 
 The UI loads its data before the first render and writes changes debounced. If SQLite is not
-available, the UI falls back to `localStorage`. Filter lists and the serialized filter engine are
-cached in the app data folder (`filters/`, `engine.dat`).
+available, persistent UI storage remains unavailable; it does not automatically fall back to new
+`localStorage` reads or writes. On first use, existing `jtech.*` localStorage entries are imported
+once into SQLite and retained in localStorage. Filter lists and the serialized filter engine are
+cached in the app data folder (`filters/`, `engine.dat`). The database and localStorage copies are
+currently unencrypted; SQLCipher/DPAPI are not implemented.
 
 Cookies, cache and site storage belong to the WebView2 profile and are managed through the
 WebView2 cookie manager and `ClearBrowsingData`.
+
+## Download manager
+
+WebView2 owns the actual transfer through `ICoreWebView2_4::DownloadStarting`. JTech keeps up to
+300 in-memory download records and emits progress/state updates to the UI. Progress events are
+throttled to at most one every 250 ms; the current transfer rate is estimated from consecutive
+byte counts. The Downloads page provides search, state filters, pause/resume/cancel, open and
+reveal actions. Completed and interrupted records are kept in UI storage for later sessions, but
+only active-session records have a live WebView2 operation; old rows are display-only. Opening
+executable/script-like extensions is blocked and revealing them in Explorer remains available.
+The backend does not expose a retry action or configurable destination rules.
 
 ## Source layout
 
