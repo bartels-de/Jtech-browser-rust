@@ -1,0 +1,19 @@
+{
+  "id": "jtech.cookie-deny",
+  "version": "1.0.0",
+  "minBrowser": "0.1.14",
+  "name": { "en": "Cookie Banner Deny", "de": "Cookie-Banner ablehnen" },
+  "description": {
+    "en": "Tries to click 'Reject all' or 'Necessary only' on common cookie consent banners and hides leftover banners.",
+    "de": "Versucht bei gängigen Cookie-Bannern 'Alle ablehnen' oder 'Nur notwendig' zu klicken und blendet verbleibende Banner aus."
+  },
+  "author": "JTech",
+  "icon": "icon.svg",
+  "license": "MIT",
+  "permissions": ["scripts:main-world", "styles"],
+  "matches": ["<all_urls>"],
+  "content_scripts": [
+    { "js": ["content.js"], "css": ["style.css"], "run_at": "document_end", "world": "main" }
+  ],
+  "defaultEnabled": false
+}

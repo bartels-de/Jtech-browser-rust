@@ -1,0 +1,28 @@
+/* Basic dark-mode inversion: only applies when jtech-dark-reader class is set. */
+html.jtech-dark-reader,
+html.jtech-dark-reader body {
+  background-color: #1a1a1a !important;
+  color: #e0e0e0 !important;
+}
+
+html.jtech-dark-reader img,
+html.jtech-dark-reader video,
+html.jtech-dark-reader iframe,
+html.jtech-dark-reader canvas,
+html.jtech-dark-reader svg,
+html.jtech-dark-reader [role="img"] {
+  filter: brightness(0.85) contrast(0.95) !important;
+}
+
+html.jtech-dark-reader button,
+html.jtech-dark-reader input,
+html.jtech-dark-reader textarea,
+html.jtech-dark-reader select {
+  background-color: #2a2a2a !important;
+  color: #e0e0e0 !important;
+  border-color: #444 !important;
+}
+
+html.jtech-dark-reader a {
+  color: #8ab4f8 !important;
+}

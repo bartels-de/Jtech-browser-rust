@@ -1,0 +1,19 @@
+{
+  "id": "jtech.dark-reader",
+  "version": "1.0.0",
+  "minBrowser": "0.1.14",
+  "name": { "en": "Dark Reader", "de": "Dark Reader" },
+  "description": {
+    "en": "Forces a dark theme on websites that do not offer their own dark mode.",
+    "de": "Erzwingt ein dunkles Design auf Webseiten, die keinen eigenen Dunkelmodus anbieten."
+  },
+  "author": "JTech",
+  "icon": "icon.svg",
+  "license": "MIT",
+  "permissions": ["scripts:main-world", "styles"],
+  "matches": ["<all_urls>"],
+  "content_scripts": [
+    { "js": ["content.js"], "css": ["style.css"], "run_at": "document_start", "world": "main" }
+  ],
+  "defaultEnabled": false
+}

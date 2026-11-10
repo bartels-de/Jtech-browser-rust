@@ -44,6 +44,114 @@
         "manifest.json": "f0576c3f0cb07a6538beae0e5c17d11c98ce3a72f516c4ae15deb0eb09bbfb11",
         "rules.txt": "9fd524a322c587ca99615e399da750129eede1117191d6c4af747157fb6c69d5"
       }
+    },
+    {
+      "id": "jtech.clean-urls",
+      "version": "1.0.0",
+      "minBrowser": "0.1.14",
+      "name": {
+        "en": "Clean URLs",
+        "de": "URLs bereinigen"
+      },
+      "description": {
+        "en": "Removes tracking parameters like utm_* and fbclid from URLs before you navigate.",
+        "de": "Entfernt Tracking-Parameter wie utm_* und fbclid aus URLs, bevor du navigierst."
+      },
+      "author": "JTech",
+      "license": "MIT",
+      "files": {
+        "NOTICE": "75d18a6bf4e8dfb97952545c73aac0e50a286c2ee76c609f39cfec69d8a66e9d",
+        "content.js": "16a3dac8ab978abeb0fb51c7cfe6ecd241b0349862679f5434d5589a53ca7795",
+        "icon.svg": "7ad6d005fef7b1f3d523b4a2de515eb14eb49843ee8f07c285abe56e175837e4",
+        "manifest.json": "9c1ad052e0666abc3416bfa47c55a3ef77073a9ed3809fd10d35f31c2e3ea04e"
+      }
+    },
+    {
+      "id": "jtech.cookie-deny",
+      "version": "1.0.0",
+      "minBrowser": "0.1.14",
+      "name": {
+        "en": "Cookie Banner Deny",
+        "de": "Cookie-Banner ablehnen"
+      },
+      "description": {
+        "en": "Tries to click 'Reject all' or 'Necessary only' on common cookie consent banners and hides leftover banners.",
+        "de": "Versucht bei gängigen Cookie-Bannern 'Alle ablehnen' oder 'Nur notwendig' zu klicken und blendet verbleibende Banner aus."
+      },
+      "author": "JTech",
+      "license": "MIT",
+      "files": {
+        "NOTICE": "ec54d06cf8fb68d4b064fe02498db7eb7f17f2a670df1c7f4b0c0a18ce2da9a0",
+        "content.js": "8e930adfd559391ba4bb433474ff5e5cd6b8789b08db5471f1ab8a181d37b4f4",
+        "icon.svg": "9e88cb2172cab07e1f16db67eba65327059e6d5cb2cb337ade22f96b242dfd81",
+        "manifest.json": "7676b8a809d3e64e5fc49f4756873a0568594f4806ccdc4f505cd88a1c226430",
+        "style.css": "c86b5138ca92bc71088988b733dfe5b7d3ff38263c6b9863810fc5b7b8c977b8"
+      }
+    },
+    {
+      "id": "jtech.dark-reader",
+      "version": "1.0.0",
+      "minBrowser": "0.1.14",
+      "name": {
+        "en": "Dark Reader",
+        "de": "Dark Reader"
+      },
+      "description": {
+        "en": "Forces a dark theme on websites that do not offer their own dark mode.",
+        "de": "Erzwingt ein dunkles Design auf Webseiten, die keinen eigenen Dunkelmodus anbieten."
+      },
+      "author": "JTech",
+      "license": "MIT",
+      "files": {
+        "NOTICE": "18d8a276ad2e9b42bd6e2cf9b7007905d27b2a4b7162c085eefb34ba1c7efcfd",
+        "content.js": "37ade3e59447a54109ca4d7193c603f1bb590ee67f96228df88cfd138c51261f",
+        "icon.svg": "4f5ac968d7fe19e43b367abd678c48366da919af5cbe28c8e3980ed23d7f7fd2",
+        "manifest.json": "3d45e2ae8818ea2835a676d6fe5192786802380a578641a1082881c848fe7348",
+        "style.css": "fdfcf0413d672044e7453036b66c997e160d12f7bcd12cf8438eb10eaf90fa29"
+      }
+    },
+    {
+      "id": "jtech.sponsorblock",
+      "version": "1.0.0",
+      "minBrowser": "0.1.14",
+      "name": {
+        "en": "SponsorBlock",
+        "de": "SponsorBlock"
+      },
+      "description": {
+        "en": "Skips sponsor segments, intros and outros on YouTube using data from SponsorBlock.",
+        "de": "Ueberspringt Sponsorensegmente, Intros und Outros auf YouTube anhand von SponsorBlock-Daten."
+      },
+      "author": "JTech",
+      "license": "MIT",
+      "files": {
+        "NOTICE": "0dceb72d5af7e53f3e5b00dd31af9e56f2b8d8d86eb5b95e44c552a928e5cbd6",
+        "content.js": "8cedbfaa7198854011cb257efd12330a20077a6d450104d8d2e14a4282372c3a",
+        "icon.svg": "030b001ff2f2456d8c20e25883eed4d2384706dcb0a66bcf2d4ad9b95388c09e",
+        "manifest.json": "35067b39b2e177b9dc4d5feb9bad38112ee5291910cb40fa57d02e4d3a839303"
+      }
+    },
+    {
+      "id": "jtech.twitter-cleanup",
+      "version": "1.0.0",
+      "minBrowser": "0.1.14",
+      "name": {
+        "en": "X / Twitter Cleanup",
+        "de": "X / Twitter Cleanup"
+      },
+      "description": {
+        "en": "Hides ads, promoted tweets, 'Who to follow', trending topics and other clutter on x.com and twitter.com.",
+        "de": "Blendet Werbung, promoted Tweets, 'Wem folgen', Trends und andere Ablenkungen auf x.com und twitter.com aus."
+      },
+      "author": "JTech",
+      "license": "MIT",
+      "files": {
+        "NOTICE": "5644b708238c45f35c4b1a3837d48371dba2d82e34a1e2f002b12cb07dea8e95",
+        "content.js": "b5ed62457bb4a405cb179ddbf2b6b654a4562734f51e294df76b338aa69eee1a",
+        "icon.svg": "e077d4376bc36492019fe4c5ff98c08ca1e5fbdab549942eb4cff71fe2ffe53b",
+        "manifest.json": "cb9fb302fb6145c35640d99bb0e8f5e5e377cc0cee3818195df925d53db154f4",
+        "style.css": "37422cf5916edcf89b24d9ffed8ce1dc59ac175ab68671803219cceb8964623b"
+      }
     }
   ],
   "signature": null

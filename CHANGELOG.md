@@ -3,6 +3,16 @@
 All notable changes to JTech Browser. The in-app page `jtech://changelog` shows the same notes
 (localized, from `src/data/changelog.ts`).
 
+## [0.1.15]
+
+- Five new bundled extensions, all disabled by default: SponsorBlock, Dark Reader, Cookie Banner Deny, X/Twitter Cleanup and Clean URLs.
+  - SponsorBlock skips sponsor segments, intros and outros on YouTube.
+  - Dark Reader forces a dark theme on sites that do not offer their own dark mode.
+  - Cookie Banner Deny clicks common reject buttons and hides leftover cookie banners.
+  - X/Twitter Cleanup removes ads, promoted tweets, trending topics and sidebar clutter on x.com and twitter.com.
+  - Clean URLs strips tracking parameters like `utm_*` and `fbclid` from URLs and links.
+- Fix: cookie and profile actions now fall back to the UI webview when no web tab is open.
+
 ## [0.1.14]
 
 - New website with six pages, real screenshots and rich animations, deployed via GitHub Pages.

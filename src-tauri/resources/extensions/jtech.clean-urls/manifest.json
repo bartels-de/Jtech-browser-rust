@@ -1,0 +1,19 @@
+{
+  "id": "jtech.clean-urls",
+  "version": "1.0.0",
+  "minBrowser": "0.1.14",
+  "name": { "en": "Clean URLs", "de": "URLs bereinigen" },
+  "description": {
+    "en": "Removes tracking parameters like utm_* and fbclid from URLs before you navigate.",
+    "de": "Entfernt Tracking-Parameter wie utm_* und fbclid aus URLs, bevor du navigierst."
+  },
+  "author": "JTech",
+  "icon": "icon.svg",
+  "license": "MIT",
+  "permissions": ["scripts:main-world"],
+  "matches": ["<all_urls>"],
+  "content_scripts": [
+    { "js": ["content.js"], "run_at": "document_start", "world": "main" }
+  ],
+  "defaultEnabled": false
+}
