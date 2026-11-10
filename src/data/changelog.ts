@@ -13,6 +13,29 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.1.15", date: "2026-11-10",
+    notes: {
+      de: [
+        "Fünf neue gebündelte Erweiterungen, alle standardmäßig deaktiviert: SponsorBlock, Dark Reader, Cookie-Banner ablehnen, X/Twitter Cleanup und Clean URLs.",
+        "SponsorBlock überspringt Sponsorensegmente, Intros und Outros auf YouTube.",
+        "Dark Reader erzwingt ein dunkles Design auf Seiten ohne eigenen Dunkelmodus.",
+        "Cookie-Banner ablehnen klickt gängige Ablehnen-Buttons und blendet Banner aus.",
+        "X/Twitter Cleanup entfernt Werbung, promoted Tweets, Trends und Sidebar-Clutter.",
+        "Clean URLs entfernt Tracking-Parameter wie utm_* und fbclid aus URLs.",
+        "Fix: Cookie-/Profil-Aktionen funktionieren jetzt auch, wenn nur interne Tabs geöffnet sind.",
+      ],
+      en: [
+        "Five new bundled extensions, all disabled by default: SponsorBlock, Dark Reader, Cookie Banner Deny, X/Twitter Cleanup and Clean URLs.",
+        "SponsorBlock skips sponsor segments, intros and outros on YouTube.",
+        "Dark Reader forces a dark theme on sites that do not offer their own dark mode.",
+        "Cookie Banner Deny clicks common reject buttons and hides leftover banners.",
+        "X/Twitter Cleanup removes ads, promoted tweets, trending topics and sidebar clutter.",
+        "Clean URLs strips tracking parameters like utm_* and fbclid from URLs.",
+        "Fix: cookie/profile actions now work even when only internal tabs are open.",
+      ],
+    },
+  },
+  {
     version: "0.1.14", date: "2026-11-10",
     notes: {
       de: [
