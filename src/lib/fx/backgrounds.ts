@@ -19,8 +19,10 @@
  */
 (function (root, factory) {
   const api = factory();
-  if (typeof module === 'object' && module && module.exports) module.exports = api;
-  else if (root && !root.JTechBackgrounds) root.JTechBackgrounds = api;
+  // This file is imported by the browser UI, where Vite may wrap modules with a
+  // module.exports shim in production. Always publish the API on window; checking
+  // `module.exports` here can mistakenly hide it inside Vite's private wrapper.
+  if (root && !root.JTechBackgrounds) root.JTechBackgrounds = api;
 })(typeof window !== 'undefined' ? window : globalThis, function () {
   'use strict';
 
