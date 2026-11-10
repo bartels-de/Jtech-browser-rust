@@ -1,0 +1,14 @@
+.jtech-twitter-cleanup [data-testid="trend"],
+.jtech-twitter-cleanup [data-testid="UserCell"],
+.jtech-twitter-cleanup [aria-label="Who to follow"],
+.jtech-twitter-cleanup [aria-label="Wem folgen"],
+.jtech-twitter-cleanup [data-testid="cellInnerDiv"] div[data-testid="PlacementTracking"],
+.jtech-twitter-cleanup article div[data-testid="placementTracking"],
+.jtech-twitter-cleanup a[href*="/i/related"],
+.jtech-twitter-cleanup [data-testid="subscription-upsell"],
+.jtech-twitter-cleanup [data-testid="inlinePrompt"],
+.jtech-twitter-cleanup [data-testid="premium-upsell"],
+.jtech-twitter-cleanup div[role="complementary"] > div > div > div:nth-child(3),
+.jtech-twitter-cleanup aside[role="complementary"] section[aria-labelledby*="accessible-list"]:not(:first-child){
+  display:none !important;
+}
