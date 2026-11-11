@@ -6,6 +6,8 @@
 .color-field input[type="color"] { width: 34px; height: 28px; padding: 0; border: 1px solid var(--border); border-radius: var(--r-xs); background: none; }
 .color-field input.mono { width: 90px; }
 .theme-preview { display: flex; gap: 8px; align-items: center; padding: 12px; margin: 8px 0; border: 1px dashed var(--border-strong); border-radius: var(--r-md); background: var(--surface-0); }
+/* Disable motion consistently when the user selects the no-motion profile. */
+:root[data-theme-motion="off"] *, :root[data-theme-motion="off"] *::before, :root[data-theme-motion="off"] *::after { animation-duration: 0s !important; animation-iteration-count: 1 !important; transition-duration: 0s !important; scroll-behavior: auto !important; }
 /* Live-Vorschau der im Theme gewaehlten Schrift */
 .font-preview { margin: 4px 0 10px; padding: 14px 12px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-0); color: var(--text); font-size: 17px; line-height: 1.45; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .theme-json { width: 100%; min-height: 110px; margin-top: 8px; padding: 8px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-0); color: var(--text); font-size: var(--fs-sm); resize: vertical; }
@@ -14,6 +16,7 @@
 /* z-index -1 ohne eigenen Stapelkontext an .shell: liegt ueber dem body-Hintergrund, aber unter allen Flaechen;
    Popover/Kontextmenues behalten ihre bisherige Stapelung. */
 .fx-layer { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+.fx-layer .jtech-bg-canvas { transform: translate3d(var(--parallax-x, 0px), var(--parallax-y, 0px), 0) scale(var(--parallax-scale, 1)); transform-origin: center; will-change: transform; }
 :root.fx-bg body { background: var(--bg); }
 
 /* kein backdrop-filter hier: wuerde Stapelkontext/Bezugsrahmen fuer die fixed-Kontextmenues aendern */
@@ -44,7 +47,22 @@
 :root.fx-bg .tile:not(:hover) { background: transparent; }
 
 /* Design-Studio */
-.studio-jump { display: flex; flex-wrap: wrap; gap: 6px; position: sticky; top: 0; z-index: 2; margin: -8px calc(var(--sp-2) * -1) var(--sp-4); padding: var(--sp-2); background: color-mix(in srgb, var(--surface-1) 88%, transparent); backdrop-filter: blur(8px); border-radius: var(--r-md); }
+.studio-layout { display: grid; grid-template-columns: 190px minmax(0, 1fr); align-items: start; gap: var(--sp-5); }
+.studio-tools { position: sticky; top: var(--sp-3); z-index: 3; display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-2); background: color-mix(in srgb, var(--surface-1) 92%, transparent); backdrop-filter: blur(10px); border: 1px solid var(--border); border-radius: var(--r-md); max-height: calc(100vh - 32px); overflow-y: auto; }
+.studio-search { width: 100%; box-sizing: border-box; flex: none; }
+.studio-jump { display: flex; flex-direction: column; gap: 3px; }
+.studio-nav-item { display: flex; align-items: center; min-height: var(--ctl-md); padding: 0 var(--sp-2); border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-2); text-align: left; cursor: pointer; font-size: var(--fs-sm); }
+.studio-nav-item:hover, .studio-nav-item:focus-visible { background: var(--hover); color: var(--text); }
+.studio-sections { display: flex; min-width: 0; flex-direction: column; gap: var(--sp-4); }
+.studio-sections > .card { scroll-margin-top: 16px; }
+.studio-color-control { display: flex; align-items: center; gap: 8px; }
+.studio-color-control input[type="color"] { width: 34px; height: 28px; padding: 2px; border: 1px solid var(--border); border-radius: var(--r-xs); background: transparent; }
+@media (max-width: 820px) {
+  .studio-layout { display: block; }
+  .studio-tools { position: sticky; top: 0; max-height: none; margin: 0 0 var(--sp-4); }
+  .studio-jump { flex-direction: row; flex-wrap: wrap; }
+  .studio-nav-item { min-height: 30px; }
+}
 .color-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--sp-2); padding: var(--sp-3) 0; border-top: 1px solid var(--border); }
 .color-swatch { display: flex; align-items: center; gap: 10px; padding: 8px; border: 1px solid var(--border); border-radius: var(--r-md); cursor: pointer; }
 .color-swatch:hover { background: var(--hover); }

@@ -80,6 +80,12 @@
   --selection: color-mix(in srgb, var(--accent) 32%, transparent);
 }
 
+/* Global browser chrome density. These tokens affect the JTech UI only, never web content. */
+:root[data-density="compact"] { --toolbar-h: 38px; --bookmarks-h: 27px; --row-h: 30px; --ctl-sm: 23px; --ctl-md: 28px; --ctl-lg: 36px; --sp-1: 3px; --sp-2: 6px; --sp-3: 9px; --sp-4: 12px; --sp-5: 15px; --sp-6: 18px; --sp-8: 24px; --sp-10: 30px; }
+:root[data-density="spacious"] { --toolbar-h: 50px; --bookmarks-h: 38px; --row-h: 43px; --ctl-sm: 29px; --ctl-md: 36px; --ctl-lg: 46px; --sp-1: 5px; --sp-2: 10px; --sp-3: 15px; --sp-4: 20px; --sp-5: 25px; --sp-6: 30px; --sp-8: 40px; --sp-10: 50px; }
+:root[data-density="compact"] { --fs-2xs: 9px; --fs-xs: 10px; --fs-sm: 11px; --fs-md: 12px; }
+:root[data-density="spacious"] { --fs-xs: 12px; --fs-sm: 13px; --fs-md: 14px; --fs-lg: 16px; }
+
 :root[data-theme="light"] {
   color-scheme: light;
   --bg: #eef1f3;

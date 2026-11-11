@@ -13,6 +13,29 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.3.3", date: null,
+    notes: {
+      de: [
+        "Design Studio mit durchsuchbarer Bereichsnavigation und übersichtlicherer Gliederung erweitert.",
+        "Globale Symbolstile, vier Sidebar-Tab-Designs sowie kompakte, standardmäßige und großzügige Oberflächendichte ergänzt.",
+        "Mausgesteuerte Hintergrund-Parallaxe mit Stärke-Regler ergänzt; sie wirkt nur auf die JTech-Oberfläche und beachtet reduzierte Bewegung.",
+        "Abgerundete, kantige und individuelle Komponentenprofile mit einstellbarem Eckenradius ergänzt.",
+        "Farbe und Deckkraft des Adressleisten-Hintergrunds einstellbar gemacht.",
+        "Stile und Dauer der Übergänge einstellbar gemacht; Oberflächenbewegungen lassen sich vollständig deaktivieren.",
+        "Theme-Export um die neuen Darstellungseinstellungen erweitert; ältere Themes werden weiterhin mit passenden Standardwerten geladen.",
+      ],
+      en: [
+        "Expanded the Design Studio with a searchable section navigator and clearer grouping.",
+        "Added global icon styles, four sidebar tab treatments and compact, comfortable or spacious interface density.",
+        "Added pointer-driven background parallax with an intensity control; it affects only the JTech interface and respects reduced motion.",
+        "Added rounded, angular and custom component profiles with an adjustable corner radius.",
+        "Added address bar background color and opacity controls.",
+        "Added transition style and duration controls, including an option to disable interface motion.",
+        "Theme export now includes the new appearance settings; older themes continue to load with compatible defaults.",
+      ],
+    },
+  },
+  {
     version: "0.3.2", date: "2026-11-10",
     notes: {
       de: ["Fehler behoben, durch den animierte Design-Studio-Hintergründe in Produktionsbuilds nicht initialisiert wurden."],

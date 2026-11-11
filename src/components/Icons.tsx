@@ -8,6 +8,14 @@ const base = (size = 16): SVGProps<SVGSVGElement> => ({
 });
 const mk = (d: React.ReactNode) => ({ size, ...p }: P) => <svg {...base(size)} {...p}>{d}</svg>;
 
+// One global icon weight keeps the interface style consistent without replacing its icon set.
+export function IconPackStyles() {
+  return <style>{`
+    :root[data-icon-pack="bold"] svg[aria-hidden="true"] { stroke-width: 2.5px; }
+    :root[data-icon-pack="soft"] svg[aria-hidden="true"] { stroke-width: 1.35px; opacity: .88; }
+  `}</style>;
+}
+
 export const IconBack = mk(<path d="M15 18l-6-6 6-6" />);
 export const IconForward = mk(<path d="M9 18l6-6-6-6" />);
 export const IconReload = mk(<><path d="M20 11a8 8 0 1 0-2.3 5.7" /><path d="M20 4v7h-7" /></>);
