@@ -15,6 +15,12 @@ export interface ThemeSpec {
   text: string;
   textDim: string;
   radius: number;
+  componentProfile: "rounded" | "angular" | "custom";
+  /** Empty means derive the address field color from the active theme. */
+  addressBg: string;
+  addressBgOpacity: number;
+  motionDuration: number;
+  motionStyle: "standard" | "smooth" | "snappy" | "off";
   /** Runde 3: Deckkraft der Glasflaechen 30..100 (%) */
   glass: number;
   /** Runde 3: Weichzeichner der Glasflaechen 0..40 px */
@@ -121,7 +127,7 @@ export function luminance(hex: string): number {
   return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
 }
 
-const EXTRA = { glass: 78, blur: 18, glow: 0, font: "segoe" as FontId, customCss: "" };
+const EXTRA = { componentProfile: "rounded" as const, addressBg: "", addressBgOpacity: 82, motionDuration: 140, motionStyle: "standard" as const, glass: 78, blur: 18, glow: 0, font: "segoe" as FontId, customCss: "" };
 /** Display name of a font (localized where it carries a word). */
 export const fontName = (f: FontId): string => (f === "segoe" || f === "system" || f === "georgia" || f === "cascadia" ? tr(`th.font.${f}` as TKey) : FONTS[f].name);
 /** Display name of a theme: the built-in default is localized, user/preset names are shown as stored. */
@@ -163,6 +169,11 @@ export function normalizeTheme(input: unknown, fallback: ThemeSpec = JTECH_DEFAU
     text: normalizeHex(t.text, fallback.text),
     textDim: normalizeHex(t.textDim, fallback.textDim),
     radius: Math.round(clamp(t.radius, 0, 24, fallback.radius)),
+    componentProfile: t.componentProfile === "angular" || t.componentProfile === "custom" ? t.componentProfile : fallback.componentProfile,
+    addressBg: t.addressBg === "" ? "" : normalizeHex(t.addressBg, fallback.addressBg),
+    addressBgOpacity: Math.round(clamp(t.addressBgOpacity, 0, 100, fallback.addressBgOpacity)),
+    motionDuration: Math.round(clamp(t.motionDuration, 0, 500, fallback.motionDuration)),
+    motionStyle: t.motionStyle === "smooth" || t.motionStyle === "snappy" || t.motionStyle === "off" ? t.motionStyle : fallback.motionStyle,
     glass: Math.round(clamp(t.glass, 30, 100, fallback.glass)),
     blur: Math.round(clamp(t.blur, 0, 40, fallback.blur)),
     glow: Math.round(clamp(t.glow, 0, 100, fallback.glow)),
@@ -176,7 +187,9 @@ const mix = (a: string, b: string, pct: number) => `color-mix(in srgb, ${a} ${pc
 /** Leitet alle Token-Werte aus tokens.css ab. */
 export function themeVars(t: ThemeSpec): Record<string, string> {
   const light = t.mode === "light";
-  const r = t.radius;
+  const angular = t.componentProfile === "angular";
+  const r = angular ? 0 : t.radius;
+  const easing = t.motionStyle === "smooth" ? "cubic-bezier(0.16, 1, 0.3, 1)" : t.motionStyle === "snappy" ? "cubic-bezier(0.34, 1.56, 0.64, 1)" : "cubic-bezier(0.2, 0.8, 0.2, 1)";
   return {
     "--bg": t.bg,
     "--surface-0": mix(t.text, t.bg, light ? 2 : 3),
@@ -185,6 +198,13 @@ export function themeVars(t: ThemeSpec): Record<string, string> {
     "--surface-3": mix(t.text, t.bg, light ? 10 : 15),
     "--glass": mix(light ? "#ffffff" : t.bg, "transparent", t.glass),
     "--glass-blur": `${t.blur}px`,
+    "--dur": `${t.motionDuration}ms`,
+    "--dur-fast": `${Math.round(t.motionDuration * 0.65)}ms`,
+    "--dur-slow": `${Math.round(t.motionDuration * 1.6)}ms`,
+    "--ease": easing,
+    "--ease-out": easing,
+    "--ease-in-out": easing,
+    "--omnibox-bg": t.addressBg ? `color-mix(in srgb, ${t.addressBg} ${t.addressBgOpacity}%, transparent)` : `color-mix(in srgb, var(--surface-2) ${t.addressBgOpacity}%, transparent)`,
     "--glow": `${Math.round(t.glow * 0.3)}px`,
     "--font-sans": FONTS[t.font].stack,
     "--glass-border": mix(t.text, "transparent", 8),
@@ -201,11 +221,13 @@ export function themeVars(t: ThemeSpec): Record<string, string> {
     "--accent-ring": mix(t.accent, "transparent", 36),
     "--hover": mix(t.text, "transparent", 5),
     "--press": mix(t.text, "transparent", 9),
+    "--r-2xs": angular ? "0px" : `${Math.max(0, Math.round(r * 0.3))}px`,
     "--r-xs": `${Math.max(0, Math.round(r * 0.6))}px`,
     "--r-sm": `${Math.round(r * 0.8)}px`,
     "--r-md": `${r}px`,
     "--r-lg": `${Math.round(r * 1.4)}px`,
     "--r-xl": `${Math.round(r * 2)}px`,
+    "--r-pill": angular ? "4px" : "999px",
   };
 }
 
@@ -215,6 +237,7 @@ const KEYS = Object.keys(themeVars(JTECH_DEFAULT));
 export function applyTheme(t: ThemeSpec | null, root: HTMLElement = document.documentElement) {
   for (const k of KEYS) root.style.removeProperty(k);
   let style = document.getElementById("jtech-custom-css") as HTMLStyleElement | null;
+  root.dataset.themeMotion = t?.motionStyle ?? "standard";
   if (!t) { style?.remove(); return; }
   for (const [k, v] of Object.entries(themeVars(t))) root.style.setProperty(k, v);
   const css = sanitizeCss(t.customCss);
@@ -224,8 +247,8 @@ export function applyTheme(t: ThemeSpec | null, root: HTMLElement = document.doc
 }
 
 export function exportTheme(t: ThemeSpec): string {
-  const { id, name, mode, accent, accent2, bg, text, textDim, radius, glass, blur, glow, font, customCss } = t;
-  return JSON.stringify({ format: "jtech-theme", version: 2, id, name, mode, accent, accent2, bg, text, textDim, radius, glass, blur, glow, font, customCss }, null, 2);
+  const { id, name, mode, accent, accent2, bg, text, textDim, radius, componentProfile, addressBg, addressBgOpacity, motionDuration, motionStyle, glass, blur, glow, font, customCss } = t;
+  return JSON.stringify({ format: "jtech-theme", version: 3, id, name, mode, accent, accent2, bg, text, textDim, radius, componentProfile, addressBg, addressBgOpacity, motionDuration, motionStyle, glass, blur, glow, font, customCss }, null, 2);
 }
 
 /** Akzeptiert eigenes Format und Electron-Themes (accentAlt). Wirft bei kaputtem JSON. */

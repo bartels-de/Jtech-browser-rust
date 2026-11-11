@@ -3,6 +3,16 @@
 All notable changes to JTech Browser. The in-app page `jtech://changelog` shows the same notes
 (localized, from `src/data/changelog.ts`).
 
+## [0.3.3]
+
+- Expanded Design Studio with a searchable section navigator and a clearer grouped layout.
+- Added global icon styles, four sidebar tab treatments and compact, comfortable or spacious interface density.
+- Added pointer-driven background parallax with a strength control; it affects only the JTech interface and respects reduced motion.
+- Added rounded, angular and custom component profiles with an adjustable corner radius.
+- Added address bar background color and opacity controls.
+- Added transition styles and duration controls, including an option to disable interface motion.
+- Theme export now includes the new appearance settings; older themes continue to load with compatible defaults.
+
 ## [0.3.2]
 
 - Fixed animated Design Studio backgrounds not initializing in production builds because the background API was captured by Vite's module wrapper instead of being exposed on `window`.

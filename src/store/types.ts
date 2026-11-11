@@ -11,6 +11,9 @@ export const clampSidebarWidth = (w: unknown) =>
   typeof w === "number" && Number.isFinite(w) ? Math.round(Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, w))) : SIDEBAR_DEFAULT_WIDTH;
 
 export type ThemeSetting = "dark" | "light" | "system";
+export type UiDensity = "compact" | "comfortable" | "spacious";
+export type IconPack = "line" | "bold" | "soft";
+export type SidebarTabStyle = "classic" | "pill" | "underline" | "minimal";
 
 export interface Settings {
   /** "jtech://newtab" oder eine URL */
@@ -21,6 +24,9 @@ export interface Settings {
   sidebarExpanded: boolean;
   /** Width of the expanded sidebar in px (drag handle) */
   sidebarWidth: number;
+  uiDensity: UiDensity;
+  iconPack: IconPack;
+  sidebarTabStyle: SidebarTabStyle;
   showBookmarksBar: boolean;
   /** Show the bookmarks bar only on the start page (when showBookmarksBar is on) */
   bookmarksBarOnlyNewTab?: boolean;
@@ -254,6 +260,9 @@ export const DEFAULT_SETTINGS: Settings = {
   adblock: true,
   sidebarExpanded: true,
   sidebarWidth: SIDEBAR_DEFAULT_WIDTH,
+  uiDensity: "comfortable",
+  iconPack: "line",
+  sidebarTabStyle: "classic",
   showBookmarksBar: true,
   bookmarksBarOnlyNewTab: true,
   bangs: [],

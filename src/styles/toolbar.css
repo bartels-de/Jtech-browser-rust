@@ -19,8 +19,8 @@
 .zoom-chip { flex: none; height: 22px; padding: 0 8px; border: 1px solid var(--border-strong); border-radius: var(--r-pill); background: var(--surface-1); color: var(--text-2); font-size: var(--fs-xs); cursor: pointer; }
 .zoom-chip:hover { color: var(--accent); border-color: var(--accent-ring); }
 .zoom-val { min-width: 56px; height: 26px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-1); cursor: pointer; font-variant-numeric: tabular-nums; }
-.omnibox:hover { background: color-mix(in srgb, var(--surface-2) 60%, var(--surface-3)); }
-.omnibox.focused { background: var(--surface-1); border-color: var(--accent-ring); box-shadow: 0 0 0 3px var(--accent-soft), 0 0 var(--glow) var(--accent-ring); }
+.omnibox:hover { background: color-mix(in srgb, var(--omnibox-bg, var(--surface-2)) 72%, var(--surface-3)); }
+.omnibox.focused { background: color-mix(in srgb, var(--omnibox-bg, var(--surface-2)) 72%, var(--surface-1)); border-color: var(--accent-ring); box-shadow: 0 0 0 3px var(--accent-soft), 0 0 var(--glow) var(--accent-ring); }
 .omnibox.open { border-bottom-left-radius: var(--r-md); border-bottom-right-radius: var(--r-md); border-radius: var(--r-xl) var(--r-xl) var(--r-md) var(--r-md); }
 .omnibox input { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; outline: none; font-size: var(--fs-md); }
 .omnibox .icon-btn { width: 28px; height: 28px; border-radius: 50%; }
@@ -35,8 +35,8 @@
 .toolbar > .nav-group:first-child { gap: 0; }
 .toolbar .icon-btn { width: var(--ctl-md); height: var(--ctl-md); border-radius: var(--r-sm); }
 .omni-wrap { position: relative; min-width: 120px; display: flex; flex: 1 1 auto; max-width: calc(720px + 2 * var(--sp-2)); margin: 0 auto; padding: 0 var(--sp-2); }
-.omnibox { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; border-radius: var(--r-pill); transition: border-color var(--dur), background var(--dur), box-shadow var(--dur); overflow: hidden; gap: 6px; border: 1px solid var(--border); box-shadow: var(--hairline-hi); height: var(--ctl-md); padding: 0 2px 0 10px; background: color-mix(in srgb, var(--surface-2) 82%, transparent); }
-.omnibox:hover:not(.focused) { background: var(--surface-2); }
+.omnibox { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; border-radius: var(--r-pill); transition: border-color var(--dur), background var(--dur), box-shadow var(--dur); overflow: hidden; gap: 6px; border: 1px solid var(--border); box-shadow: var(--hairline-hi); height: var(--ctl-md); padding: 0 2px 0 10px; background: var(--omnibox-bg, color-mix(in srgb, var(--surface-2) 82%, transparent)); }
+.omnibox:hover:not(.focused) { background: color-mix(in srgb, var(--omnibox-bg, var(--surface-2)) 72%, var(--surface-3)); }
 .omnibox .icon-btn { width: 28px; height: 28px; }
 .omnibox input.is-pretty { color: transparent; caret-color: transparent; }
 .omni-display { position: absolute; left: 38px; right: 40px; top: 0; bottom: 0; display: flex; align-items: center; min-width: 0; overflow: hidden; white-space: nowrap; font-size: var(--fs-md); cursor: text; pointer-events: auto; }

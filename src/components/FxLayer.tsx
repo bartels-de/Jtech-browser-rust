@@ -17,7 +17,32 @@ export function FxLayer() {
   const ref = useRef<HTMLDivElement>(null);
   const [minimized, setMinimized] = useState(false);
   const webShown = !!b.activeTab && !b.activeTab.internal && !b.activeTab.sleeping;
-  const paused = minimized || (e.pauseOnWeb && webShown);
+  const paused = minimized || b.customTheme?.motionStyle === "off" || (e.pauseOnWeb && webShown);
+
+  // Move only the decorative canvas; the browser controls and webpage viewport remain fixed.
+  useEffect(() => {
+    const layer = ref.current;
+    if (!layer || !e.bgEnabled || e.bgParallax <= 0 || paused || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      layer?.style.setProperty("--parallax-x", "0px");
+      layer?.style.setProperty("--parallax-y", "0px");
+      layer?.style.setProperty("--parallax-scale", "1");
+      return;
+    }
+    layer.style.setProperty("--parallax-scale", "1.04");
+    let raf = 0;
+    const move = (ev: PointerEvent) => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const x = (ev.clientX / Math.max(1, innerWidth) - 0.5) * e.bgParallax * 0.24;
+        const y = (ev.clientY / Math.max(1, innerHeight) - 0.5) * e.bgParallax * 0.24;
+        layer.style.setProperty("--parallax-x", `${x}px`);
+        layer.style.setProperty("--parallax-y", `${y}px`);
+      });
+    };
+    window.addEventListener("pointermove", move, { passive: true });
+    return () => { window.removeEventListener("pointermove", move); if (raf) cancelAnimationFrame(raf); };
+  }, [e.bgParallax, e.bgEnabled, paused]);
 
   // Fenster minimiert -> Animation anhalten (document.hidden deckt das nicht immer ab)
   useEffect(() => {
@@ -46,7 +71,7 @@ export function FxLayer() {
       });
     }, 0);
     return () => clearTimeout(t);
-  }, [e.bgEnabled, e.background, e.bgIntensity, e.bgGlow, e.bgSpeed, e.quality, paused, themeSig]);
+  }, [e.bgEnabled, e.background, e.bgIntensity, e.bgGlow, e.bgSpeed, e.bgParallax, e.quality, paused, themeSig]);
   useEffect(() => { const el = ref.current; return () => { if (el) window.JTechBackgrounds?.detach(el); }; }, []);
 
   useEffect(() => {

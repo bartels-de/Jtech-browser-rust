@@ -126,7 +126,7 @@ export const Sidebar = forwardRef<HTMLElement>(function Sidebar(_p, ref) {
   const renderTab = (t: UiTab, tile = false) => (
     <div
       key={t.id}
-      className={`tab-item${tile ? " pin-tile" : ""}${t.active ? " active" : ""}${t.pinned ? " pinned" : ""}${t.sleeping ? " sleeping" : ""}${t.groupId && !t.pinned ? " grouped" : ""}${overId === t.id && dragId !== t.id ? " drop-target" : ""}${dragId === t.id ? " dragging" : ""}`}
+      className={`tab-item${tile ? " pin-tile" : ""}${t.active ? " active" : ""}${t.pinned ? " pinned" : ""}${t.sleeping ? " sleeping" : ""}${t.groupId && !t.pinned ? " grouped" : ""}${overId === t.id && dragId !== t.id ? " drop-target" : ""}${dragId === t.id ? " dragging" : ""}${b.settings.sidebarTabStyle !== "classic" ? ` tab-style-${b.settings.sidebarTabStyle}` : ""}`}
       title={(t.internal ? t.title : `${t.title}\n${t.url}`) + (t.sleeping ? "\n" + tr("sb.sleepingHint") : "")}
       aria-label={t.title || tr("c.newTab")}
       draggable

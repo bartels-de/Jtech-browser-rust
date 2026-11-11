@@ -10,6 +10,7 @@ export interface GalleryTheme { theme: ThemeSpec; tags: ("dark" | "light" | "viv
 const mk = (id: string, name: string, accent: string, accent2: string, bg: string, text: string, textDim: string, radius: number,
   extra: Partial<Pick<ThemeSpec, "glass" | "blur" | "glow" | "font">> = {}): ThemeSpec => ({
   id, name, mode: luminance(bg) > 0.4 ? "light" : "dark", accent, accent2, bg, text, textDim, radius,
+  componentProfile: "rounded", addressBg: "", addressBgOpacity: 82, motionDuration: 140, motionStyle: "standard",
   glass: 78, blur: 18, glow: 0, font: "segoe" as FontId, customCss: "", ...extra,
 });
 

@@ -17,6 +17,7 @@ export function ThemesPage() {
   useT();
   const cur = b.customTheme ?? JTECH_DEFAULT;
   const [json, setJson] = useState("");
+  const [studioQuery, setStudioQuery] = useState("");
   const [msg, setMsg] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   // Jede Aenderung wird sofort angewendet (Live-Vorschau = gesamte Oberflaeche) und gespeichert.
@@ -41,10 +42,37 @@ export function ThemesPage() {
 
   return (
     <PageShell title={t("page.themes")} subtitle={t("th.lead")}>
-      <nav className="studio-jump" aria-label={t("th.jump")}>
-        {([["st-presets", "th.j.presets"], ["st-edit", "th.j.edit"], ["st-bg", "th.j.bg"], ["st-cursor", "th.j.cursor"], ["st-trail", "th.j.trail"], ["st-io", "th.j.io"], ["st-css", "th.j.css"]] as [string, TKey][]).map(([id, l]) =>
-          <button key={id} className="chip-btn" onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })}>{t(l)}</button>)}
-      </nav>
+      <div className="studio-layout">
+      <aside className="studio-tools">
+        <label className="search-field studio-search"><span aria-hidden="true">⌕</span>
+          <input value={studioQuery} onChange={e => setStudioQuery(e.target.value)} placeholder={t("th.searchPlaceholder")} aria-label={t("th.searchPlaceholder")} />
+          {studioQuery && <button className="icon-btn sm" onClick={() => setStudioQuery("")} aria-label={t("set.clearSearch")}>×</button>}
+        </label>
+        <nav className="studio-jump" aria-label={t("th.jump")}>
+          {([["st-interface", "th.interfaceTitle", "icon icons tab sidebar style density compact spacious oberfläche symbole register dichte"], ["st-presets", "th.j.presets", "theme preset vorlage"], ["st-edit", "th.j.edit", "color font shape farbe schrift form"], ["st-surface", "th.surfaceTitle", "component radius rounded angular corner ecke address omnibox adressleiste"], ["st-motion", "th.motionTitle", "duration motion animation transition dauer stil"], ["st-bg", "th.j.bg", "background animation hintergrund parallax"], ["st-cursor", "th.j.cursor", "cursor mauszeiger"], ["st-trail", "th.j.trail", "trail spur"], ["st-io", "th.j.io", "import export share teilen"], ["st-css", "th.j.css", "css"]] as [string, TKey, string][])
+            .filter(([, l, terms]) => !studioQuery.trim() || `${t(l)} ${terms}`.toLocaleLowerCase().includes(studioQuery.trim().toLocaleLowerCase()))
+            .map(([id, l]) => <button key={id} className="studio-nav-item" onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })}>{t(l)}</button>)}
+        </nav>
+      </aside>
+      <div className="studio-sections">
+
+      <Group id="st-interface" title={t("th.interfaceTitle")} desc={t("th.interfaceDesc")}>
+        <Row title={t("th.iconPack")} desc={t("th.iconPackDesc")}>
+          <select value={b.settings.iconPack} onChange={e => b.updateSettings({ iconPack: e.target.value as typeof b.settings.iconPack })} aria-label={t("th.iconPack")}>
+            <option value="line">{t("th.iconPack.line")}</option><option value="bold">{t("th.iconPack.bold")}</option><option value="soft">{t("th.iconPack.soft")}</option>
+          </select>
+        </Row>
+        <Row title={t("th.tabStyle")} desc={t("th.tabStyleDesc")}>
+          <select value={b.settings.sidebarTabStyle} onChange={e => b.updateSettings({ sidebarTabStyle: e.target.value as typeof b.settings.sidebarTabStyle })} aria-label={t("th.tabStyle")}>
+            <option value="classic">{t("th.tabStyle.classic")}</option><option value="pill">{t("th.tabStyle.pill")}</option><option value="underline">{t("th.tabStyle.underline")}</option><option value="minimal">{t("th.tabStyle.minimal")}</option>
+          </select>
+        </Row>
+        <Row title={t("th.density")} desc={t("th.densityDesc")}>
+          <select value={b.settings.uiDensity} onChange={e => b.updateSettings({ uiDensity: e.target.value as typeof b.settings.uiDensity })} aria-label={t("th.density")}>
+            <option value="compact">{t("th.density.compact")}</option><option value="comfortable">{t("th.density.comfortable")}</option><option value="spacious">{t("th.density.spacious")}</option>
+          </select>
+        </Row>
+      </Group>
 
       <Group id="st-presets" title={t("th.j.presets")} desc={t("th.presetsDesc")}
         actions={<label className="switch-row small"><span>{t("th.withFx")}</span>
@@ -71,7 +99,6 @@ export function ThemesPage() {
             </label>
           ))}
         </div>
-        <Slider label={t("th.radius")} value={cur.radius} min={0} max={24} unit=" px" onChange={v => patch({ radius: v })} />
         <Slider label={t("th.glass")} value={cur.glass} min={30} max={100} unit=" %" hint={t("th.glassHint")} onChange={v => patch({ glass: v })} />
         <Slider label={t("th.blur")} value={cur.blur} min={0} max={40} unit=" px" onChange={v => patch({ blur: v })} />
         <Slider label={t("th.glow")} value={cur.glow} min={0} max={100} unit=" %" hint={t("th.glowHint")} onChange={v => patch({ glow: v })} />
@@ -98,6 +125,33 @@ export function ThemesPage() {
         {msg && <p className="small form-msg" role="status">{msg}</p>}
       </Group>
 
+      <Group id="st-surface" title={t("th.surfaceTitle")} desc={t("th.surfaceDesc")}>
+        <Row title={t("th.componentProfile")} desc={t("th.componentProfileDesc")}>
+          <select value={cur.componentProfile} onChange={e => patch({ componentProfile: e.target.value as ThemeSpec["componentProfile"] })} aria-label={t("th.componentProfile")}>
+            <option value="rounded">{t("th.profile.rounded")}</option><option value="angular">{t("th.profile.angular")}</option><option value="custom">{t("th.profile.custom")}</option>
+          </select>
+        </Row>
+        <Slider label={t("th.radius")} value={cur.radius} min={0} max={24} unit=" px" onChange={v => patch({ radius: v, componentProfile: "custom" })} />
+        <Row title={t("th.addressBg")} desc={t("th.addressBgDesc")}>
+          <div className="studio-color-control">
+            <select value={cur.addressBg ? "custom" : "auto"} onChange={e => patch({ addressBg: e.target.value === "auto" ? "" : cur.addressBg || cur.accent })} aria-label={t("th.addressBg")}>
+              <option value="auto">{t("th.addressAuto")}</option><option value="custom">{t("th.addressCustom")}</option>
+            </select>
+            {cur.addressBg && <input type="color" value={cur.addressBg} aria-label={t("th.addressBg")} onChange={e => patch({ addressBg: e.target.value })} />}
+          </div>
+        </Row>
+        <Slider label={t("th.addressOpacity")} value={cur.addressBgOpacity} min={20} max={100} unit=" %" onChange={v => patch({ addressBgOpacity: v })} />
+      </Group>
+
+      <Group id="st-motion" title={t("th.motionTitle")} desc={t("th.motionDesc")}>
+        <Row title={t("th.motionStyle")} desc={t("th.motionStyleDesc")}>
+          <select value={cur.motionStyle} onChange={e => patch({ motionStyle: e.target.value as ThemeSpec["motionStyle"] })} aria-label={t("th.motionStyle")}>
+            <option value="standard">{t("th.motion.standard")}</option><option value="smooth">{t("th.motion.smooth")}</option><option value="snappy">{t("th.motion.snappy")}</option><option value="off">{t("th.motion.off")}</option>
+          </select>
+        </Row>
+        <Slider label={t("th.motionDuration")} value={cur.motionDuration} min={60} max={400} unit=" ms" onChange={v => patch({ motionDuration: v })} />
+      </Group>
+
       <EffectsEditor />
 
       <Group id="st-io" title={t("th.j.io")} desc={t("th.ioDesc")}>
@@ -114,7 +168,8 @@ export function ThemesPage() {
       </Group>
 
       <CustomCssEditor value={cur.customCss} onSave={css => patch({ customCss: css })} />
-
+      </div>
+      </div>
     </PageShell>
   );
 }
@@ -207,6 +262,7 @@ function EffectsEditor() {
         </div>
         <Slider label={t("th.intensity")} value={e.bgIntensity} min={0} max={100} unit=" %" hint={t("th.intensityHint")} onChange={v => set({ bgIntensity: v })} />
         <Slider label={t("th.speed")} value={e.bgSpeed} min={0} max={200} unit=" %" hint={t("th.speedHint")} onChange={v => set({ bgSpeed: v })} />
+        <Slider label={t("th.parallax")} value={e.bgParallax} min={0} max={100} unit=" %" hint={t("th.parallaxHint")} onChange={v => set({ bgParallax: v })} />
         <Slider label={t("th.glow")} value={e.bgGlow} min={0} max={100} unit=" %" onChange={v => set({ bgGlow: v })} />
         <Slider label={t("th.surface")} value={e.surfaceAlpha} min={40} max={100} unit=" %" hint={t("th.surfaceHint")} onChange={v => set({ surfaceAlpha: v })} />
         <Row title={t("th.quality")} desc={t("th.qualityDesc")}>

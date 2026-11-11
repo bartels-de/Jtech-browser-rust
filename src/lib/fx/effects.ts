@@ -26,6 +26,7 @@ export interface EffectsSettings {
   background: BgId;
   bgIntensity: number;   // 0..100
   bgSpeed: number;       // 0..200 (%)
+  bgParallax: number;    // 0..100 (%), UI background layer only
   bgGlow: number;        // 0..100
   quality: Quality;
   pauseOnWeb: boolean;   // pausieren, solange eine Webseite angezeigt wird
@@ -45,7 +46,7 @@ export interface EffectsSettings {
 }
 
 export const DEFAULT_EFFECTS: EffectsSettings = {
-  bgEnabled: false, background: "constellation", bgIntensity: 50, bgSpeed: 100, bgGlow: 50, quality: "medium", pauseOnWeb: false, surfaceAlpha: 78,
+  bgEnabled: false, background: "constellation", bgIntensity: 50, bgSpeed: 100, bgParallax: 0, bgGlow: 50, quality: "medium", pauseOnWeb: false, surfaceAlpha: 78,
   cursor: "", cursorColor: "#2cc5c9", cursorSize: 24, cursorImage: "", cursorHotspot: "center",
   trail: "none", trailColor: "#2cc5c9", trailColor2: "#5fe0d6", trailSize: 16, trailIntensity: 60, trailLength: 50,
   inPages: false,
@@ -86,6 +87,7 @@ export function normalizeEffects(raw: unknown): EffectsSettings {
     background: BACKGROUNDS.some(b => b.id === r.background) ? (r.background as BgId) : d.background,
     bgIntensity: num(r.bgIntensity, 0, 100, d.bgIntensity),
     bgSpeed: num(r.bgSpeed, 0, 200, d.bgSpeed),
+    bgParallax: num(r.bgParallax, 0, 100, d.bgParallax),
     bgGlow: num(r.bgGlow, 0, 100, d.bgGlow),
     quality: r.quality === "low" || r.quality === "medium" || r.quality === "high" ? r.quality : d.quality,
     pauseOnWeb: typeof r.pauseOnWeb === "boolean" ? r.pauseOnWeb : d.pauseOnWeb,

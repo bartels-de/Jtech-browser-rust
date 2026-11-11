@@ -55,6 +55,9 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
       devTools: s.devTools === true,
       updateIntervalHours: [0, 6, 12, 24, 72].includes(s.updateIntervalHours) ? s.updateIntervalHours : 24,
       sidebarWidth: clampSidebarWidth(s.sidebarWidth), language: normalizeLangSetting(s.language),
+      uiDensity: (["compact", "comfortable", "spacious"].includes(s.uiDensity) ? s.uiDensity : "comfortable") as Settings["uiDensity"],
+      iconPack: (["line", "bold", "soft"].includes(s.iconPack) ? s.iconPack : "line") as Settings["iconPack"],
+      sidebarTabStyle: (["classic", "pill", "underline", "minimal"].includes(s.sidebarTabStyle) ? s.sidebarTabStyle : "classic") as Settings["sidebarTabStyle"],
       splitRatio: clampSplitRatio(s.splitRatio), splitVertical: s.splitVertical === true, toolbar: normalizeToolbar(s.toolbar),
       audioEqualizer: normalizeAudioEqualizer(s.audioEqualizer) };
   });
@@ -134,6 +137,11 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
   const lastHistoryByTab = useRef<Record<string, string>>({});
 
   useEffect(() => save("settings", settings), [settings]);
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.density = settings.uiDensity;
+    root.dataset.iconPack = settings.iconPack;
+  }, [settings.uiDensity, settings.iconPack]);
   useEffect(() => save("bookmarks", bookmarks), [bookmarks]);
   useEffect(() => save("history", history), [history]);
   useEffect(() => { save("customTheme", customTheme); applyTheme(customTheme); }, [customTheme]);
@@ -730,6 +738,9 @@ export function BrowserProvider({ children }: { children: ReactNode }) {
     shortcuts: p.shortcuts ? normalizeShortcuts(p.shortcuts) : s.shortcuts,
     effects: p.effects ? normalizeEffects(p.effects) : s.effects,
     sidebarWidth: clampSidebarWidth(p.sidebarWidth ?? s.sidebarWidth),
+    uiDensity: (["compact", "comfortable", "spacious"].includes(p.uiDensity ?? s.uiDensity) ? p.uiDensity ?? s.uiDensity : s.uiDensity),
+    iconPack: (["line", "bold", "soft"].includes(p.iconPack ?? s.iconPack) ? p.iconPack ?? s.iconPack : s.iconPack),
+    sidebarTabStyle: (["classic", "pill", "underline", "minimal"].includes(p.sidebarTabStyle ?? s.sidebarTabStyle) ? p.sidebarTabStyle ?? s.sidebarTabStyle : s.sidebarTabStyle),
     language: normalizeLangSetting(p.language ?? s.language),
     splitRatio: clampSplitRatio(p.splitRatio ?? s.splitRatio),
     toolbar: p.toolbar ? normalizeToolbar(p.toolbar) : s.toolbar,

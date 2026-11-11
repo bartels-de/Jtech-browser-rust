@@ -16,7 +16,7 @@ import { WhatsNew } from "./components/WhatsNew";
 import { PageFeatures } from "./components/PageFeatures";
 import { PeekPanel } from "./components/PeekPanel";
 import { RadialMenu } from "./components/RadialMenu";
-import { IconWarn } from "./components/Icons";
+import { IconWarn, IconPackStyles } from "./components/Icons";
 import { useT } from "./i18n";
 import "./styles/tokens.css";
 import "./styles/app.css";
@@ -80,6 +80,7 @@ function Shell() {
 
   return (
     <div className={`shell${b.fullscreen ? " is-fullscreen" : ""}${animOn ? " anim-on" : ""}${switching ? " tab-switching" : ""}`}>
+      <IconPackStyles />
       <FxLayer />
       <Sidebar ref={sideRef} />
       <div className="main-col">
